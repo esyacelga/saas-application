@@ -9,9 +9,19 @@ For architecture, JWT design, RBAC, route prefixes, and business rules, see [REA
 ## Commands
 
 ```bash
-mvn clean package -DskipTests   # skip tests
-mvn test -Dtest=ClassName       # single test class
-docker-compose up -d --build    # full stack (PostgreSQL + auth-service)
+mvn clean package -DskipTests        # build jar, skip tests
+mvn test                             # all unit tests
+mvn test -Dtest=ClassName            # single unit test class
+mvn verify -P integration-tests      # all integration tests (*IT.java) via Testcontainers
+mvn verify -P integration-tests -Dit.test=AuthIT  # single IT class
+docker-compose up -d --build         # full stack (PostgreSQL + auth-service)
+```
+
+Local run (requires DB). On Windows/PowerShell, load the `.env` first:
+```powershell
+Get-Content .env | Where-Object { $_ -notmatch '^\s*#' -and $_ -match '=' } |
+  ForEach-Object { $p = $_ -split '=', 2; [System.Environment]::SetEnvironmentVariable($p[0].Trim(), $p[1].Trim(), 'Process') }
+mvn spring-boot:run
 ```
 
 No linter is configured. The Postman collection `auth-service.postman_collection.json` covers all endpoints.
@@ -28,14 +38,29 @@ infrastructure/adapter/out/persistence/   *PersistenceAdapter — R2DBC reposito
 
 `domain/` (model, port/in, port/out, exception) has zero infrastructure dependencies. Adding a feature touches all four layers: domain port → application service → persistence adapter → handler + router.
 
+All methods across every layer return `Mono<T>` or `Flux<T>` — there are no blocking calls anywhere. Route beans in `ApiRouter` are declared as `RouterFunction<ServerResponse>` `@Bean` methods; each handler method is `Mono<ServerResponse>`.
+
+## Token types
+
+Three **non-interchangeable** JWT user types (claim `tipo`):
+
+| `tipo`       | Table                       | Notable claims                                   |
+|--------------|-----------------------------|--------------------------------------------------|
+| `plataforma` | `saas.usuarios_plataforma`  | `rolPlataforma`; no `idCompania` → global access |
+| `staff`      | `seguridad.usuarios`        | `idCompania`, `idSucursal`, `idRol`, `permisos[]`|
+| `cliente`    | `identidad.usuarios_app`    | `idCompania`, `idPersona`                        |
+
+`SecurityUtils` enforces type: `requireStaff()`, `requirePlataforma()`, `requireStaffWithPermiso("modulo:accion")`. Permissions are embedded in the JWT at login — no downstream DB query.
+
 ## Persistence conventions
 
 - **Centralized identity via `identidad.personas`:** all three user tables (`UsuarioStaff`, `UsuarioPlataforma`, `UsuarioApp`) reference `personas` via `id_persona` FK and never store `nombre`/`foto_url` directly — always obtained via `LEFT/INNER JOIN identidad.personas p`, exposed as `nombre_persona` / `foto_url_persona` column aliases. The `Persona` must already exist before creating any user.
 - `correo` on user tables is the login/corporate email and may differ from `personas.correo` (personal email); `nombre`/`foto_url` are updated only via the `Persona` API.
+- All JSON request/response bodies use **snake_case** (`spring.jackson.property-naming-strategy: SNAKE_CASE`). DTO field names must match this convention.
 
 ## Key classes
 
-- `infrastructure/security/JwtTokenProvider` — JJWT 0.12.6 generate/parse
+- `infrastructure/security/JwtService` — JJWT 0.12.6 generate/parse (implements `TokenGeneratorPort`)
 - `infrastructure/security/JwtAuthWebFilter`, `SecurityUtils` — auth pipeline (see README "Pipeline de seguridad")
 - `application/service/AuthApplicationService` — all three login flows, token refresh, password reset
 - `infrastructure/config/GlobalExceptionHandler` — maps domain exceptions to `ApiError` JSON
@@ -48,7 +73,7 @@ Integration tests live in `src/test/`, use **Testcontainers** (real PostgreSQL c
 
 - `@SpringBootTest` + `@Transactional` — auto-rollback per test, no manual cleanup
 - Seed helpers: `seedPlatform()`, `seedStaff()`, `seedPersona()`, `seedAppUser()`, `seedRol()`, `seedPermiso()`
-- Bearer token builders: `bearerPlatform()`, `bearerStaff()`, `bearerCliente()`
+- Bearer token builders: `platformBearer()`, `staffBearer(String... permisos)`, `staffBearerWithRol(int idRol, String... permisos)`
 - Rate limiter reset before each test; all test data uses `id_compania = 99999` for isolation
 
 Test files follow `*IT.java` (e.g. `AuthIT.java`, `UsuarioStaffIT.java`). When adding an endpoint, seed required entities in `@BeforeEach`, then test happy path plus auth/permission failures.

@@ -62,7 +62,7 @@ export default function App() {
           <Route path="/historial" element={<HistorialPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
-q        <Route path="*" element={<Navigate to="/check-in" replace />} />
+        <Route path="*" element={<Navigate to="/check-in" replace />} />
       </Routes>
     </BrowserRouter>
   )

@@ -13,8 +13,15 @@ npm run test:integration     # Run integration tests against live backend (vites
 ```
 
 Environment: copy `.env.example` to `.env.local` and set:
-- `VITE_API_BASE_URL` — backend API base URL
+- `VITE_API_AUTH_URL` — auth-service base URL (default: `http://127.0.0.1:8080/api/v1`)
+- `VITE_API_PLATFORM_URL` — platform-service base URL (default: `http://127.0.0.1:8081/api/v1`)
+- `VITE_API_CORE_URL` — core-service base URL (default: `http://127.0.0.1:8083/api/v1`)
+- `VITE_API_ATTENDANCE_URL` — attendance-service base URL (default: `http://127.0.0.1:8084/api/v1`)
 - `VITE_APP_NAME` — application display name
+- `VITE_CLIENT_APP_URL` — URL for the gym member PWA (default: `http://localhost:5174`)
+- `VITE_AVATAR_HOMBRE_URL` / `VITE_AVATAR_MUJER_URL` — default profile avatar images
+- `VITE_AVATAR_LOGO_COMPANY` — default company logo for newly registered gyms
+- `VITE_API_BASE_URL` — legacy alias for `VITE_API_AUTH_URL` (kept for backwards compat)
 
 Integration tests read additional env vars (optional — tests skip when absent):
 - `TEST_API_URL` — auth-service base (default: `http://localhost:8080/api/v1`)
@@ -55,9 +62,10 @@ All instances share the same interceptor pattern: attach `Authorization: Bearer 
 ### Application layer use cases
 
 Use cases are **thin orchestrators** — each is a class wrapping one repository, with methods that call repo methods directly with no added business logic. They live under `src/application/<feature>/`. Groups:
-- **auth** (4): `LoginStaff`, `LoginPlatform`, `RefreshToken`, `Logout`
+- **auth** (5): `LoginStaff`, `LoginPlatform`, `RefreshToken`, `Logout`, `AutoRegistro`
 - **platform** (9): `GetPlanes`, `GestionarPlan`, `GetCaracteristicas`, `GestionarCompania`, `GestionarSucursal`, `GestionarSuscripcion`, `GestionarPago`, `GestionarNotifConfig`, `RegistrarGymWizard`
-- **core**: typed client/membership management use cases
+- **core**: no use case layer — pages call `coreRepository` directly. Methods group into: tipos de membresía (CRUD + deactivate), clientes (CRUD + search by CI + plataforma variants), membresías (sell, cancel, update prior attendances), congelamientos (freeze, reactivate, list).
+- **attendance**: no use case layer — pages call `attendanceRepository` directly. Methods: `getAsistenciasHoy`, `getEstadisticas`, `getAsistenciasUltimos30`, `getHistorialCliente`, `getRachaPerfecta`, `registrarManual`.
 
 ### Domain entities
 
@@ -75,6 +83,8 @@ Use cases are **thin orchestrators** — each is a class wrapping one repository
 **State management** — Zustand store at `src/infrastructure/store/auth/auth.store.ts` holds `accessToken`, `user`, and `initialized`. Prefer the computed hooks (`useIsAuthenticated`, `useCurrentUser`, `useHasPermission`, `useIsPlatformUser`) over reading store state directly. `useHasPermission(permiso)` is staff-only — it returns `false` for all other token types.
 
 **Platform store** — `src/infrastructure/store/platform/platform.store.ts` holds `companias[]`, `selectedCompania`, `planes[]`, `caracteristicas[]`. It is pure client state with no auto-refresh; populate it explicitly in page effects and update it after mutations.
+
+**Loader store** — `src/infrastructure/store/loader/loader.store.ts` tracks in-flight Axios requests (`start()` / `done()` / `isLoading()`). Wired into all four Axios interceptors automatically; drives the `TopLoader` progress bar in the layout headers. Do not call `start()`/`done()` manually from components.
 
 **Refresh token** — Stored in `sessionStorage` under key `'auth_rt'` via helpers in `src/lib/refresh-token-storage.ts` (`getStoredRefreshToken`, `storeRefreshToken`, `clearStoredRefreshToken`). Retrieved by `RefreshTokenUseCase` on app mount.
 

@@ -9,10 +9,13 @@ See also [../docs/platform-service/INDEX.md](../docs/platform-service/INDEX.md) 
 ## Commands
 
 ```bash
-mvn clean package          # Build JAR → target/platform-service-new.jar
-mvn spring-boot:run        # Run locally (reads .env via spring-dotenv)
-mvn test                   # Unit tests
+mvn clean package                              # Build JAR → target/platform-service-new.jar
+mvn spring-boot:run                            # Run locally (reads .env via spring-dotenv)
+mvn test                                       # All integration tests (requires PostgreSQL + Redis)
+mvn test -Dtest=CompaniaIntegrationTest        # Run a single integration test class
 ```
+
+Java 21. All tests are integration tests (`BaseIntegrationTest` + `DotEnvInitializer`) — they hit a real PostgreSQL database, not mocks. Ensure your `.env` points to a reachable DB before running.
 
 Copy `.env.example` to `.env` and configure before running. Required vars: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `REDIS_HOST`, `JWT_SECRET`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`.
 
@@ -51,6 +54,8 @@ ReactiveSecurityContextHolder.getContext()
 - `requireStaff(principal)` — gym staff token
 - `requireAccessToCompania(principal, idCompania)` — staff must belong to that company
 
+**Entity mapping** — MapStruct mappers (in `adapter/out/persistence/`) convert between domain models and R2DBC entities. Add new fields to both the domain model and the corresponding entity + mapper; never bypass the mapper.
+
 **Use case commands** — Use cases define inner `record` types for commands (e.g., `CompaniaUseCase.ActualizarCompaniaCommand`). Always pass commands, not raw primitives, to use case methods.
 
 **Persistence** — R2DBC (reactive, no JPA). DB schema is `tenant` for company data, `saas` for platform data. All entities extend `BaseAuditEntity` (creacionFecha, creacionUsuario, modificaFecha, modificaUsuario populated automatically via R2DBC auditing from JWT context). **Soft-delete**: all entities have an `eliminado` boolean — filter on `eliminado = false` in all queries.
@@ -69,20 +74,25 @@ ReactiveSecurityContextHolder.getContext()
 
 ## Domain Entities
 
-`Compania` (tenant company), `Sucursal` (branch), `Plan` (subscription template), `CompaniaPlan` (active subscription linking Compania+Plan), `PagoSuscripcion` (payment record), `Caracteristica` (plan feature), `PlanCaracteristica` (join), `ConfigNotifSuscripcion` (renewal notification config), `ActividadPlataforma` (audit log).
+`Compania` (tenant company), `Sucursal` (branch), `Plan` (subscription template), `CompaniaPlan` (active subscription linking Compania+Plan), `PagoSuscripcion` (payment record), `Caracteristica` (plan feature), `PlanCaracteristica` (join), `ConfigNotifSuscripcion` (renewal notification config), `ActividadPlataforma` (audit log), `NotificacionSuscripcion` (sent notification record), `ModuloCheckResult` (value object, not persisted).
+
+Key enums: `CompaniaPlan.Estado` (ACTIVO, EN_GRACIA, VENCIDO, SUSPENDIDO, CANCELADO, PROGRAMADO), `CompaniaPlan.TipoCambio` (NUEVO, RENOVACION, UPGRADE, DOWNGRADE), `PagoSuscripcion.MetodoPago` (EFECTIVO, TRANSFERENCIA, TARJETA), `PagoSuscripcion.EstadoPago` (PAGADO, FALLIDO, PENDIENTE).
 
 ## Endpoints
 
 Port **8081**. All endpoints under `/api/v1/`. Public: `/api/v1/modulos/check`, `/actuator/health`. All others require `Authorization: Bearer <jwt>`.
 
 Key route groups:
-- `CompaniaController` → `/api/v1/companias` — CRUD + wizard registration + logo upload (`POST /{id}/logo`)
+- `CompaniaController` → `/api/v1/companias` — CRUD + wizard registration (`POST /wizard`) + auto-registro + logo upload (`POST /{id}/logo`) + suspend (`PUT /{id}/suspender`)
 - `MiEmpresaController` → `/api/v1/mi-empresa` — staff self-service (logo upload, sucursal, QR renewal)
-- `SuscripcionController` → `/api/v1/companias/{id}/suscripciones`
-- `PagoController` → `/api/v1/companias/{id}/pagos`
-- `SucursalController` → `/api/v1/sucursales`
-- `PlanController` → `/api/v1/planes`
+- `SuscripcionController` → `/api/v1/companias/{id}/suscripcion` — get active, historial, renovar, upgrade, downgrade
+- `PagoController` → `/api/v1/companias/{id}/pagos` + `POST /api/v1/pagos` + `PUT /api/v1/pagos/{id}/confirmar`
+- `SucursalController` → `/api/v1/companias/{idCompania}/sucursales` (list/create) + `/api/v1/sucursales/{id}` (update/qr)
+- `PlanController` → `/api/v1/planes` — CRUD + assign characteristics (`PUT /{id}/caracteristicas`) + deactivate
+- `CaracteristicaController` → `/api/v1/caracteristicas` — list + create
 - `NotifConfigController` → `/api/v1/companias/{id}/notif-config`
+- `ActividadPlataformaController` → `/api/v1/actividad` — list audit log
+- `ModuloCheckController` → `/api/v1/modulos/check` — public QR-based module access check
 
 ## Monorepo Context
 

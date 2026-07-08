@@ -24,13 +24,13 @@ Copy `.env.example` to `.env.local` and set all variables:
 ```
 VITE_AUTH_API_URL=http://localhost:8080/api/v1
 VITE_CORE_API_URL=http://localhost:8083/api/v1
-VITE_ATTENDANCE_API_URL=http://localhost:8084/api/v1
+VITE_ATTENDANCE_API_URL=http://localhost:8082/api/v1
 VITE_GOOGLE_CLIENT_ID=     # opcional — botón de Google se oculta si está vacío
 VITE_FACEBOOK_APP_ID=      # opcional — botón de Facebook se oculta si está vacío
-VITE_PORT=5174
+VITE_PORT=5173
 ```
 
-Three backend microservices: **auth-service** (8080), **core-service** (8083), **attendance-service** (8084). Each has its own Axios instance in `src/infrastructure/http/`.
+Three backend microservices: **auth-service** (8080), **core-service** (8083), **attendance-service** (8082). Each has its own Axios instance in `src/infrastructure/http/`.
 
 `VITE_GOOGLE_CLIENT_ID` and `VITE_FACEBOOK_APP_ID` are optional. When empty, `App.tsx` skips mounting `GoogleOAuthProvider` entirely, and `LoginPage.tsx` hides the social buttons via `GOOGLE_ENABLED`/`FB_ENABLED` module-level constants evaluated at build time.
 
@@ -44,7 +44,7 @@ The app follows a layered/clean architecture split across four layers:
 
 - **`src/domain/`** — Interfaces and business types (`ClienteToken`, `AuthState`, `AuthRepository` port).
 - **`src/application/`** — DTOs / use-case request-response types.
-- **`src/infrastructure/`** — Concrete implementations: three Axios instances, repository classes, Zustand auth store, and Zustand theme store.
+- **`src/infrastructure/`** — Concrete implementations: three Axios instances, repository classes, and three Zustand stores.
 - **`src/ui/`** — React pages, guards, layouts, and custom hooks.
 
 ### Routing & navigation
@@ -53,14 +53,15 @@ The app follows a layered/clean architecture split across four layers:
 
 Public routes (no `ClienteGuard`): `/login`, `/forgot-password`, `/reset-password`.
 
-All other paths fall through to `<Navigate to="/home" />`.
+All other paths fall through to `<Navigate to="/check-in" />`.
 
 ### State management
 
-Two Zustand stores, both persisted to `localStorage`:
+Three Zustand stores, all persisted to `localStorage`:
 
 - **`auth.store.ts`** (`gym-member-auth`) — `accessToken`, `refreshToken`, `user: ClienteToken | null`, `gymInfo: GymInfo | null`, `initialized`. Use `useCurrentUser()` and `useIsAuthenticated()` selectors. `gymInfo` holds `{ id_compania, id_sucursal, nombre_sucursal, logo_url, nombre_compania }` — populated when the user scans a gym QR on login; required for the app-based check-in flow.
 - **`theme.store.ts`** (`gym-member-theme`) — `theme: ThemeId`, `userCustomized: boolean`. `initTheme(sexo)` sets a gender-based default only if the user hasn't chosen manually.
+- **`perfil.store.ts`** (`gym-member-perfil`) — `data: MiPerfilResponse | null`, `fetchedAt`. Caches the full membership profile with a 5-minute stale window. Use `isPerfilStale(fetchedAt)` to decide whether to re-fetch. Call `invalidate()` after any mutation that changes membership state.
 
 ### JWT payload structure (`ClienteToken`)
 
@@ -87,9 +88,11 @@ Six color themes (`acero`, `volcan`, `bosque`, `coral`, `violeta`, `aurora`) imp
 **Always use `accent-*` Tailwind classes** (e.g., `text-accent-400`, `bg-accent-600`) for interactive and brand elements — never hardcode `blue-`, `orange-`, or other color scales. Components using `slate-*` darken automatically per theme. `App.tsx` applies the theme via `document.documentElement.setAttribute('data-theme', theme)` on mount and on change.
 
 Shared UI components in `src/ui/components/`:
-- **`ThemeSelector.tsx`** — color theme picker used in ProfilePage.
 - **`LangToggle.tsx`** — language switcher used in LoginPage and ProfilePage.
 - **`PulseBackground.tsx`** — animated background (blurred anatomical heart rings + scrolling ECG line) rendered on all authenticated pages. Uses `@keyframes heartPulseRing` and `@keyframes ecgScroll` defined in `src/index.css`. Uses `accent-*` tokens so it adapts to the active theme automatically. Do not remove those keyframes — they are referenced by inline `style.animation` in the component.
+- **`InstallBanner.tsx`** — PWA install prompt banner; driven by `src/ui/hooks/useInstallPrompt.ts` which captures the `beforeinstallprompt` event and tracks dismissal in `localStorage`.
+
+`ThemeSelector.tsx` is co-located with `ProfilePage` at `src/ui/pages/profile/ThemeSelector.tsx` — it is not in `src/ui/components/` because it is not reused elsewhere.
 
 All other page sub-components are defined at the bottom of their page file (see sub-component pattern below).
 

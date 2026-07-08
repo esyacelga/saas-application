@@ -21,7 +21,7 @@ mvn test -Dtest=AsistenciaManualIntegrationTest
 # Run a single test method
 mvn test -Dtest="AsistenciaManualIntegrationTest#duenoRegistraOverride"
 
-# Run dev server
+# Run dev server (listens on port 8084)
 mvn spring-boot:run
 ```
 
@@ -37,7 +37,7 @@ Two WebClient beans are configured in `WebClientConfig`:
 
 - **`CoreServiceClient`** — calls Core Service at `CORE_SERVICE_URL` (default `http://localhost:8082`). Three methods:
   - `validarAcceso(idPersona, idCompania, token)` → `ValidarAccesoResponse` (permitido, razon, idCliente, idMembresia, modoControl, diasAccesoRestantes, fechaFin, tipoMembresia, accesosUsados)
-  - `buscarSucursalPorQr(qrToken)` → `SucursalQrResponse` (idSucursal, idCompania, nombreSucursal, qrTokenExpira)
+  - `buscarSucursalPorQr(qrToken, bearerToken)` → `SucursalQrResponse` (idSucursal, idCompania, nombreSucursal, qrTokenExpira)
   - `buscarIdClientePropio(idPersona, token)` → client ID for `/asistencias/me` endpoints
 - **`AuthServiceClient`** — calls Auth Service at `AUTH_SERVICE_URL` (default `http://localhost:8080`). Used to resolve QR tokens to sucursal via `buscarSucursalPorQr`.
 
@@ -64,8 +64,11 @@ All other routes require a valid JWT.
 The `JwtPrincipal` carries: `userId`, `tipo` (`cliente` | `staff` | `plataforma`), `rol_gym` (`dueno` | `admin_compania` | `recepcion` | `entrenador`), `rol_plataforma` (`super_admin`), and `id_compania`. Convenience predicates: `isCliente()`, `isStaff()`, `isDueno()`, `isRecepcion()`, `isEntrenador()`. **`isDueno()` returns true for both `"dueno"` and `"admin_compania"` roles.**
 
 Authorization logic lives in `AccessControlService`. Key methods:
+- `requireCliente(principal)` — rejects non-clientes
 - `requireStaff(principal)` — rejects clientes
+- `requireStaffOrPlataforma(principal)` — allows staff | plataforma
 - `requireDueno(principal)` — requires dueno or admin_compania
+- `requireDuenoOrPlataforma(principal)` — allows dueno | admin_compania | plataforma
 - `requireNotEntrenador(principal)` — blocks entrenadores from manual registration
 - `requireAccessToCompania(principal, idCompania)` — cross-tenant guard; ensures staff only touch their own company
 
@@ -93,6 +96,14 @@ return getJwtPrincipal()
 
 Use the **custom** `IllegalArgumentException` from the `infrastructure.exception` package, not `java.lang.IllegalArgumentException`, to get 422 responses.
 
+### Jackson serialization
+
+All JSON uses `SNAKE_CASE` (configured globally in `application.yml`). DTO fields must be `camelCase` in Java — Jackson maps them automatically. `write-dates-as-timestamps: false` means `Instant`/`OffsetDateTime` fields serialize as ISO-8601 strings.
+
+### MensajeLog estado lifecycle
+
+`estado` transitions: `pendiente` → `enviado` (on success) or `fallido` (on error). `POST /mensajes/reenviar/{id}` is only allowed from `fallido` state — attempting reenvio on a non-`fallido` log returns 409.
+
 ### Configuration
 
 `AppProperties` only binds `app.cors.*`. JWT and scheduling properties are consumed directly via `@Value` elsewhere, not through `AppProperties`.
@@ -114,7 +125,12 @@ All tests are integration tests (`@SpringBootTest` + `WebTestClient`) under `src
 `BaseIntegrationTest` provides:
 - A pre-wired `WebTestClient`
 - A `DatabaseClient` for raw SQL setup/teardown
-- JWT builder helpers for minting tokens with any role combination
+- JWT helpers (all return a raw token string; wrap with `bearerHeader(jwt)` for the `Authorization` header):
+  - `jwtCliente(idCliente, idCompania)`
+  - `jwtRecepcion(idCompania)`
+  - `jwtDueno(idCompania)`
+  - `jwtSuperAdmin()`
+  - `jwtEntrenador(idCompania)`
 - SQL helper methods (`insertarAsistencia`, `insertarPlantilla`, `insertarClienteCore`, `insertarMembresia`)
 
 Each test class calls `cleanDatabase()` in `@BeforeEach`, which deletes all rows in reverse FK order. Tests rely on a live PostgreSQL instance configured via `.env`.

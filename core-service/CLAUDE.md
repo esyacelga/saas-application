@@ -62,14 +62,74 @@ Environment variables (loaded from `.env` in dev):
 
 Redis defaults to `localhost:6379`. Jackson is configured globally to use `snake_case`.
 
-## Testing
+## Database Schemas
 
-Tests are integration tests using `WebTestClient` + a real PostgreSQL + Redis (configured in `application-test.yml`). `BaseIntegrationTest` provides shared setup. `DotEnvInitializer` loads `.env` for test context. There are no unit tests — only integration tests.
+Persistence adapters write to the `core` schema (`core.clientes`, `core.membresias`, `core.congelamientos`, `core.tipos_membresia`). Several queries **cross schema boundaries** with JOINs:
+- `identidad.personas` — person identity (name, CI, phone, email, avatar); not owned by this service
+- `asistencia.asistencias` — attendance logs used to count used accesses for access-based memberships
+
+All entities extend `BaseAuditEntity` (creacion_fecha/usuario, modifica_fecha/usuario). Deletions are **soft-deletes** via an `eliminado` boolean; all queries must filter `WHERE eliminado = false`.
+
+## Authorization
+
+`AccessControlService` exposes helper methods consumed by every controller:
+
+| Method | Allowed roles |
+|---|---|
+| `requireAdminOrDueno()` | `super_admin`, `admin_compania`, `Dueño` |
+| `requireRecepcionOrAbove()` | above + `Recepción` |
+| `requireGymStaff()` | any staff token whose `id_compania` matches |
+| `requireCliente()` | `tipo=cliente` token whose `id_compania` matches |
+
+JWT claims: `tipo` (`staff`/`cliente`/`plataforma`), `rol_plataforma`, `id_compania`, `id_persona`.
+
+The only **public** endpoint (no auth) is `GET /api/v1/membresias/validar-acceso`.
+
+## State Machines
+
+**Membresia** (membership):
+```
+activa ──congelar──→ congelada ──reactivar──→ activa
+activa ──anular──→  anulada
+activa ──(cron)──→  vencida  (past end date)
+```
+
+**Cliente** (updated by `CongelamientoService` on freeze/unfreeze, and by `ClienteStatusJobService` daily at 00:10):
+```
+activo ──congelar──→ congelado ──reactivar──→ activo | proximo_vencer | vencido
+activo ──(cron)──→  proximo_vencer  (≤3 days to membership expiry)
+proximo_vencer ──(cron)──→ vencido
+vencido ──(new membership)──→ activo
+```
+
+## Error Handling
+
+`GlobalExceptionHandler` (implements `ErrorWebExceptionHandler`) maps custom exceptions to HTTP status codes. Throw the right type from service/adapter layers:
+
+| Exception | HTTP |
+|---|---|
+| `BusinessException` | 422 |
+| `NotFoundException` | 404 |
+| `ConflictException` | 409 |
+| `ForbiddenException` | 403 |
+
+Validation errors (`WebExchangeBindException`) → 400. All error responses include `timestamp`, `status`, `error`, `message`, `path`.
 
 ## Membership Control Modes
 
 Memberships have two distinct billing/tracking modes:
-- **Calendar-based**: Fixed-duration (e.g., 1 month from start date).
-- **Access-based**: Limited daily visits with an overall expiration date.
+- **Calendar-based** (`calendario`): Fixed-duration (days/weeks/months/años from start date). Expiry is computed once at creation.
+- **Access-based** (`accesos`): Limited daily visits counted against `asistencia.asistencias`, with an overall expiration date. Remaining accesses are computed on every `validar-acceso` call.
 
-This distinction drives branching logic in `MembresiaService` and the access validation endpoint (`GET /api/v1/membresias/validar-acceso` — unauthenticated).
+This distinction drives branching logic in `MembresiaService` and the `ValidarAcceso` flow.
+
+## Testing
+
+Tests are integration tests using `WebTestClient` + a real PostgreSQL + Redis (configured in `application-test.yml`). `BaseIntegrationTest` provides shared setup. `DotEnvInitializer` loads `.env` for test context. There are no unit tests — only integration tests.
+
+`BaseIntegrationTest` helpers:
+- Seed methods: `seedPersona()`, `seedCliente()`, `seedTipoCalendario()`, `seedTipoAccesos()`, `seedMembresia()`, `seedMembresiaAccesos()`
+- Token factories: `jwtAdminCompania()`, `jwtRecepcion()`, `jwtSuperAdmin()`
+- `@BeforeEach cleanDatabase()` deletes all rows in reverse FK order
+
+Test constants: `TEST_COMPANIA=1`, `TEST_SUCURSAL=1`, `TEST_USUARIO=1`.
