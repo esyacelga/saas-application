@@ -1,5 +1,7 @@
 # Marketing Service — Especificación de Desarrollo
 
+> **ESTADO:** 📋 Planeado — sin implementar. Este servicio NO existe en el código todavía; es una especificación de diseño futura. Ver [../../STATUS.md](../../STATUS.md).
+
 > **Servicio:** marketing-service  
 > **Esquemas BD:** `marketing`  
 > **Tablas:** 4 tablas (promociones · cliente_promociones · reglas_beneficios · cliente_beneficios)  

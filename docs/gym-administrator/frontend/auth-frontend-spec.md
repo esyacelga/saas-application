@@ -1,4 +1,6 @@
 # Módulo de Autenticación — Frontend (React + Vite)
+
+> **ESTADO:** 🟡 Especificación de diseño del frontend. Verificar contra el código para el detalle actual. Ver [../../STATUS.md](../../STATUS.md).
 # Especificación Funcional de Pantallas
 
 > **Módulo:** Autenticación, Usuarios, Roles y Permisos

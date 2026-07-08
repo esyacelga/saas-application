@@ -1,5 +1,7 @@
 # Core Service — Especificación de Desarrollo
 
+> **ESTADO:** 🟡 Spec de diseño de un servicio YA implementado. El **código es la fuente de verdad**; esta spec puede haber divergido. Para la API real ver `docs/<servicio>/` y el CLAUDE.md del servicio. Ver [../../STATUS.md](../../STATUS.md).
+
 > **Servicio:** core-service  
 > **Esquemas BD:** `core`  
 > **Tablas:** 4 tablas (clientes · tipos_membresia · membresias · congelamientos)  

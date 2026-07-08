@@ -1,5 +1,7 @@
 # USUARIOS STAFF, ROLES Y PERMISOS API
 
+> **ESTADO:** ✅ Refleja el código actual (verificado 2026-07-08 contra `ApiRouter.java`). Ver [../../STATUS.md](../../STATUS.md).
+
 Base URL: `/api/v1`
 
 Estos endpoints son utilizados por el panel administrativo del gym. Todos requieren un JWT de tipo `staff` con los permisos RBAC correspondientes.

@@ -1,5 +1,7 @@
 # Directrices de Diseño — Auth Service Front-End
 
+> **ESTADO:** 🟡 Referencia de diseño UI/UX. Verificar contra el código para el detalle actual. Ver [../STATUS.md](../STATUS.md).
+
 ## 1. Sistema de temas
 
 El layout de plataforma soporta múltiples temas seleccionables en tiempo real. El tema activo se gestiona mediante `useThemeStore` (Zustand + `localStorage` por usuario) y se aplica como `data-layout` en `document.body` y en el div raíz del layout.

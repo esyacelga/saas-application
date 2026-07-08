@@ -1,5 +1,7 @@
 # IMPL-12 — Portal del Miembro: Gaps de Backend
 
+> **ESTADO:** 📜 Histórico — paso de implementación ya completado. NO describe el estado actual del código; es el registro de cómo se construyó este módulo. Ver [../../STATUS.md](../../STATUS.md).
+
 > **Módulo:** Portal del Miembro — Fase 1 (preparación de backends)
 > **Complejidad:** ★★★★☆
 > **Prerequisito:** `auth-service` + `attendance-service` + `gym-administrator` funcionales

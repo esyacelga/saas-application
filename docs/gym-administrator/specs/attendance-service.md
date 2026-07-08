@@ -1,5 +1,7 @@
 # Attendance Service — Especificación de Desarrollo
 
+> **ESTADO:** 🟡 Spec de diseño de un servicio YA implementado. El **código es la fuente de verdad**; esta spec puede haber divergido. Para la API real ver `docs/<servicio>/` y el CLAUDE.md del servicio. Ver [../../STATUS.md](../../STATUS.md).
+
 > **Servicio:** attendance-service  
 > **Esquemas BD:** `asistencia`  
 > **Tablas:** 3 tablas (asistencias · plantillas_mensajes · mensajes_log)  

@@ -1,5 +1,7 @@
 # IMPL_17 — Asignar membresía desde el panel "Sin suscripción" del Dashboard
 
+> **ESTADO:** 📜 Histórico — paso de implementación ya completado. NO describe el estado actual del código; es el registro de cómo se construyó este módulo. Ver [../../STATUS.md](../../STATUS.md).
+
 > **Estado:** Implementado v1.0  
 > **Última actualización:** 2026-06-20
 

@@ -1,5 +1,7 @@
 # IMPL_18 — Card "Próximos a Vencerse" en el Dashboard del Gimnasio
 
+> **ESTADO:** 📜 Histórico — paso de implementación ya completado. NO describe el estado actual del código; es el registro de cómo se construyó este módulo. Ver [../../STATUS.md](../../STATUS.md).
+
 > **Estado:** Pendiente de implementación
 > **Última actualización:** 2026-06-20
 > **Requiere cambio en backend:** Sí — `core-service` (ver sección "Cambios en el backend")

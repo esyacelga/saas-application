@@ -1,5 +1,7 @@
 # ¿Cómo sabe la aplicación cuál es la primera página a mostrar?
 
+> **ESTADO:** 📜 Histórico — nota personal de aprendizaje, no documentación técnica del sistema. Ver [../../STATUS.md](../../STATUS.md).
+
 ## Resumen
 
 La app combina tres mecanismos: **inicialización del token**, **estado en el store** y **route guards**, para decidir qué página renderizar primero.

@@ -1,5 +1,7 @@
 # IMPL_16 — Sistema de Carga Global (Top Loader + Puntos Pulsantes)
 
+> **ESTADO:** 📜 Histórico — paso de implementación ya completado. NO describe el estado actual del código; es el registro de cómo se construyó este módulo. Ver [../../STATUS.md](../../STATUS.md).
+
 > **Estado:** Borrador v0.1 — listo para implementar  
 > **Última actualización:** 2026-06-19
 

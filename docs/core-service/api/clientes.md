@@ -1,5 +1,7 @@
 # CLIENTES API — core-service
 
+> **ESTADO:** ✅ Refleja el código actual (verificado 2026-07-08 contra `ClienteController`). Ver [../../STATUS.md](../../STATUS.md).
+
 Todos los endpoints requieren `Authorization: Bearer {token}`.  
 Las respuestas usan **snake_case** (Jackson `SNAKE_CASE` global configurado en `application.yml`).
 
@@ -17,6 +19,7 @@ Las respuestas usan **snake_case** (Jackson `SNAKE_CASE` global configurado en `
 | GET    | `/api/v1/clientes/my-id`    | ID del cliente autenticado                  |
 | POST   | `/api/v1/clientes/app`      | Registro desde app móvil                    |
 | GET    | `/api/v1/clientes/ci/{ci}`  | Busca por CI (verifica si ya es cliente)    |
+| POST   | `/api/v1/clientes/plataforma` | Registro de cliente desde el panel de plataforma |
 
 ---
 

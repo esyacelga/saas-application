@@ -1,5 +1,7 @@
 # IMPL-10 — RolesPage (Roles y editor de permisos)
 
+> **ESTADO:** 📜 Histórico — paso de implementación ya completado. NO describe el estado actual del código; es el registro de cómo se construyó este módulo. Ver [../../STATUS.md](../../STATUS.md).
+
 > **Pantalla:** P-07 Roles  
 > **Complejidad:** ★★★★★  
 > **Prerequisito:** IMPL-08 completado  

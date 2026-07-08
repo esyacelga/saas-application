@@ -1,5 +1,7 @@
 # gym-member-pwa — Tareas Pendientes
 
+> **ESTADO:** 📜 Backlog — tareas pendientes, NO estado actual del código. Algunas ya pueden estar hechas; verificar contra el código. Ver [../STATUS.md](../STATUS.md).
+
 Estado auditado: 2026-06-14  
 Contexto: PWA React 19 / Vite 8 / Tailwind v4 / Zustand / React Router v7
 

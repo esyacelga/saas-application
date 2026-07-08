@@ -1,5 +1,7 @@
 # Roadmap de Desarrollo — Gym Administrator
 
+> **ESTADO:** 🟡 Arquitectura y modelo de negocio. Mezcla lo implementado con lo planeado; para detalle de implementación verificar contra el código. Ver [../../STATUS.md](../../STATUS.md).
+
 > **Proyecto:** Gym Administrator — Plataforma SaaS de gestión de gimnasios  
 > **Base de datos:** Completada (42 tablas, 10 esquemas PostgreSQL, 59 scripts Liquibase)  
 > **Total de servicios:** 7 microservicios  

@@ -1,5 +1,7 @@
 # PLATFORM API
 
+> **ESTADO:** ✅ Refleja el código actual (verificado 2026-07-08 contra `ApiRouter.java`). Ver [../../STATUS.md](../../STATUS.md).
+
 Base URL: `/api/v1/platform`
 
 Endpoints de administración de la plataforma SaaS. Solo accesibles con un JWT de tipo `plataforma`.

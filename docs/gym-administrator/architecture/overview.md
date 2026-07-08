@@ -1,5 +1,7 @@
 # Gym Administrator — Documento de Proyecto
 
+> **ESTADO:** 🟡 Arquitectura y modelo de negocio. Mezcla lo implementado con lo planeado; para detalle de implementación verificar contra el código. Ver [../../STATUS.md](../../STATUS.md).
+
 > **Estado actual:** Diseño de base de datos completado · Migraciones Liquibase implementadas · Aplicación en desarrollo
 > **Versión:** 1.0.0 · **Fecha:** Mayo 2026
 

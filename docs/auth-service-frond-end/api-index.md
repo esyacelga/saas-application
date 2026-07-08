@@ -1,5 +1,7 @@
 # Índice de endpoints — Auth Service
 
+> **ESTADO:** 🟡 Índice de endpoints consumidos. Para la API real de auth-service ver `docs/auth-service/api/` (✅ verificado). Ver [../STATUS.md](../STATUS.md).
+
 Base URL: `http://localhost:8080/api/v1`  
 Repositorio: `src/infrastructure/http/auth/AuthHttpRepository.ts`  
 Port: `src/domain/auth/ports/AuthRepository.port.ts`

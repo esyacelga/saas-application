@@ -1,5 +1,7 @@
 # IMPL-11 — PlatformLayout + PlatformUsuariosPage (Panel SaaS)
 
+> **ESTADO:** 📜 Histórico — paso de implementación ya completado. NO describe el estado actual del código; es el registro de cómo se construyó este módulo. Ver [../../STATUS.md](../../STATUS.md).
+
 > **Pantalla:** P-10 Operadores de plataforma  
 > **Complejidad:** ★★★☆☆  
 > **Prerequisito:** IMPL-07 (patrón CRUD) y IMPL-06 (patrón layout)  

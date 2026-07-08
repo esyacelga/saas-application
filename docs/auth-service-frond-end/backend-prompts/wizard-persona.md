@@ -1,5 +1,7 @@
 # Backend Spec — Wizard: búsqueda y creación de persona
 
+> **ESTADO:** 📜 Histórico — prompt usado para pedir un cambio al backend. NO es documentación de estado actual. Ver [../../STATUS.md](../../STATUS.md).
+
 ## Contexto
 
 El endpoint `POST /api/v1/companias/wizard` crea una compañía completa

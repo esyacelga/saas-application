@@ -53,7 +53,8 @@ docker run -d \
 ### 3. Verificar que está corriendo
 
 ```bash
-curl http://localhost:8084/api/v1/asistencias/check
+curl http://localhost:8084/actuator/health
+# {"status":"UP"}
 ```
 
 ---
@@ -139,15 +140,24 @@ com.gymadmin.attendance/
 
 | Método | Ruta | Descripción | Acceso |
 |---|---|---|---|
-| `POST` | `/api/v1/asistencias/check` | Registro por QR (auto-check-in) | Público |
-| `POST` | `/api/v1/asistencias/manual` | Registro manual por staff | Staff |
-| `POST` | `/api/v1/asistencias/manual/override` | Override del dueño | Dueño |
-| `GET` | `/api/v1/asistencias` | Listar asistencias | Staff |
+| `POST` | `/api/v1/asistencias/qr` | Registro por QR (escaneo del cliente) | Cliente (JWT) |
+| `POST` | `/api/v1/asistencias/app` | Registro desde la app sin QR | Cliente (JWT) |
+| `POST` | `/api/v1/asistencias/manual` | Registro manual por staff | Staff (no entrenador) |
+| `POST` | `/api/v1/asistencias/manual/override` | Override del dueño (sin validar membresía) | Dueño |
+| `GET` | `/api/v1/asistencias/me` | Mis asistencias (cliente autenticado) | Cliente (JWT) |
+| `GET` | `/api/v1/asistencias/me/ultimos-30` | Mis últimas asistencias de 30 días | Cliente (JWT) |
+| `GET` | `/api/v1/asistencias/hoy` | Asistencias de hoy | Staff |
+| `GET` | `/api/v1/asistencias/estadisticas` | Estadísticas de asistencia | Staff |
+| `GET` | `/api/v1/clientes/{id}/asistencias` | Asistencias de un cliente | Staff |
+| `GET` | `/api/v1/clientes/{id}/asistencias/ultimos-30` | Últimas 30 días de un cliente | Staff |
+| `GET` | `/api/v1/clientes/{id}/asistencias/racha-perfecta` | Racha de asistencia (consumido por marketing) | Staff |
 | `GET` | `/api/v1/plantillas` | Listar plantillas de mensajes | Staff |
 | `POST` | `/api/v1/plantillas` | Crear plantilla | Dueño |
-| `PUT` | `/api/v1/plantillas/{id}` | Actualizar plantilla | Dueño |
-| `DELETE` | `/api/v1/plantillas/{id}` | Eliminar plantilla | Dueño |
 | `GET` | `/api/v1/mensajes` | Listar logs de mensajes | Staff |
+| `POST` | `/api/v1/mensajes/enviar` | Enviar mensaje | Staff |
+| `POST` | `/api/v1/mensajes/reenviar/{id}` | Reenviar un mensaje | Staff |
+
+> **Nota:** el auto-check-in por QR (`/asistencias/qr`) **requiere un JWT de cliente** — no es un endpoint público. El flujo real de `gym-member-pwa` hace login antes del check-in. Ver también la nota en STATUS.md sobre una regla muerta en `SecurityConfig` (`/asistencias/check`, que no existe como endpoint).
 
 ---
 

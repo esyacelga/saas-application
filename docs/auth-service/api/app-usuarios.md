@@ -1,5 +1,7 @@
 # APP USUARIOS API
 
+> **ESTADO:** ✅ Refleja el código actual (verificado 2026-07-08 contra `ApiRouter.java`). Ver [../../STATUS.md](../../STATUS.md).
+
 Base URL: `/api/v1/app-usuarios`
 
 Endpoints para gestionar las cuentas de acceso a la app móvil de los socios (clientes) del gym. Estos endpoints son operados por el staff del gym, no por los clientes directamente.

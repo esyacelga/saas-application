@@ -1,5 +1,7 @@
 # Inventory Service — Especificación de Desarrollo
 
+> **ESTADO:** 📋 Planeado — sin implementar. Este servicio NO existe en el código todavía; es una especificación de diseño futura. Ver [../../STATUS.md](../../STATUS.md).
+
 > **Servicio:** inventory-service  
 > **Esquemas BD:** `inventario`  
 > **Tablas:** 7 tablas (categorias_producto · proveedores · productos · stock · ventas · detalle_ventas · movimientos_inventario)  

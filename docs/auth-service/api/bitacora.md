@@ -1,5 +1,7 @@
 # BITÁCORA API
 
+> **ESTADO:** ✅ Refleja el código actual (verificado 2026-07-08 contra `ApiRouter.java`). Ver [../../STATUS.md](../../STATUS.md).
+
 Base URL: `/api/v1/bitacora`
 
 La bitácora registra automáticamente **toda operación de escritura** (POST, PUT, PATCH, DELETE) ejecutada en el sistema. Es de solo lectura — no es posible crear ni modificar entradas manualmente.

@@ -1,5 +1,7 @@
 # Portal del Miembro — Decisiones previas a la implementación
 
+> **ESTADO:** 📜 Histórico — decisiones de producto previas a la implementación. Ver [../STATUS.md](../STATUS.md).
+
 > Responde cada pregunta directamente debajo de la línea `**R:**`.
 > Cuando estés listo, comparte el documento y comenzamos a implementar.
 

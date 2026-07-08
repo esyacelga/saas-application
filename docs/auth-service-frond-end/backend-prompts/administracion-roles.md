@@ -1,5 +1,7 @@
 # Prompt — Implementar endpoints de Administración de Roles (Panel Plataforma)
 
+> **ESTADO:** 📜 Histórico — prompt usado para pedir un cambio al backend. NO es documentación de estado actual. Ver [../../STATUS.md](../../STATUS.md).
+
 ## Contexto del proyecto
 
 Estás trabajando en un backend Java (Spring Boot) de un sistema multi-tenant para gimnasios. El sistema tiene dos tipos de usuarios:

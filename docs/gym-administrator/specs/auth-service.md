@@ -1,5 +1,7 @@
 # Auth Service — Especificación de Desarrollo
 
+> **ESTADO:** 🟡 Spec de diseño de un servicio YA implementado. El **código es la fuente de verdad**; esta spec puede haber divergido. Para la API real ver `docs/<servicio>/` y el CLAUDE.md del servicio. Ver [../../STATUS.md](../../STATUS.md).
+
 > **Servicio:** auth-service  
 > **Esquemas BD:** `saas` · `identidad` · `seguridad`  
 > **Tablas:** 9 tablas (1 saas + 3 identidad + 5 seguridad)  

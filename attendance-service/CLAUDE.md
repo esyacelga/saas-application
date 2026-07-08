@@ -55,10 +55,11 @@ The JVM timezone is set to `America/Guayaquil` (UTC-5) in `AttendanceServiceAppl
 ### Security
 
 JWT authentication via `JwtAuthenticationFilter` (WebFilter). **Public routes** (no token required):
-- `POST /api/v1/asistencias/check` — QR self-check-in
 - `GET /actuator/health`
 
-All other routes require a valid JWT.
+All other routes require a valid JWT — **including QR self-check-in** (`POST /api/v1/asistencias/qr`), which requires a `cliente` token (enforced via `accessControl.requireCliente`). The real member flow logs in first, then checks in.
+
+> ⚠️ **Known discrepancy:** `SecurityConfig` has a `.permitAll()` rule for `/api/v1/asistencias/check`, but no such endpoint exists (the QR endpoint is `/asistencias/qr`). It is a dead rule — it permits a path nothing is mapped to. See STATUS.md. Do not rely on it; do not assume `/qr` is public.
 
 The `JwtPrincipal` carries: `userId`, `tipo` (`cliente` | `staff` | `plataforma`), `rol_gym` (`dueno` | `admin_compania` | `recepcion` | `entrenador`), `rol_plataforma` (`super_admin`), and `id_compania`. Convenience predicates: `isCliente()`, `isStaff()`, `isDueno()`, `isRecepcion()`, `isEntrenador()`. **`isDueno()` returns true for both `"dueno"` and `"admin_compania"` roles.**
 

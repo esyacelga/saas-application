@@ -1,4 +1,6 @@
 # Esquema de Base de Datos — Sistema de Gestión de Gimnasio
+
+> **ESTADO:** 🟡 Arquitectura y modelo de negocio. Mezcla lo implementado con lo planeado; para detalle de implementación verificar contra el código. Ver [../../STATUS.md](../../STATUS.md).
 ## Arquitectura Multicompañía / Multisucursal
 
 ---

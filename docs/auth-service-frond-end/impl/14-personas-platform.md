@@ -1,5 +1,7 @@
 # IMPL_14 — Administración de Personas (Panel Plataforma)
 
+> **ESTADO:** 📜 Histórico — paso de implementación ya completado. NO describe el estado actual del código; es el registro de cómo se construyó este módulo. Ver [../../STATUS.md](../../STATUS.md).
+
 > **Módulo exclusivo del perfil operador de plataforma.**  
 > Solo usuarios con token tipo `plataforma` pueden acceder a esta pantalla.
 

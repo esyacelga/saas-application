@@ -1,5 +1,7 @@
 # Backend Prompt – Módulo Roles y Permisos (Platform)
 
+> **ESTADO:** 📜 Histórico — prompt usado para pedir un cambio al backend. NO es documentación de estado actual. Ver [../../STATUS.md](../../STATUS.md).
+
 ## Contexto
 
 Este documento describe los endpoints REST necesarios para el módulo de gestión de roles y permisos dentro del panel de plataforma (`/platform/**`). Las tablas involucradas son `seguridad.roles`, `seguridad.permisos` y `seguridad.rol_permisos`.

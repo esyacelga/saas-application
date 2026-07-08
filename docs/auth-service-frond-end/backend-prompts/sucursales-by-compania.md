@@ -1,5 +1,7 @@
 # Backend Prompt — Endpoint: Sucursales por Compañía
 
+> **ESTADO:** 📜 Histórico — prompt usado para pedir un cambio al backend. NO es documentación de estado actual. Ver [../../STATUS.md](../../STATUS.md).
+
 ## Contexto
 
 El frontend del panel de plataforma necesita, al momento de crear un rol de plataforma

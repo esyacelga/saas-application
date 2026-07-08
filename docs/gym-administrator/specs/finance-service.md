@@ -1,5 +1,7 @@
 # Finance Service — Especificación de Desarrollo
 
+> **ESTADO:** 📋 Planeado — sin implementar. Este servicio NO existe en el código todavía; es una especificación de diseño futura. Ver [../../STATUS.md](../../STATUS.md).
+
 > **Servicio:** finance-service  
 > **Esquemas BD:** `finanzas`  
 > **Tablas:** 4 tablas (categorias_ingreso · ingresos · categorias_egreso · egresos)  

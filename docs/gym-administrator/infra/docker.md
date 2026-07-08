@@ -1,5 +1,7 @@
 # Docker — gym-app-saas
 
+> **ESTADO:** 🟡 Referencia de infraestructura. Verificar contra los archivos reales (docker-compose, pipelines) para el detalle actual. Ver [../../STATUS.md](../../STATUS.md).
+
 Configuración Docker para levantar PostgreSQL y ejecutar las migraciones Liquibase del proyecto.
 
 ## Requisitos

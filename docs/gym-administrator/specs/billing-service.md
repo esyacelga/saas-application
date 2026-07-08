@@ -1,5 +1,7 @@
 # Módulo de Facturación Electrónica — Ecuador SRI
 
+> **ESTADO:** 📋 Planeado — sin implementar. Este servicio NO existe en el código todavía; es una especificación de diseño futura. Ver [../../STATUS.md](../../STATUS.md).
+
 > **Proyecto:** Gym Administrator — Plataforma SaaS de gestión de gimnasios
 > **Regulador:** SRI (Servicio de Rentas Internas del Ecuador)
 > **Servicio #8:** `billing-service` (Plan Premium o add-on)

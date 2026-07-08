@@ -1,5 +1,7 @@
 # Prompt — Módulo Platform en el Frontend React
 
+> **ESTADO:** 🟡 Especificación de diseño del frontend. Verificar contra el código para el detalle actual. Ver [../../STATUS.md](../../STATUS.md).
+
 ## Contexto del proyecto
 
 Existe un proyecto React ya desarrollado ubicado en `auth-service-frond-end/` con la siguiente arquitectura y stack definidos. **Todo lo que se desarrolle debe respetar estrictamente esta arquitectura y convenciones — no introducir nada nuevo.**

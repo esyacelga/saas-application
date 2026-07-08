@@ -156,6 +156,8 @@ rootProject.name = '<nombre-proyecto>'
 
 ```properties
 # Conexión a base de datos
+
+> **ESTADO:** 🟡 Referencia de infraestructura. Verificar contra los archivos reales (docker-compose, pipelines) para el detalle actual. Ver [../../STATUS.md](../../STATUS.md).
 userdb=<usuario_db>
 passdb=<password_db>
 url=jdbc:postgresql://<host>:<puerto>/<nombre_db>

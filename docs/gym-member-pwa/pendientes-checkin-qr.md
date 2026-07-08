@@ -1,5 +1,7 @@
 # Pendientes — Flujo QR desde auth-service-front-end
 
+> **ESTADO:** 📜 Backlog — pendientes del flujo de check-in por QR, NO estado actual. Ver [../STATUS.md](../STATUS.md).
+
 ## Contexto
 
 El panel de administración (`auth-service-front-end`) genera un código QR por sucursal.

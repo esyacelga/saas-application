@@ -163,11 +163,11 @@ mvn spring-boot:run
 
 ## Verificar que el servicio está activo
 
-El servicio no expone un endpoint `/health`, pero cualquier ruta protegida responde con `401` cuando está en pie:
+El servicio expone un health check público en `/actuator/health`:
 
 ```bash
-curl -o /dev/null -s -w "%{http_code}\n" http://localhost:8081/api/v1/companias
-# Respuesta esperada: 401
+curl http://localhost:8081/actuator/health
+# {"status":"UP"}
 ```
 
 ---
@@ -175,12 +175,12 @@ curl -o /dev/null -s -w "%{http_code}\n" http://localhost:8081/api/v1/companias
 ## Esquema de base de datos
 
 El servicio **no ejecuta migraciones automáticas** (sin Flyway/Liquibase).
-El esquema debe existir antes del primer arranque. Los esquemas requeridos son:
+El esquema debe existir antes del primer arranque. Los esquemas que **este servicio posee** son:
 
 - `tenant` — companias, sucursales, suscripciones, pagos, notificaciones
 - `saas` — planes, características
-- `seguridad` — usuarios, roles, permisos, bitácora
-- `identidad` — personas
+
+> Los schemas `identidad` (personas) y `seguridad` los posee auth-service; platform-service no los gestiona.
 
 Aplica las migraciones Liquibase de `gym-administrator/db/` (mismo monorepo) antes de iniciar el servicio.
 
