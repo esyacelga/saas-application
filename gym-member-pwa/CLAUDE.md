@@ -6,6 +6,19 @@ See also [../docs/gym-member-pwa/INDEX.md](../docs/gym-member-pwa/INDEX.md) for 
 
 **When you complete or add a pending task, update [../docs/gym-member-pwa/pendientes-backlog.md](../docs/gym-member-pwa/pendientes-backlog.md) (or pendientes-checkin-qr.md if it's about the QR check-in flow) in the same task. When you add or change a flow, store, or convention described below, update this file too.**
 
+## Fuentes autoritativas
+
+Antes de confiar en un doc como referencia, verifica su estado en [../docs/STATUS.md](../docs/STATUS.md). Esta PWA consume 3 backends — cuando el detalle de un endpoint importa, la verdad vive en la API del backend correspondiente:
+
+| Área | Documento | Estado |
+|------|-----------|--------|
+| Contrato API auth-service (login app, registro, refresh) | [../docs/auth-service/api/app-usuarios.md](../docs/auth-service/api/app-usuarios.md) · [auth.md](../docs/auth-service/api/auth.md) | ✅ Verificado contra código backend |
+| Contrato API core-service (perfil cliente) | [../docs/core-service/api/clientes.md](../docs/core-service/api/clientes.md) | ✅ Verificado contra código backend |
+| Contrato API attendance-service (check-in QR, historial) | [README de attendance-service](../attendance-service/README.md) | ✅ Corregido 2026-07-08 — el QR **requiere JWT de cliente** |
+| Backlog + pendientes de esta PWA | [pendientes-backlog.md](../docs/gym-member-pwa/pendientes-backlog.md) · [pendientes-checkin-qr.md](../docs/gym-member-pwa/pendientes-checkin-qr.md) | 📜 Backlog — tareas pendientes, no estado actual |
+
+> ⚠️ El check-in por QR **no es un endpoint público** — este PWA debe enviar el Bearer token del cliente. Si ves docs viejos que digan lo contrario, están desactualizados.
+
 ## Commands
 
 ```bash
