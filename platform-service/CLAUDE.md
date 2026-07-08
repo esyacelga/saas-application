@@ -6,6 +6,18 @@ See also [../docs/platform-service/INDEX.md](../docs/platform-service/INDEX.md) 
 
 **When you add or change an endpoint, route group, or business rule, update the "Endpoints" section here and README.md's endpoint documentation in the same task.**
 
+## Fuentes autoritativas
+
+Antes de confiar en un doc como referencia, verifica su estado en [../docs/STATUS.md](../docs/STATUS.md). Para este servicio, los siguientes docs están verificados contra el código (2026-07-08):
+
+| Área | Documento | Estado |
+|------|-----------|--------|
+| Endpoints (route groups) | Sección "Endpoints" de este archivo | ✅ Refleja los `@RestController` actuales |
+| Setup, variables de entorno, schemas | [README.md](README.md) | ✅ Corregido 2026-07-08 (schemas y `/actuator/health`) |
+| Índice de docs centralizados | [../docs/platform-service/INDEX.md](../docs/platform-service/INDEX.md) | 🟡 Índice — verifica cada doc contra el código si el detalle importa |
+
+Fuente de verdad del enrutamiento: los `@RestController` bajo `infrastructure/adapter/in/web/`. Salvedad conocida: las rutas públicas también incluyen `/planes/publicos` y `/companias/auto-registro` además de `/modulos/check` y `/actuator/health`.
+
 ## Commands
 
 ```bash

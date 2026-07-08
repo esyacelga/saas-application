@@ -5,6 +5,11 @@ import com.gymadmin.auth.domain.port.in.PersonaUseCase;
 import com.gymadmin.auth.dto.request.CreatePersonaRequest;
 import com.gymadmin.auth.dto.request.UpdatePersonaRequest;
 import com.gymadmin.auth.infrastructure.security.SecurityUtils;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpStatus;
@@ -17,12 +22,18 @@ import reactor.core.publisher.Mono;
 
 @Component
 @RequiredArgsConstructor
+@Tag(name = "Personas", description = "Gestión de personas físicas")
 public class PersonaHandler {
 
     private final PersonaUseCase personaUseCase;
     private final RequestValidator validator;
     private final CloudinaryService cloudinaryService;
 
+    @Operation(summary = "Listar personas con filtros opcionales (solo plataforma)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Lista paginada de personas"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado")
+    })
     public Mono<ServerResponse> listar(ServerRequest request) {
         String nombre = request.queryParam("nombre").orElse(null);
         String ci     = request.queryParam("ci").orElse(null);
@@ -35,24 +46,44 @@ public class PersonaHandler {
                 .flatMap(r -> ServerResponse.ok().contentType(MediaType.APPLICATION_JSON).bodyValue(r));
     }
 
+    @Operation(summary = "Obtener persona por ID", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Persona encontrada"),
+        @ApiResponse(responseCode = "404", description = "No encontrada")
+    })
     public Mono<ServerResponse> findById(ServerRequest request) {
         Integer id = Integer.parseInt(request.pathVariable("id"));
         return personaUseCase.findById(id)
                 .flatMap(r -> ServerResponse.ok().contentType(MediaType.APPLICATION_JSON).bodyValue(r));
     }
 
+    @Operation(summary = "Obtener persona por cédula de identidad", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Persona encontrada"),
+        @ApiResponse(responseCode = "404", description = "No encontrada")
+    })
     public Mono<ServerResponse> findByCi(ServerRequest request) {
         String ci = request.pathVariable("ci");
         return personaUseCase.findByCi(ci)
                 .flatMap(r -> ServerResponse.ok().contentType(MediaType.APPLICATION_JSON).bodyValue(r));
     }
 
+    @Operation(summary = "Obtener persona por correo electrónico", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Persona encontrada"),
+        @ApiResponse(responseCode = "404", description = "No encontrada")
+    })
     public Mono<ServerResponse> findByCorreo(ServerRequest request) {
         String correo = request.pathVariable("correo");
         return personaUseCase.findByCorreo(correo)
                 .flatMap(r -> ServerResponse.ok().contentType(MediaType.APPLICATION_JSON).bodyValue(r));
     }
 
+    @Operation(summary = "Crear nueva persona", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Persona creada"),
+        @ApiResponse(responseCode = "409", description = "CI o correo ya registrado")
+    })
     public Mono<ServerResponse> crear(ServerRequest request) {
         return SecurityUtils.currentUserIdentifier()
                 .flatMap(identity -> request.bodyToMono(CreatePersonaRequest.class)
@@ -62,6 +93,11 @@ public class PersonaHandler {
                         .contentType(MediaType.APPLICATION_JSON).bodyValue(r));
     }
 
+    @Operation(summary = "Actualizar datos de una persona", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Persona actualizada"),
+        @ApiResponse(responseCode = "404", description = "No encontrada")
+    })
     public Mono<ServerResponse> actualizar(ServerRequest request) {
         Integer id = Integer.parseInt(request.pathVariable("id"));
         return SecurityUtils.currentUserIdentifier()
@@ -70,6 +106,11 @@ public class PersonaHandler {
                 .flatMap(r -> ServerResponse.ok().contentType(MediaType.APPLICATION_JSON).bodyValue(r));
     }
 
+    @Operation(summary = "Subir foto de perfil de una persona (multipart/form-data)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Foto actualizada"),
+        @ApiResponse(responseCode = "404", description = "Persona no encontrada")
+    })
     public Mono<ServerResponse> subirFoto(ServerRequest request) {
         Integer id = Integer.parseInt(request.pathVariable("id"));
         return SecurityUtils.currentUserIdentifier()

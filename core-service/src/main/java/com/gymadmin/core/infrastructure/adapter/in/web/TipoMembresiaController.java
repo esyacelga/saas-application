@@ -6,6 +6,11 @@ import com.gymadmin.core.domain.port.in.TipoMembresiaUseCase;
 import com.gymadmin.core.infrastructure.adapter.in.web.dto.TipoMembresiaRequest;
 import com.gymadmin.core.infrastructure.adapter.in.web.dto.TipoMembresiaResponse;
 import com.gymadmin.core.infrastructure.config.JwtPrincipal;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +21,7 @@ import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 
+@Tag(name = "Tipos de Membresía", description = "Catálogo de tipos de membresía")
 @RestController
 @RequestMapping("/api/v1/tipos-membresia")
 public class TipoMembresiaController {
@@ -29,6 +35,11 @@ public class TipoMembresiaController {
         this.accessControl = accessControl;
     }
 
+    @Operation(summary = "Listar tipos de membresía", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "403")
+    })
     @GetMapping
     public Flux<TipoMembresiaResponse> listar() {
         return extractPrincipal()
@@ -36,6 +47,11 @@ public class TipoMembresiaController {
                         .map(TipoMembresiaResponse::from));
     }
 
+    @Operation(summary = "Crear tipo de membresía", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "201"),
+            @ApiResponse(responseCode = "403")
+    })
     @PostMapping
     public Mono<ResponseEntity<TipoMembresiaResponse>> crear(@Valid @RequestBody TipoMembresiaRequest request) {
         return extractPrincipal()
@@ -56,6 +72,12 @@ public class TipoMembresiaController {
                 .map(t -> ResponseEntity.status(HttpStatus.CREATED).body(TipoMembresiaResponse.from(t)));
     }
 
+    @Operation(summary = "Actualizar tipo de membresía", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "404"),
+            @ApiResponse(responseCode = "403")
+    })
     @PutMapping("/{id}")
     public Mono<ResponseEntity<TipoMembresiaResponse>> actualizar(@PathVariable Long id,
                                                                    @RequestBody TipoMembresiaRequest request) {
@@ -69,6 +91,12 @@ public class TipoMembresiaController {
                 .map(t -> ResponseEntity.ok(TipoMembresiaResponse.from(t)));
     }
 
+    @Operation(summary = "Desactivar tipo de membresía", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "404"),
+            @ApiResponse(responseCode = "403")
+    })
     @PutMapping("/{id}/desactivar")
     public Mono<ResponseEntity<Void>> desactivar(@PathVariable Long id) {
         return extractPrincipal()

@@ -6,6 +6,11 @@ import com.gymadmin.platform.domain.port.in.ActividadPlataformaUseCase;
 import com.gymadmin.platform.infrastructure.adapter.in.web.dto.ActividadPlataformaResponse;
 import com.gymadmin.platform.infrastructure.adapter.in.web.dto.PaginadoActividadResponse;
 import com.gymadmin.platform.infrastructure.config.JwtPrincipal;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
@@ -18,6 +23,7 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/api/v1/actividad")
+@Tag(name = "Actividad", description = "Registro de actividad en la plataforma")
 public class ActividadPlataformaController {
 
     private static final int POR_PAGINA = 25;
@@ -31,6 +37,11 @@ public class ActividadPlataformaController {
         this.accessControl = accessControl;
     }
 
+    @Operation(summary = "Listar registro de actividad paginado (plataforma)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Listado paginado de actividad"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado")
+    })
     @GetMapping
     public Mono<ResponseEntity<PaginadoActividadResponse>> listar(
             @RequestParam(required = false) String modulo,

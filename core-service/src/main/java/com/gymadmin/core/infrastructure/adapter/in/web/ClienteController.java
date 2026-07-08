@@ -4,6 +4,11 @@ import com.gymadmin.core.application.service.AccessControlService;
 import com.gymadmin.core.domain.port.in.ClienteUseCase;
 import com.gymadmin.core.infrastructure.adapter.in.web.dto.*;
 import com.gymadmin.core.infrastructure.config.JwtPrincipal;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +18,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.Map;
 
+@Tag(name = "Clientes", description = "Gestión de clientes del gimnasio")
 @RestController
 @RequestMapping("/api/v1/clientes")
 public class ClienteController {
@@ -25,6 +31,11 @@ public class ClienteController {
         this.accessControl = accessControl;
     }
 
+    @Operation(summary = "Listar clientes", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "403")
+    })
     @GetMapping
     public Mono<ResponseEntity<Map<String, Object>>> listar(
             @RequestParam(required = false) String estado,
@@ -48,6 +59,11 @@ public class ClienteController {
                 });
     }
 
+    @Operation(summary = "Registrar cliente", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "201"),
+            @ApiResponse(responseCode = "403")
+    })
     @PostMapping
     public Mono<ResponseEntity<Map<String, Object>>> registrar(@Valid @RequestBody RegistrarClienteRequest request) {
         return extractPrincipal()
@@ -66,6 +82,12 @@ public class ClienteController {
                 )));
     }
 
+    @Operation(summary = "Obtener cliente por ID", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "404"),
+            @ApiResponse(responseCode = "403")
+    })
     @GetMapping("/{id}")
     public Mono<ResponseEntity<ClienteDetalleResponse>> buscarPorId(@PathVariable Long id) {
         return extractPrincipal()
@@ -73,6 +95,12 @@ public class ClienteController {
                 .map(d -> ResponseEntity.ok(ClienteDetalleResponse.from(d)));
     }
 
+    @Operation(summary = "Actualizar cliente", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "404"),
+            @ApiResponse(responseCode = "403")
+    })
     @PutMapping("/{id}")
     public Mono<ResponseEntity<ClienteResponse>> actualizar(@PathVariable Long id,
                                                              @RequestBody ActualizarClienteRequest request) {
@@ -87,6 +115,11 @@ public class ClienteController {
                 .map(c -> ResponseEntity.ok(ClienteResponse.from(c)));
     }
 
+    @Operation(summary = "Ver mi perfil como cliente", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "403")
+    })
     @GetMapping("/mi-perfil")
     public Mono<ResponseEntity<ClienteUseCase.MiPerfilResult>> miPerfil() {
         return extractPrincipal()
@@ -96,6 +129,11 @@ public class ClienteController {
                 .map(ResponseEntity::ok);
     }
 
+    @Operation(summary = "Obtener mi ID de cliente", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "403")
+    })
     @GetMapping("/my-id")
     public Mono<ResponseEntity<Map<String, Object>>> myId() {
         return extractPrincipal()
@@ -105,6 +143,11 @@ public class ClienteController {
                 .map(result -> ResponseEntity.ok(Map.<String, Object>of("id_cliente", result.idCliente())));
     }
 
+    @Operation(summary = "Registrar cliente desde la app", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "201"),
+            @ApiResponse(responseCode = "403")
+    })
     @PostMapping("/app")
     public Mono<ResponseEntity<Map<String, Object>>> registrarDesdeApp(
             @RequestBody(required = false) RegistrarDesdeAppRequest request) {
@@ -122,6 +165,12 @@ public class ClienteController {
                 )));
     }
 
+    @Operation(summary = "Buscar cliente por cédula", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "404"),
+            @ApiResponse(responseCode = "403")
+    })
     @GetMapping("/ci/{ci}")
     public Mono<ResponseEntity<Map<String, Object>>> buscarPorCi(@PathVariable String ci) {
         return extractPrincipal()
@@ -133,6 +182,11 @@ public class ClienteController {
                 )));
     }
 
+    @Operation(summary = "Crear cliente desde la plataforma", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "201"),
+            @ApiResponse(responseCode = "403")
+    })
     @PostMapping("/plataforma")
     public Mono<ResponseEntity<Map<String, Object>>> registrarDesdePlataforma(
             @Valid @RequestBody RegistrarClientePlataformaRequest request) {
@@ -150,6 +204,11 @@ public class ClienteController {
                 )));
     }
 
+    @Operation(summary = "Listar clientes por persona", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "403")
+    })
     @GetMapping("/por-persona/{idPersona}")
     public Mono<ResponseEntity<java.util.List<ClienteResponse>>> listarPorPersona(@PathVariable Long idPersona) {
         return extractPrincipal()
@@ -157,6 +216,12 @@ public class ClienteController {
                 .map(ResponseEntity::ok);
     }
 
+    @Operation(summary = "Actualizar cliente desde la plataforma", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "404"),
+            @ApiResponse(responseCode = "403")
+    })
     @PutMapping("/plataforma/{id}")
     public Mono<ResponseEntity<ClienteResponse>> actualizarPorPlataforma(
             @PathVariable Long id,
@@ -167,6 +232,12 @@ public class ClienteController {
                 .map(c -> ResponseEntity.ok(ClienteResponse.from(c)));
     }
 
+    @Operation(summary = "Eliminar cliente", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "204"),
+            @ApiResponse(responseCode = "404"),
+            @ApiResponse(responseCode = "403")
+    })
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Void>> eliminar(@PathVariable Long id) {
         return extractPrincipal()

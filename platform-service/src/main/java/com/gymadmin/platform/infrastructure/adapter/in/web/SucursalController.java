@@ -5,6 +5,11 @@ import com.gymadmin.platform.domain.model.Sucursal;
 import com.gymadmin.platform.domain.port.in.SucursalUseCase;
 import com.gymadmin.platform.infrastructure.adapter.in.web.dto.*;
 import com.gymadmin.platform.infrastructure.config.JwtPrincipal;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +21,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @RestController
+@Tag(name = "Sucursales", description = "Sucursales de una compañía")
 public class SucursalController {
 
     private final SucursalUseCase sucursalUseCase;
@@ -26,6 +32,11 @@ public class SucursalController {
         this.accessControl = accessControl;
     }
 
+    @Operation(summary = "Listar sucursales de una compañía", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Lista de sucursales"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado")
+    })
     @GetMapping("/api/v1/companias/{idCompania}/sucursales")
     public Flux<SucursalResponse> listarSucursales(@PathVariable Long idCompania) {
         return getJwtPrincipal()
@@ -33,6 +44,12 @@ public class SucursalController {
                         .thenMany(sucursalUseCase.listarSucursales(idCompania).map(this::toResponse)));
     }
 
+    @Operation(summary = "Crear una nueva sucursal para una compañía", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Sucursal creada"),
+        @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado")
+    })
     @PostMapping("/api/v1/companias/{idCompania}/sucursales")
     public Mono<ResponseEntity<SucursalResponse>> crearSucursal(@PathVariable Long idCompania,
                                                                   @Valid @RequestBody CrearSucursalRequest request) {
@@ -47,6 +64,13 @@ public class SucursalController {
                         .map(sucursal -> ResponseEntity.status(HttpStatus.CREATED).body(toResponse(sucursal))));
     }
 
+    @Operation(summary = "Actualizar datos de una sucursal", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Sucursal actualizada"),
+        @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado"),
+        @ApiResponse(responseCode = "404", description = "Sucursal no encontrada")
+    })
     @PutMapping("/api/v1/sucursales/{id}")
     public Mono<ResponseEntity<SucursalResponse>> actualizarSucursal(@PathVariable Long id,
                                                                        @RequestBody ActualizarSucursalRequest request) {
@@ -60,6 +84,12 @@ public class SucursalController {
                         .map(sucursal -> ResponseEntity.ok(toResponse(sucursal))));
     }
 
+    @Operation(summary = "Renovar token QR de una sucursal (super_admin)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "QR renovado"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado"),
+        @ApiResponse(responseCode = "404", description = "Sucursal no encontrada")
+    })
     @PostMapping("/api/v1/sucursales/{id}/qr/renovar")
     public Mono<ResponseEntity<QrRenovarResponse>> renovarQrToken(@PathVariable Long id,
                                                                     @RequestBody(required = false) QrRenovarRequest request) {

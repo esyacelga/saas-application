@@ -5,6 +5,11 @@ import com.gymadmin.finance.domain.model.Ingreso;
 import com.gymadmin.finance.domain.port.in.IngresoUseCase;
 import com.gymadmin.finance.infrastructure.adapter.in.web.dto.CrearIngresoRequest;
 import com.gymadmin.finance.infrastructure.config.JwtPrincipal;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -18,6 +23,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
 
+@Tag(name = "Ingresos", description = "Registro y consulta de ingresos financieros")
 @RestController
 @RequestMapping("/api/v1/finanzas/ingresos")
 @RequiredArgsConstructor
@@ -26,6 +32,12 @@ public class IngresoController {
     private final IngresoUseCase ingresoUseCase;
     private final AccessControlService accessControl;
 
+    @Operation(summary = "Listar ingresos con filtros y paginación", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Listado de ingresos"),
+        @ApiResponse(responseCode = "400", description = "Parámetros inválidos"),
+        @ApiResponse(responseCode = "403", description = "Sin permiso")
+    })
     @GetMapping
     public Mono<ResponseEntity<IngresoUseCase.IngresoListResult>> listar(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
@@ -47,6 +59,12 @@ public class IngresoController {
                         .map(result -> ResponseEntity.ok(result)));
     }
 
+    @Operation(summary = "Registrar ingreso", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Ingreso registrado exitosamente"),
+        @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos"),
+        @ApiResponse(responseCode = "403", description = "Sin permiso")
+    })
     @PostMapping
     public Mono<ResponseEntity<Ingreso>> registrar(@Valid @RequestBody CrearIngresoRequest request) {
         return getJwtPrincipal()

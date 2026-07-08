@@ -7,6 +7,11 @@ import com.gymadmin.platform.domain.port.in.ActividadPlataformaUseCase;
 import com.gymadmin.platform.domain.port.in.PlanUseCase;
 import com.gymadmin.platform.infrastructure.adapter.in.web.dto.*;
 import com.gymadmin.platform.infrastructure.config.JwtPrincipal;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +26,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/planes")
+@Tag(name = "Planes", description = "Planes de suscripción SaaS")
 public class PlanController {
 
     private final PlanUseCase planUseCase;
@@ -35,11 +41,18 @@ public class PlanController {
         this.actividadUseCase = actividadUseCase;
     }
 
+    @Operation(summary = "Listar planes activos (público, sin auth)")
+    @ApiResponse(responseCode = "200", description = "Lista de planes activos")
     @GetMapping("/publicos")
     public Flux<PlanResponse> listarPlanesPublicos() {
         return planUseCase.listarPlanesPublicos().map(this::toResponse);
     }
 
+    @Operation(summary = "Listar todos los planes (plataforma)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Lista de planes"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado")
+    })
     @GetMapping
     public Flux<PlanResponse> listarPlanes() {
         return getJwtPrincipal()
@@ -47,6 +60,12 @@ public class PlanController {
                         .thenMany(planUseCase.listarPlanes().map(this::toResponse)));
     }
 
+    @Operation(summary = "Crear un nuevo plan (super_admin)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Plan creado"),
+        @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado")
+    })
     @PostMapping
     public Mono<ResponseEntity<PlanResponse>> crearPlan(@Valid @RequestBody PlanRequest request) {
         return getJwtPrincipal()
@@ -61,6 +80,13 @@ public class PlanController {
                         .map(plan -> ResponseEntity.status(HttpStatus.CREATED).body(toResponse(plan))));
     }
 
+    @Operation(summary = "Actualizar un plan existente (super_admin)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Plan actualizado"),
+        @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado"),
+        @ApiResponse(responseCode = "404", description = "Plan no encontrado")
+    })
     @PutMapping("/{id}")
     public Mono<ResponseEntity<PlanResponse>> actualizarPlan(@PathVariable Long id,
                                                               @Valid @RequestBody PlanRequest request) {
@@ -76,6 +102,13 @@ public class PlanController {
                         .map(plan -> ResponseEntity.ok(toResponse(plan))));
     }
 
+    @Operation(summary = "Asignar características a un plan (super_admin)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Características asignadas"),
+        @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado"),
+        @ApiResponse(responseCode = "404", description = "Plan no encontrado")
+    })
     @PutMapping("/{id}/caracteristicas")
     public Mono<ResponseEntity<PlanResponse>> asignarCaracteristicas(@PathVariable Long id,
                                                                        @Valid @RequestBody AsignarCaracteristicasRequest request) {
@@ -85,6 +118,12 @@ public class PlanController {
                         .map(plan -> ResponseEntity.ok(toResponse(plan))));
     }
 
+    @Operation(summary = "Desactivar un plan (super_admin)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "Plan desactivado"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado"),
+        @ApiResponse(responseCode = "404", description = "Plan no encontrado")
+    })
     @PutMapping("/{id}/desactivar")
     public Mono<ResponseEntity<Void>> desactivarPlan(@PathVariable Long id) {
         return getJwtPrincipal()

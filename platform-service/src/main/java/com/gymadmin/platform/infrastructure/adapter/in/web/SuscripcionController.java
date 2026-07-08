@@ -6,6 +6,11 @@ import com.gymadmin.platform.domain.port.in.ActividadPlataformaUseCase;
 import com.gymadmin.platform.domain.port.in.SuscripcionUseCase;
 import com.gymadmin.platform.infrastructure.adapter.in.web.dto.*;
 import com.gymadmin.platform.infrastructure.config.JwtPrincipal;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -19,6 +24,7 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 
 @RestController
+@Tag(name = "Suscripciones", description = "Suscripciones activas e historial")
 public class SuscripcionController {
 
     private final SuscripcionUseCase suscripcionUseCase;
@@ -33,6 +39,12 @@ public class SuscripcionController {
         this.actividadUseCase = actividadUseCase;
     }
 
+    @Operation(summary = "Obtener suscripción activa de una compañía", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Suscripción activa"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado"),
+        @ApiResponse(responseCode = "404", description = "Suscripción no encontrada")
+    })
     @GetMapping("/api/v1/companias/{id}/suscripcion")
     public Mono<ResponseEntity<SuscripcionResponse>> getSuscripcionActiva(@PathVariable Long id) {
         return getJwtPrincipal()
@@ -41,6 +53,11 @@ public class SuscripcionController {
                         .map(cp -> ResponseEntity.ok(toResponse(cp))));
     }
 
+    @Operation(summary = "Historial de suscripciones de una compañía", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Historial de suscripciones"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado")
+    })
     @GetMapping("/api/v1/companias/{id}/suscripcion/historial")
     public Flux<SuscripcionResponse> getHistorial(@PathVariable Long id) {
         return getJwtPrincipal()
@@ -48,6 +65,13 @@ public class SuscripcionController {
                         .thenMany(suscripcionUseCase.getHistorial(id).map(this::toResponse)));
     }
 
+    @Operation(summary = "Renovar suscripción de una compañía (super_admin)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Suscripción renovada"),
+        @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado"),
+        @ApiResponse(responseCode = "404", description = "Suscripción no encontrada")
+    })
     @PostMapping("/api/v1/companias/{id}/suscripcion/renovar")
     public Mono<ResponseEntity<SuscripcionResponse>> renovar(@PathVariable Long id,
                                                               @RequestBody(required = false) RenovarRequest request) {
@@ -62,6 +86,13 @@ public class SuscripcionController {
                         .map(cp -> ResponseEntity.ok(toResponse(cp))));
     }
 
+    @Operation(summary = "Upgrade de plan de una compañía (super_admin)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Upgrade aplicado"),
+        @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado"),
+        @ApiResponse(responseCode = "404", description = "Compañía o plan no encontrado")
+    })
     @PostMapping("/api/v1/companias/{id}/suscripcion/upgrade")
     public Mono<ResponseEntity<UpgradeResponse>> upgrade(@PathVariable Long id,
                                                           @Valid @RequestBody UpgradeRequest request) {
@@ -80,6 +111,13 @@ public class SuscripcionController {
                         ))));
     }
 
+    @Operation(summary = "Downgrade de plan de una compañía (super_admin)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Downgrade programado"),
+        @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado"),
+        @ApiResponse(responseCode = "404", description = "Compañía o plan no encontrado")
+    })
     @PostMapping("/api/v1/companias/{id}/suscripcion/downgrade")
     public Mono<ResponseEntity<DowngradeResponse>> downgrade(@PathVariable Long id,
                                                               @Valid @RequestBody DowngradeRequest request) {

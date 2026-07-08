@@ -10,6 +10,18 @@ For architecture, schema organization, business rules, and the three user tiers,
 
 **When you add a new schema, table, or migration story, update [../docs/gym-administrator/architecture/database-schema.md](../docs/gym-administrator/architecture/database-schema.md) (and overview.md if it changes business rules or the data model) in the same task.**
 
+## Fuentes autoritativas
+
+Antes de confiar en un doc como referencia, verifica su estado en [../docs/STATUS.md](../docs/STATUS.md). Esta carpeta contiene solo las migraciones Liquibase; los docs "autoritativos" son la BD misma y el DBML:
+
+| Área | Documento | Estado |
+|------|-----------|--------|
+| Esquema físico (fuente de verdad) | `db/scripts/202605_GYM-001/ddl/*.sql` (59 scripts) | ✅ Implementado |
+| Diagrama lógico | `db/scripts/202605_GYM-001/logical_diagram/schema.dbml` | ✅ Refleja las 42 tablas / 10 schemas |
+| Visión de arquitectura y modelo de negocio | [../docs/gym-administrator/architecture/overview.md](../docs/gym-administrator/architecture/overview.md) · [database-schema.md](../docs/gym-administrator/architecture/database-schema.md) · [roadmap.md](../docs/gym-administrator/architecture/roadmap.md) | 🟡 Arquitectura mezcla implementado + planeado — verifica contra código para detalle de implementación |
+| Specs de servicios ya implementados (auth, platform, core, attendance) | [../docs/gym-administrator/specs/](../docs/gym-administrator/INDEX.md) | 🟡 Spec de diseño — el código de cada servicio es la fuente de verdad |
+| Specs de servicios planeados (billing, finance, marketing, inventory) | [../docs/gym-administrator/specs/](../docs/gym-administrator/INDEX.md) | 📋 Planeado — el código todavía no existe |
+
 ## Commands
 
 ```powershell

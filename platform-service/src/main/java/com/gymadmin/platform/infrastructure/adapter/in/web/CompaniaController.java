@@ -7,6 +7,11 @@ import com.gymadmin.platform.domain.port.in.ActividadPlataformaUseCase;
 import com.gymadmin.platform.domain.port.in.CompaniaUseCase;
 import com.gymadmin.platform.infrastructure.adapter.in.web.dto.*;
 import com.gymadmin.platform.infrastructure.config.JwtPrincipal;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpStatus;
@@ -24,6 +29,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/companias")
+@Tag(name = "Compañías", description = "Gestión de compañías/gimnasios")
 public class CompaniaController {
 
     private final CompaniaUseCase companiaUseCase;
@@ -41,6 +47,11 @@ public class CompaniaController {
         this.cloudinaryService = cloudinaryService;
     }
 
+    @Operation(summary = "Listar todas las compañías", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Lista de compañías"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado")
+    })
     @GetMapping
     public Flux<CompaniaResponse> listarCompanias() {
         return getJwtPrincipal()
@@ -49,6 +60,12 @@ public class CompaniaController {
                                 .map(this::toResponse)));
     }
 
+    @Operation(summary = "Obtener compañía por ID", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Compañía encontrada"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado"),
+        @ApiResponse(responseCode = "404", description = "Compañía no encontrada")
+    })
     @GetMapping("/{id}")
     public Mono<ResponseEntity<CompaniaResponse>> getCompania(@PathVariable Long id) {
         return getJwtPrincipal()
@@ -57,6 +74,12 @@ public class CompaniaController {
                         .map(c -> ResponseEntity.ok(toResponse(c))));
     }
 
+    @Operation(summary = "Registrar nuevo gimnasio (super_admin)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Gimnasio registrado exitosamente"),
+        @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado")
+    })
     @PostMapping
     public Mono<ResponseEntity<RegistrarGymResponse>> registrarGym(
             @Valid @RequestBody RegistrarGymRequest request) {
@@ -86,6 +109,11 @@ public class CompaniaController {
                         )));
     }
 
+    @Operation(summary = "Auto-registro público de un gimnasio (sin auth)")
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Gimnasio y usuario principal creados"),
+        @ApiResponse(responseCode = "400", description = "Datos inválidos")
+    })
     @PostMapping("/auto-registro")
     public Mono<ResponseEntity<RegistrarGymWizardResponse>> autoRegistro(
             @Valid @RequestBody RegistrarGymWizardRequest request) {
@@ -125,6 +153,12 @@ public class CompaniaController {
                 ));
     }
 
+    @Operation(summary = "Registro wizard de gimnasio con usuarios (super_admin)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Gimnasio y usuarios creados"),
+        @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado")
+    })
     @PostMapping("/wizard")
     public Mono<ResponseEntity<RegistrarGymWizardResponse>> registrarGymWizard(
             @Valid @RequestBody RegistrarGymWizardRequest request) {
@@ -173,6 +207,13 @@ public class CompaniaController {
                         )));
     }
 
+    @Operation(summary = "Actualizar datos de una compañía", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Compañía actualizada"),
+        @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado"),
+        @ApiResponse(responseCode = "404", description = "Compañía no encontrada")
+    })
     @PutMapping("/{id}")
     public Mono<ResponseEntity<CompaniaResponse>> actualizarCompania(@PathVariable Long id,
                                                                       @RequestBody ActualizarCompaniaRequest request) {
@@ -192,6 +233,13 @@ public class CompaniaController {
                         .map(compania -> ResponseEntity.ok(toResponse(compania))));
     }
 
+    @Operation(summary = "Suspender una compañía (super_admin)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "Compañía suspendida"),
+        @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado"),
+        @ApiResponse(responseCode = "404", description = "Compañía no encontrada")
+    })
     @PutMapping("/{id}/suspender")
     public Mono<ResponseEntity<Void>> suspenderCompania(@PathVariable Long id,
                                                          @Valid @RequestBody SuspenderRequest request) {
@@ -204,6 +252,12 @@ public class CompaniaController {
                         .thenReturn(ResponseEntity.<Void>noContent().build()));
     }
 
+    @Operation(summary = "Subir logo de la compañía", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Logo subido y URL actualizada"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado"),
+        @ApiResponse(responseCode = "404", description = "Compañía no encontrada")
+    })
     @PostMapping(value = "/{id}/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Mono<ResponseEntity<CompaniaResponse>> subirLogo(@PathVariable Long id,
                                                              @RequestPart("file") FilePart filePart) {

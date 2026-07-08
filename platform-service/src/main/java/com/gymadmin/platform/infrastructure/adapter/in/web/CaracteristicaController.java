@@ -6,6 +6,11 @@ import com.gymadmin.platform.domain.port.in.CaracteristicaUseCase;
 import com.gymadmin.platform.infrastructure.adapter.in.web.dto.CaracteristicaDto;
 import com.gymadmin.platform.infrastructure.adapter.in.web.dto.CaracteristicaRequest;
 import com.gymadmin.platform.infrastructure.config.JwtPrincipal;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +23,7 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/api/v1/caracteristicas")
+@Tag(name = "Características", description = "Características de planes")
 public class CaracteristicaController {
 
     private final CaracteristicaUseCase caracteristicaUseCase;
@@ -29,6 +35,11 @@ public class CaracteristicaController {
         this.accessControl = accessControl;
     }
 
+    @Operation(summary = "Listar características disponibles", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Lista de características"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado")
+    })
     @GetMapping
     public Flux<CaracteristicaDto> listarCaracteristicas() {
         return getJwtPrincipal()
@@ -36,6 +47,12 @@ public class CaracteristicaController {
                         .thenMany(caracteristicaUseCase.listarCaracteristicas().map(this::toDto)));
     }
 
+    @Operation(summary = "Crear una nueva característica (super_admin)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Característica creada"),
+        @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado")
+    })
     @PostMapping
     public Mono<ResponseEntity<CaracteristicaDto>> crearCaracteristica(
             @Valid @RequestBody CaracteristicaRequest request) {

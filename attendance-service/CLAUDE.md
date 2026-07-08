@@ -5,6 +5,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **When you add or change an endpoint, business rule, or messaging template type, update README.md's endpoint table (and this file if it affects conventions) in the same task.**
 
+## Fuentes autoritativas
+
+Antes de confiar en un doc como referencia, verifica su estado en [../docs/STATUS.md](../docs/STATUS.md). Para este servicio, los siguientes docs están verificados contra el código (2026-07-08):
+
+| Área | Documento | Estado |
+|------|-----------|--------|
+| Endpoints (16 rutas reales) | Tabla en [README.md](README.md) | ✅ Corregido 2026-07-08 (antes decía `/asistencias/check` público — no existe) |
+| Convenciones + seguridad + jobs | Este archivo (`CLAUDE.md`) | ✅ Corregido 2026-07-08 con la nota de la regla muerta |
+| Índice de docs centralizados | [../docs/attendance-service/INDEX.md](../docs/attendance-service/INDEX.md) | 🟡 Índice — verificar detalle contra el código |
+
+> ⚠️ Recordatorio: el único endpoint público real es `GET /actuator/health`. El registro por QR (`POST /api/v1/asistencias/qr`) **exige JWT de cliente**. La regla `.permitAll("/api/v1/asistencias/check")` en `SecurityConfig.java` es dead code — no confiar en ella.
+
+Fuente de verdad del enrutamiento: `AsistenciaController`, `MensajeLogController`, `PlantillaMensajeController` bajo `infrastructure/adapter/in/web/`.
+
 ## Commands
 
 ```bash

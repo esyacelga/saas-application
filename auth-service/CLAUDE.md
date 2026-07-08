@@ -6,6 +6,21 @@ For architecture, JWT design, RBAC, route prefixes, and business rules, see [REA
 
 **When you add or change an endpoint, route, business rule, or JWT/permission behavior, update the matching file in `../docs/auth-service/api/` (and README.md/this file if the change affects architecture or conventions) in the same task.**
 
+## Fuentes autoritativas
+
+Antes de confiar en un doc como referencia, verifica su estado en [../docs/STATUS.md](../docs/STATUS.md). Para este servicio, los siguientes docs están verificados contra el código (2026-07-08):
+
+| Área | Documento | Estado |
+|------|-----------|--------|
+| API — login, refresh, reset | [../docs/auth-service/api/auth.md](../docs/auth-service/api/auth.md) | ✅ Refleja el código |
+| API — personas (identidad global) | [../docs/auth-service/api/personas.md](../docs/auth-service/api/personas.md) | ✅ Refleja el código |
+| API — usuarios staff + roles/permisos | [../docs/auth-service/api/usuarios-staff.md](../docs/auth-service/api/usuarios-staff.md) | ✅ Refleja el código |
+| API — usuarios app (cliente PWA) | [../docs/auth-service/api/app-usuarios.md](../docs/auth-service/api/app-usuarios.md) | ✅ Refleja el código |
+| API — usuarios plataforma SaaS | [../docs/auth-service/api/platform.md](../docs/auth-service/api/platform.md) | ✅ Refleja el código |
+| API — bitácora de auditoría | [../docs/auth-service/api/bitacora.md](../docs/auth-service/api/bitacora.md) | ✅ Refleja el código |
+
+Fuente de verdad del enrutamiento: `infrastructure/adapter/in/web/ApiRouter.java`. Si un doc y el código divergen, el código gana — corrige el doc en el mismo commit.
+
 ## Commands
 
 ```bash

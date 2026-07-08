@@ -5,6 +5,11 @@ import com.gymadmin.core.domain.model.Congelamiento;
 import com.gymadmin.core.domain.port.in.CongelamientoUseCase;
 import com.gymadmin.core.infrastructure.adapter.in.web.dto.CongelarRequest;
 import com.gymadmin.core.infrastructure.config.JwtPrincipal;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +20,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.Map;
 
+@Tag(name = "Congelamientos", description = "Congelamiento y reactivación de membresías")
 @RestController
 @RequestMapping("/api/v1")
 public class CongelamientoController {
@@ -28,6 +34,12 @@ public class CongelamientoController {
         this.accessControl = accessControl;
     }
 
+    @Operation(summary = "Congelar membresía", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "201"),
+            @ApiResponse(responseCode = "404"),
+            @ApiResponse(responseCode = "403")
+    })
     @PostMapping("/membresias/{id}/congelar")
     public Mono<ResponseEntity<Map<String, Object>>> congelar(@PathVariable Long id,
                                                               @Valid @RequestBody CongelarRequest request) {
@@ -60,6 +72,12 @@ public class CongelamientoController {
                 )));
     }
 
+    @Operation(summary = "Reactivar congelamiento (admin)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "404"),
+            @ApiResponse(responseCode = "403")
+    })
     @PutMapping("/congelamientos/{id}/reactivar")
     public Mono<ResponseEntity<Map<String, Object>>> reactivar(@PathVariable Long id) {
         return extractPrincipal()
@@ -73,6 +91,12 @@ public class CongelamientoController {
                 )));
     }
 
+    @Operation(summary = "Reactivar mi congelamiento (cliente)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "404"),
+            @ApiResponse(responseCode = "403")
+    })
     @PutMapping("/mis-congelamientos/{id}/reactivar")
     public Mono<ResponseEntity<Map<String, Object>>> reactivarCliente(@PathVariable Long id) {
         return extractPrincipal()
@@ -86,6 +110,12 @@ public class CongelamientoController {
                 )));
     }
 
+    @Operation(summary = "Historial de congelamientos", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "404"),
+            @ApiResponse(responseCode = "403")
+    })
     @GetMapping("/membresias/{id}/congelamientos")
     public Flux<Map<String, Object>> historial(@PathVariable Long id) {
         return extractPrincipal()

@@ -6,6 +6,11 @@ import com.gymadmin.platform.domain.port.in.PagoUseCase;
 import com.gymadmin.platform.infrastructure.adapter.in.web.dto.PagoResponse;
 import com.gymadmin.platform.infrastructure.adapter.in.web.dto.RegistrarPagoRequest;
 import com.gymadmin.platform.infrastructure.config.JwtPrincipal;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +22,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @RestController
+@Tag(name = "Pagos", description = "Registro y confirmación de pagos")
 public class PagoController {
 
     private final PagoUseCase pagoUseCase;
@@ -27,6 +33,11 @@ public class PagoController {
         this.accessControl = accessControl;
     }
 
+    @Operation(summary = "Historial de pagos de una compañía", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Historial de pagos"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado")
+    })
     @GetMapping("/api/v1/companias/{id}/pagos")
     public Flux<PagoResponse> getHistorialPagos(@PathVariable Long id) {
         return getJwtPrincipal()
@@ -34,6 +45,12 @@ public class PagoController {
                         .thenMany(pagoUseCase.getHistorialPagos(id).map(this::toResponse)));
     }
 
+    @Operation(summary = "Registrar un pago de suscripción (super_admin o soporte)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Pago registrado"),
+        @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado")
+    })
     @PostMapping("/api/v1/pagos")
     public Mono<ResponseEntity<PagoResponse>> registrarPago(@Valid @RequestBody RegistrarPagoRequest request) {
         return getJwtPrincipal()
@@ -50,6 +67,12 @@ public class PagoController {
                         .map(pago -> ResponseEntity.status(HttpStatus.CREATED).body(toResponse(pago))));
     }
 
+    @Operation(summary = "Confirmar un pago pendiente (super_admin o soporte)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Pago confirmado"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado"),
+        @ApiResponse(responseCode = "404", description = "Pago no encontrado")
+    })
     @PutMapping("/api/v1/pagos/{id}/confirmar")
     public Mono<ResponseEntity<PagoResponse>> confirmarPago(@PathVariable Long id) {
         return getJwtPrincipal()

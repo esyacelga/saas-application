@@ -2,6 +2,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Fuentes autoritativas
+
+Antes de confiar en un doc como referencia, verifica su estado en [../docs/STATUS.md](../docs/STATUS.md). Este frontend consume 4 backends — cuando el detalle de un endpoint importa, la verdad vive en la API del backend correspondiente:
+
+| Área | Documento | Estado |
+|------|-----------|--------|
+| Contrato API auth-service | [../docs/auth-service/api/](../docs/auth-service/INDEX.md) | ✅ Verificado contra código backend |
+| Contrato API core-service (clientes) | [../docs/core-service/api/clientes.md](../docs/core-service/api/clientes.md) | ✅ Verificado contra código backend |
+| Convenciones de diseño y UI | [../docs/auth-service-frond-end/design-guidelines.md](../docs/auth-service-frond-end/design-guidelines.md) | 🟡 Referencia — verifica contra código si el detalle importa |
+| Índice de docs de este frontend | [../docs/auth-service-frond-end/INDEX.md](../docs/auth-service-frond-end/INDEX.md) | 🟡 Índice — los `impl/*.md` son 📜 histórico de implementación ya completada |
+
+Los archivos bajo `docs/auth-service-frond-end/impl/`, `backend-prompts/` y `preguntas/` son 📜 **histórico** — describen cómo se construyó, no cómo funciona hoy. Para el estado actual, mira el código y los contratos ✅ de los backends.
+
 ## Commands
 
 ```bash

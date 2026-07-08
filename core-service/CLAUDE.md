@@ -6,6 +6,17 @@ API endpoint documentation lives in [../docs/core-service/](../docs/core-service
 
 **When you add or change an endpoint or business rule (e.g. membership modes), update the matching file in `../docs/core-service/api/` (and README.md/this file if the change affects architecture or conventions) in the same task.**
 
+## Fuentes autoritativas
+
+Antes de confiar en un doc como referencia, verifica su estado en [../docs/STATUS.md](../docs/STATUS.md). Para este servicio, los siguientes docs están verificados contra el código (2026-07-08):
+
+| Área | Documento | Estado |
+|------|-----------|--------|
+| API — clientes (CRUD + registro app + plataforma) | [../docs/core-service/api/clientes.md](../docs/core-service/api/clientes.md) | ✅ Refleja el código (verificado contra `ClienteController`) |
+| Índice de docs centralizados | [../docs/core-service/INDEX.md](../docs/core-service/INDEX.md) | 🟡 Índice — el README del servicio omite varios endpoints; usar los docs de `api/` como referencia |
+
+Fuente de verdad del enrutamiento: los `@RestController` bajo `infrastructure/adapter/in/web/` (`ClienteController`, `MembresiaController`, `TipoMembresiaController`, `CongelamientoController`). El único endpoint público es `GET /api/v1/membresias/validar-acceso`.
+
 ## Commands
 
 ```bash

@@ -6,6 +6,11 @@ import com.gymadmin.platform.domain.port.in.NotifConfigUseCase;
 import com.gymadmin.platform.infrastructure.adapter.in.web.dto.NotifConfigRequest;
 import com.gymadmin.platform.infrastructure.adapter.in.web.dto.NotifConfigResponse;
 import com.gymadmin.platform.infrastructure.config.JwtPrincipal;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -18,6 +23,7 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 
 @RestController
+@Tag(name = "Configuración de Notificaciones", description = "Configuración de notificaciones por compañía")
 public class NotifConfigController {
 
     private final NotifConfigUseCase notifConfigUseCase;
@@ -29,6 +35,11 @@ public class NotifConfigController {
         this.accessControl = accessControl;
     }
 
+    @Operation(summary = "Obtener configuración de notificaciones de una compañía (super_admin)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Configuración de notificaciones"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado")
+    })
     @GetMapping("/api/v1/companias/{id}/notif-config")
     public Flux<NotifConfigResponse> getConfig(@PathVariable Long id) {
         return getJwtPrincipal()
@@ -36,6 +47,12 @@ public class NotifConfigController {
                         .thenMany(notifConfigUseCase.getConfig(id).map(this::toResponse)));
     }
 
+    @Operation(summary = "Actualizar configuración de notificaciones de una compañía (super_admin)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "Configuración actualizada"),
+        @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado")
+    })
     @PutMapping("/api/v1/companias/{id}/notif-config")
     public Mono<ResponseEntity<Void>> updateConfig(@PathVariable Long id,
                                                     @Valid @RequestBody NotifConfigRequest request) {

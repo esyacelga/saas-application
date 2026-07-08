@@ -7,6 +7,11 @@ import com.gymadmin.core.infrastructure.adapter.in.web.dto.AnularRequest;
 import com.gymadmin.core.infrastructure.adapter.in.web.dto.MembresiaResponse;
 import com.gymadmin.core.infrastructure.adapter.in.web.dto.VenderMembresiaRequest;
 import com.gymadmin.core.infrastructure.config.JwtPrincipal;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +22,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.Map;
 
+@Tag(name = "Membresías", description = "Gestión de membresías de clientes")
 @RestController
 @RequestMapping("/api/v1")
 public class MembresiaController {
@@ -29,6 +35,12 @@ public class MembresiaController {
         this.accessControl = accessControl;
     }
 
+    @Operation(summary = "Listar membresías del cliente", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "404"),
+            @ApiResponse(responseCode = "403")
+    })
     @GetMapping("/clientes/{id}/membresias")
     public Flux<MembresiaResponse> historial(@PathVariable Long id) {
         return extractPrincipal()
@@ -36,6 +48,12 @@ public class MembresiaController {
                         .map(MembresiaResponse::from));
     }
 
+    @Operation(summary = "Crear membresía", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "201"),
+            @ApiResponse(responseCode = "404"),
+            @ApiResponse(responseCode = "403")
+    })
     @PostMapping("/clientes/{id}/membresias")
     public Mono<ResponseEntity<MembresiaResponse>> vender(@PathVariable Long id,
                                                           @Valid @RequestBody VenderMembresiaRequest request) {
@@ -55,6 +73,12 @@ public class MembresiaController {
                 .map(m -> ResponseEntity.status(HttpStatus.CREATED).body(MembresiaResponse.from(m)));
     }
 
+    @Operation(summary = "Obtener membresía por ID", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "404"),
+            @ApiResponse(responseCode = "403")
+    })
     @GetMapping("/membresias/{id}")
     public Mono<ResponseEntity<Map<String, Object>>> detalle(@PathVariable Long id) {
         return extractPrincipal()
@@ -76,6 +100,12 @@ public class MembresiaController {
                 });
     }
 
+    @Operation(summary = "Actualizar asistencias previas", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "404"),
+            @ApiResponse(responseCode = "403")
+    })
     @PatchMapping("/membresias/{id}/asistencias-previas")
     public Mono<ResponseEntity<Map<String, Object>>> actualizarAsistenciasPrevias(
             @PathVariable Long id,
@@ -92,6 +122,12 @@ public class MembresiaController {
                 });
     }
 
+    @Operation(summary = "Anular membresía", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "404"),
+            @ApiResponse(responseCode = "403")
+    })
     @PutMapping("/membresias/{id}/anular")
     public Mono<ResponseEntity<Void>> anular(@PathVariable Long id, @RequestBody AnularRequest request) {
         return extractPrincipal()
@@ -101,6 +137,11 @@ public class MembresiaController {
                 .thenReturn(ResponseEntity.<Void>ok().build());
     }
 
+    @Operation(summary = "Validar acceso del cliente (público)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "403")
+    })
     @GetMapping("/membresias/validar-acceso")
     public Mono<ResponseEntity<Map<String, Object>>> validarAcceso(
             @RequestParam Long id_persona,
