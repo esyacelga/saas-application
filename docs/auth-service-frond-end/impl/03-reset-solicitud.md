@@ -282,4 +282,4 @@ import { ResetRequestPage } from '@/features/auth/pages/ResetRequestPage'
 5. Con correo válido + submit → debe aparecer el estado de éxito con la pantalla verde (`✅ ¡Correo enviado!`)
 6. El botón "Volver al inicio de sesión" en el estado éxito → regresa a `/login`
 
-**Siguiente paso:** [IMPL-04 — Reset Confirmar](./IMPL_04_RESET_CONFIRMAR.md)
+**Siguiente paso:** [IMPL-04 — Reset Confirmar](./04-reset-confirmar.md)

@@ -14,7 +14,7 @@ Los servicios deben desarrollarse en este orden. Cada uno depende de los anterio
 ---
 
 ### 1. Auth Service
-**Documento:** [AUTH_SERVICE_SPEC.md](AUTH_SERVICE_SPEC.md)  
+**Documento:** [auth-service.md](../specs/auth-service.md)  
 **Esquemas BD:** `saas` · `identidad` · `seguridad`  
 **Tablas:** 9  
 **Plan requerido:** Todos los planes (es la base)
@@ -29,7 +29,7 @@ Gestiona los tres niveles de usuario de la plataforma: el operador SaaS (super_a
 ---
 
 ### 2. Platform Service
-**Documento:** [PLATFORM_SERVICE_SPEC.md](PLATFORM_SERVICE_SPEC.md)  
+**Documento:** [platform-service.md](../specs/platform-service.md)  
 **Esquemas BD:** `saas` · `tenant`  
 **Tablas:** 9  
 **Plan requerido:** Todos los planes (es la capa de onboarding)
@@ -45,7 +45,7 @@ Gestiona el ciclo de vida de cada gimnasio como cliente de la plataforma: regist
 ---
 
 ### 3. Core Service
-**Documento:** [CORE_SERVICE_SPEC.md](CORE_SERVICE_SPEC.md)  
+**Documento:** [core-service.md](../specs/core-service.md)  
 **Esquemas BD:** `core`  
 **Tablas:** 4  
 **Plan requerido:** Plan Básico y superiores
@@ -62,7 +62,7 @@ El corazón operativo del gimnasio: registra clientes, vende membresías y gesti
 ---
 
 ### 4. Attendance Service
-**Documento:** [ATTENDANCE_SERVICE_SPEC.md](ATTENDANCE_SERVICE_SPEC.md)  
+**Documento:** [attendance-service.md](../specs/attendance-service.md)  
 **Esquemas BD:** `asistencia`  
 **Tablas:** 3  
 **Plan requerido:** Plan Básico y superiores
@@ -79,7 +79,7 @@ Registra las entradas al gimnasio por tres métodos (QR del cliente, manual por 
 ---
 
 ### 5. Finance Service
-**Documento:** [FINANCE_SERVICE_SPEC.md](FINANCE_SERVICE_SPEC.md)  
+**Documento:** [finance-service.md](../specs/finance-service.md)  
 **Esquemas BD:** `finanzas`  
 **Tablas:** 4  
 **Plan requerido:** Plan Premium
@@ -95,7 +95,7 @@ Libro mayor del gimnasio: registra ingresos y egresos categorizados. Los ingreso
 ---
 
 ### 6. Marketing Service
-**Documento:** [MARKETING_SERVICE_SPEC.md](MARKETING_SERVICE_SPEC.md)  
+**Documento:** [marketing-service.md](../specs/marketing-service.md)  
 **Esquemas BD:** `marketing`  
 **Tablas:** 4  
 **Plan requerido:** Plan Premium
@@ -111,7 +111,7 @@ Gestiona dos mecanismos de retención: promociones comerciales (2x1, descuentos 
 ---
 
 ### 7. Inventory Service
-**Documento:** [INVENTORY_SERVICE_SPEC.md](INVENTORY_SERVICE_SPEC.md)  
+**Documento:** [inventory-service.md](../specs/inventory-service.md)  
 **Esquemas BD:** `inventario`  
 **Tablas:** 7  
 **Plan requerido:** Plan Premium
@@ -165,13 +165,13 @@ Punto de venta y control de stock: desde el catálogo de productos hasta la traz
 
 | # | Servicio | Documento | Esquemas | Tablas | Plan |
 |---|---|---|---|---|---|
-| 1 | Auth Service | [AUTH_SERVICE_SPEC.md](AUTH_SERVICE_SPEC.md) | `saas` · `identidad` · `seguridad` | 9 | Todos |
-| 2 | Platform Service | [PLATFORM_SERVICE_SPEC.md](PLATFORM_SERVICE_SPEC.md) | `saas` · `tenant` | 9 | Todos |
-| 3 | Core Service | [CORE_SERVICE_SPEC.md](CORE_SERVICE_SPEC.md) | `core` | 4 | Básico+ |
-| 4 | Attendance Service | [ATTENDANCE_SERVICE_SPEC.md](ATTENDANCE_SERVICE_SPEC.md) | `asistencia` | 3 | Básico+ |
-| 5 | Finance Service | [FINANCE_SERVICE_SPEC.md](FINANCE_SERVICE_SPEC.md) | `finanzas` | 4 | Premium |
-| 6 | Marketing Service | [MARKETING_SERVICE_SPEC.md](MARKETING_SERVICE_SPEC.md) | `marketing` | 4 | Premium |
-| 7 | Inventory Service | [INVENTORY_SERVICE_SPEC.md](INVENTORY_SERVICE_SPEC.md) | `inventario` | 7 | Premium |
+| 1 | Auth Service | [auth-service.md](../specs/auth-service.md) | `saas` · `identidad` · `seguridad` | 9 | Todos |
+| 2 | Platform Service | [platform-service.md](../specs/platform-service.md) | `saas` · `tenant` | 9 | Todos |
+| 3 | Core Service | [core-service.md](../specs/core-service.md) | `core` | 4 | Básico+ |
+| 4 | Attendance Service | [attendance-service.md](../specs/attendance-service.md) | `asistencia` | 3 | Básico+ |
+| 5 | Finance Service | [finance-service.md](../specs/finance-service.md) | `finanzas` | 4 | Premium |
+| 6 | Marketing Service | [marketing-service.md](../specs/marketing-service.md) | `marketing` | 4 | Premium |
+| 7 | Inventory Service | [inventory-service.md](../specs/inventory-service.md) | `inventario` | 7 | Premium |
 
 **Total: 40 tablas cubiertas** (las 2 restantes — `config.gym_config` y `config.metodos_pago` — son tablas de configuración que Platform Service y Core Service leen pero no gestionan; se exponen como parte del módulo de configuración del gym en una iteración posterior.)
 
@@ -181,10 +181,10 @@ Punto de venta y control de stock: desde el catálogo de productos hasta la traz
 
 | Documento | Contenido |
 |---|---|
-| [OVERVIEW.md](OVERVIEW.md) | Visión general del producto, arquitectura y módulos |
-| [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) | Diagramas de entidades y casos de negocio |
-| [PROYECTO-TEMPLATE.md](PROYECTO-TEMPLATE.md) | Guía de Liquibase + Azure DevOps |
-| [db/scripts/202605_GYM-001/](db/scripts/202605_GYM-001/) | 59 scripts DDL versionados con Liquibase |
+| [overview.md](overview.md) | Visión general del producto, arquitectura y módulos |
+| [database-schema.md](database-schema.md) | Diagramas de entidades y casos de negocio |
+| [../infra/liquibase-azure-template.md](../infra/liquibase-azure-template.md) | Guía de Liquibase + Azure DevOps |
+| [../../../gym-administrator/db/scripts/202605_GYM-001/](../../../gym-administrator/db/scripts/202605_GYM-001/) | 59 scripts DDL versionados con Liquibase |
 
 ---
 

@@ -360,4 +360,4 @@ import { SinAccesoPage } from '@/features/auth/pages/SinAccesoPage'
 7. Ir a `localhost:5173/admin/sin-acceso` → pantalla de sin acceso con botón "Volver al inicio"
 8. Botón "Cerrar sesión" → logout + redirige a `/login`
 
-**Siguiente paso:** [IMPL-07 — Usuarios](./IMPL_07_USUARIOS.md)
+**Siguiente paso:** [IMPL-07 — Usuarios](./07-usuarios.md)

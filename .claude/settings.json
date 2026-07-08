@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(gcloud auth list *)",
+      "PowerShell(gcloud logging read *)"
+    ]
+  }
+}

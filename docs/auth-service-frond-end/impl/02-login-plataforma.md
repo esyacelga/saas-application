@@ -262,4 +262,4 @@ import { PlatformLoginPage } from '@/features/auth/pages/PlatformLoginPage'
 4. El link "← Volver al login del gimnasio" → debe navegar a `/login`
 5. Con credenciales válidas de operador → redirige a `/platform/dashboard` (404 hasta IMPL-11)
 
-**Siguiente paso:** [IMPL-03 — Reset Password Solicitud](./IMPL_03_RESET_SOLICITUD.md)
+**Siguiente paso:** [IMPL-03 — Reset Password Solicitud](./03-reset-solicitud.md)

@@ -333,4 +333,4 @@ import { ChangePasswordPage } from '@/features/auth/pages/ChangePasswordPage'
 6. Flujo completo válido → toast "¡Contraseña actualizada!" + redirige a `/admin/dashboard`
 7. "Cancelar y cerrar sesión" → cierra la sesión y va a `/login`
 
-**Siguiente paso:** [IMPL-06 — AdminLayout](./IMPL_06_ADMIN_LAYOUT.md)
+**Siguiente paso:** [IMPL-06 — AdminLayout](./06-admin-layout.md)

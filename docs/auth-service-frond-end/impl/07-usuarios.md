@@ -678,4 +678,4 @@ import { UsuariosPage } from '@/features/auth/pages/UsuariosPage'
 10. Clic en "Desactivar" → diálogo de confirmación con texto descriptivo
 11. Confirmar → toast + badge cambia a rojo "Inactivo"
 
-**Siguiente paso:** [IMPL-08 — Bitácora](./IMPL_08_BITACORA.md)
+**Siguiente paso:** [IMPL-08 — Bitácora](./08-bitacora.md)

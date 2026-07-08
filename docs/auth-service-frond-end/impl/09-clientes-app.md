@@ -707,4 +707,4 @@ import { ClientesAppPage } from '@/features/auth/pages/ClientesAppPage'
 3. Completar formulario de persona → toast "Cliente registrado" + pasa automáticamente al paso 3
 4. Crear cuenta app → pantalla de éxito
 
-**Siguiente paso:** [IMPL-10 — Roles y Permisos](./IMPL_10_ROLES_PERMISOS.md)
+**Siguiente paso:** [IMPL-10 — Roles y Permisos](./10-roles-permisos.md)

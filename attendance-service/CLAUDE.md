@@ -2,7 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-See also [../docs/attendance-service/INDEX.md](../docs/attendance-service/INDEX.md) for centralized docs.
 
 **When you add or change an endpoint, business rule, or messaging template type, update README.md's endpoint table (and this file if it affects conventions) in the same task.**
 

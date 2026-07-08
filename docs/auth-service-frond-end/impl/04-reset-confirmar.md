@@ -340,4 +340,4 @@ import { ResetConfirmPage } from '@/features/auth/pages/ResetConfirmPage'
 5. Enviar con token inválido + contraseña válida → error con link para solicitar nuevo enlace
 6. Con token válido + contraseña válida → toast de éxito + redirige a `/login`
 
-**Siguiente paso:** [IMPL-05 — Cambio de Contraseña](./IMPL_05_CAMBIO_PASSWORD.md)
+**Siguiente paso:** [IMPL-05 — Cambio de Contraseña](./05-cambio-password.md)

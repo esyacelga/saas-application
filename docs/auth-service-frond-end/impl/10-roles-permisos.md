@@ -685,4 +685,4 @@ import { RolesPage } from '@/features/auth/pages/RolesPage'
 10. "Eliminar" rol con usuarios asignados → el backend devuelve 409 → toast de error descriptivo
 11. Eliminar rol sin usuarios → diálogo de confirmación con texto de consecuencias + toast de éxito
 
-**Siguiente paso:** [IMPL-11 — Plataforma](./IMPL_11_PLATAFORMA.md)
+**Siguiente paso:** [IMPL-11 — Plataforma](./11-plataforma.md)

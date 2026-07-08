@@ -544,10 +544,9 @@ Liquibase compara DATABASECHANGELOG vs scripts nuevos
 
 | Archivo | Contenido |
 |---|---|
-| [PROYECTO.md](PROYECTO.md) | Definición original de módulos y funcionalidades |
-| [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) | Diagramas ASCII, definición de tablas y casos de negocio |
-| [PROYECTO-TEMPLATE.md](PROYECTO-TEMPLATE.md) | Guía técnica de Liquibase + Azure DevOps |
-| [db/scripts/](db/scripts/) | Migraciones versionadas por historia de usuario |
+| [database-schema.md](database-schema.md) | Diagramas ASCII, definición de tablas y casos de negocio |
+| [../infra/liquibase-azure-template.md](../infra/liquibase-azure-template.md) | Guía técnica de Liquibase + Azure DevOps |
+| [../../../gym-administrator/db/scripts/](../../../gym-administrator/db/scripts/) | Migraciones versionadas por historia de usuario |
 
 ---
 

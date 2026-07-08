@@ -398,4 +398,4 @@ import { BitacoraPage } from '@/features/auth/pages/BitacoraPage'
 8. Paginación: botones Anterior/Siguiente navegan entre páginas, se deshabilitan en los extremos
 9. El contador "Total: X registros" actualiza con los filtros
 
-**Siguiente paso:** [IMPL-09 — Clientes App](./IMPL_09_CLIENTES_APP.md)
+**Siguiente paso:** [IMPL-09 — Clientes App](./09-clientes-app.md)

@@ -36,10 +36,9 @@ Redis 7 (6379)
 |-----------|-------------|
 | [DOCKER.md](DOCKER.md) | Guía completa para levantar/detener el stack con Docker Compose |
 | [docker-compose.yml](docker-compose.yml) | Configuración de todos los servicios, puertos y variables de entorno |
-| [gym-administrator/docs/OVERVIEW.md](gym-administrator/docs/OVERVIEW.md) | Arquitectura general, modelo de negocio y decisiones de diseño |
-| [gym-administrator/docs/DATABASE_SCHEMA.md](gym-administrator/docs/DATABASE_SCHEMA.md) | Esquema completo de la base de datos (42 tablas, 10 schemas) |
-| [gym-administrator/docs/DEVELOPMENT_ROADMAP.md](gym-administrator/docs/DEVELOPMENT_ROADMAP.md) | Orden de construcción de microservicios y roadmap |
-| [gym-administrator/docs/PROYECTO.md](gym-administrator/docs/PROYECTO.md) | Resumen ejecutivo del proyecto |
+| [docs/gym-administrator/architecture/overview.md](docs/gym-administrator/architecture/overview.md) | Arquitectura general, modelo de negocio y decisiones de diseño |
+| [docs/gym-administrator/architecture/database-schema.md](docs/gym-administrator/architecture/database-schema.md) | Esquema completo de la base de datos (42 tablas, 10 schemas) |
+| [docs/gym-administrator/architecture/roadmap.md](docs/gym-administrator/architecture/roadmap.md) | Orden de construcción de microservicios y roadmap |
 
 ---
 
