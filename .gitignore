@@ -4,8 +4,12 @@
 .env.*.local
 application-local.yml
 application-prod.yml
+application-secrets.yml
+bd-credentials.md
+*credentials*.md
+*secret*.properties
 
-# ── Java / Gradle / Maven (auth-service, core-service, platform-service, attendance-service, gym-administrator) ──
+# ── Java / Gradle / Maven ──────────────────────────────────────────────────
 target/
 build/
 .gradle/
@@ -13,29 +17,53 @@ build/
 *.jar
 *.war
 *.ear
+*.hprof
+hs_err_pid*.log
 gradle.properties
 bk-build.gradle
+local.properties
+.mvn/wrapper/maven-wrapper.jar
 
-# ── Node / frontend (auth-service-frond-end, gym-member-pwa) ──────────────
+# ── Node / frontend ────────────────────────────────────────────────────────
 node_modules/
 dist/
 dist-ssr/
 *.local
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+coverage/
+.nyc_output/
+.cache/
+.vite/
+storybook-static/
+
+# ── Docker ─────────────────────────────────────────────────────────────────
+docker-compose.override.yml
 
 # ── Editores / SO ──────────────────────────────────────────────────────────
 .idea/
 .vscode/*
 !.vscode/extensions.json
 .DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+*.iml
+
+# ── Claude Code (configuración local del entorno) ──────────────────────────
+.claude/settings.local.json
+
+# ── Archivos de debug / temporales ─────────────────────────────────────────
+screenshot-*.png
+*.tmp
+*.bak
