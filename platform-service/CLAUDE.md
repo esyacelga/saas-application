@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+See also [../docs/platform-service/INDEX.md](../docs/platform-service/INDEX.md) for centralized docs.
+
+**When you add or change an endpoint, route group, or business rule, update the "Endpoints" section here and README.md's endpoint documentation in the same task.**
+
 ## Commands
 
 ```bash
@@ -80,11 +84,11 @@ Key route groups:
 - `PlanController` → `/api/v1/planes`
 - `NotifConfigController` → `/api/v1/companias/{id}/notif-config`
 
-## Multi-repo Context
+## Monorepo Context
 
-This service is part of a multi-repo system under `C:\Respos\own-aplications\`:
+This service is one folder in the `gym-administrator` monorepo (`C:\Respos\own-aplications\`). See [../INDEX.md](../INDEX.md) for the full service map.
 
-| Repo | Port | Role |
+| Service | Port | Role |
 |---|---|---|
 | `auth-service` | 8080 | JWT auth, users, roles, personas |
 | **platform-service** | **8081** | **This service — SaaS platform management** |
@@ -92,4 +96,4 @@ This service is part of a multi-repo system under `C:\Respos\own-aplications\`:
 | `attendance-service` | 8084 | Attendance tracking |
 | `auth-service-frond-end` | 5173 | React frontend |
 
-All services share the same `JWT_SECRET` and the same PostgreSQL instance (`gym-app-saas` DB). The `identidad` schema (personas, usuarios) is owned by auth-service. Platform-service owns schemas `tenant` (companias, sucursales) and `saas` (planes, pagos, etc.).
+All services share the same `JWT_SECRET` and the same PostgreSQL instance (`gym-app-saas` DB). The `identidad` schema (personas, usuarios) is owned by auth-service. Platform-service owns schemas `tenant` (companias, sucursales) and `saas` (planes, pagos, etc.). DB migrations live in `gym-administrator/db/` (Liquibase) within this same monorepo.

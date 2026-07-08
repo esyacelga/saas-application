@@ -4,11 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project State
 
-Database-first SaaS gym management platform. The database layer (42 tables, 10 PostgreSQL schemas, Liquibase migrations) is complete and production-ready. Backend microservices and frontend are **not yet implemented** — only SQL migration scripts exist in `db/`.
+Database-first SaaS gym management platform. The database layer (42 tables, 10 PostgreSQL schemas, Liquibase migrations) is complete and production-ready. Backend microservices and frontend live in sibling monorepo folders (`auth-service/`, `platform-service/`, `core-service/`, `attendance-service/`, `auth-service-frond-end/`, `gym-member-pwa/`) — this folder only contains the `db/` migrations.
+
+For architecture, schema organization, business rules, and the three user tiers, see [../docs/gym-administrator/architecture/overview.md](../docs/gym-administrator/architecture/overview.md) and [../docs/gym-administrator/architecture/database-schema.md](../docs/gym-administrator/architecture/database-schema.md) — this file only covers conventions not already documented there.
+
+**When you add a new schema, table, or migration story, update [../docs/gym-administrator/architecture/database-schema.md](../docs/gym-administrator/architecture/database-schema.md) (and overview.md if it changes business rules or the data model) in the same task.**
 
 ## Commands
-
-### Run database migrations locally
 
 ```powershell
 # Apply all pending migrations
@@ -19,25 +21,16 @@ Database-first SaaS gym management platform. The database layer (42 tables, 10 P
 
 # Rollback last N changesets
 ./gradlew rollbackCount -PliquibaseCommandValue=1
-```
 
-### Start local PostgreSQL via Docker
-
-```powershell
+# Start local PostgreSQL via Docker, then run migrations
 docker-compose up -d postgres
-# Then run migrations:
 ./gradlew update
-```
 
-### Start full stack (PostgreSQL + auto-run migrations)
-
-```powershell
+# Start full stack (PostgreSQL + auto-run migrations)
 docker-compose up
 ```
 
-### Configure local connection
-
-Edit `gradle.properties` (never commit real credentials):
+Configure local connection in `gradle.properties` (never commit real credentials):
 ```properties
 dbUrl=jdbc:postgresql://localhost:5432/gym_administrator
 dbUser=postgres
@@ -45,37 +38,6 @@ dbPassword=your_password
 ```
 
 The Docker Compose database is `gym-app-saas` with user `administrador`.
-
-## Architecture
-
-### Multi-tenant model
-
-All tenant-scoped tables carry an `id_compania` column (no FK to `tenant.companias`). Data isolation is enforced by the application layer — every query must filter by `id_compania`. The `saas.*` and `identidad.*` schemas are global (no `id_compania`).
-
-### Schema organization
-
-| Schema | Scope | Purpose |
-|---|---|---|
-| `saas` | Global | Plans, features, platform operator users |
-| `identidad` | Global | Persons (unique by CI), mobile app users, biometrics |
-| `tenant` | Platform | Gym companies, branches, subscriptions, SaaS payments |
-| `core` | Tenant | Clients, membership types, memberships, freezes |
-| `asistencia` | Tenant | Attendance records, message templates, message log |
-| `seguridad` | Tenant | Roles, permissions, staff users, access audit log |
-| `config` | Tenant | Key-value gym config, payment methods |
-| `finanzas` | Tenant (Premium) | Income/expense categories and records |
-| `marketing` | Tenant (Premium) | Promotions, loyalty benefit rules |
-| `inventario` | Tenant (Premium) | Products, stock, sales, movements |
-
-### Three user tiers
-
-- **Platform operators** → `saas.usuarios_plataforma` (global scope)
-- **Gym staff** → `seguridad.usuarios` + `seguridad.roles` (per-company scope)
-- **Gym clients** → `identidad.usuarios_app` (own data only via mobile app)
-
-### Immutability rule
-
-Never UPDATE to change the state of a subscription or membership. Always INSERT a new row. The previous row is preserved as history. This applies to `tenant.compania_planes` and `core.membresias`.
 
 ## Database Migration Conventions
 
@@ -115,13 +77,6 @@ Azure DevOps Pipeline (`azure-pipelines.yml`) runs `./gradlew update` automatica
 
 Credentials are pulled from Azure Key Vault — never hardcoded.
 
-## Key documentation
+## Full documentation index
 
-| File | Content |
-|---|---|
-| `OVERVIEW.md` | Full architecture, business rules, and data flows |
-| `DATABASE_SCHEMA.md` | ASCII diagrams and table definitions |
-| `DEVELOPMENT_ROADMAP.md` | Microservice build order and dependencies |
-| `AUTH_SERVICE_SPEC.md` … `INVENTORY_SERVICE_SPEC.md` | Per-service API specs |
-| `FRONTEND_AUTH_SPEC.md` | Frontend auth module spec |
-| `db/scripts/202605_GYM-001/logical_diagram/schema.dbml` | Full DBML diagram |
+See [../docs/gym-administrator/INDEX.md](../docs/gym-administrator/INDEX.md) for architecture, per-service specs, frontend specs, and infra docs. Also: `db/scripts/202605_GYM-001/logical_diagram/schema.dbml` (full DBML diagram).

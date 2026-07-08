@@ -106,6 +106,8 @@ mvn clean package -DskipTests
 
 ## Endpoints principales
 
+Ver también [../docs/core-service/INDEX.md](../docs/core-service/INDEX.md) para la referencia detallada de la API de clientes.
+
 Todos los endpoints (excepto `validar-acceso`) requieren header `Authorization: Bearer <token>`.
 
 | Método | Ruta | Descripción |

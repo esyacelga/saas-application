@@ -231,14 +231,16 @@ Los servicios de aplicación usan helpers de `SecurityUtils`:
 
 ## Documentación de endpoints
 
+Ver también [../docs/auth-service/INDEX.md](../docs/auth-service/INDEX.md).
+
 | Módulo | Archivo |
 |---|---|
-| Autenticación (login, refresh, OAuth, registro, reset pwd, QR) | [docs/AUTH_API.md](docs/AUTH_API.md) |
-| Personas | [docs/PERSONAS_API.md](docs/PERSONAS_API.md) |
-| Usuarios Staff, Roles y Permisos | [docs/USUARIOS_STAFF_API.md](docs/USUARIOS_STAFF_API.md) |
-| Usuarios App (clientes) | [docs/APP_USUARIOS_API.md](docs/APP_USUARIOS_API.md) |
-| Plataforma (usuarios, roles, permisos, compañías) | [docs/PLATFORM_API.md](docs/PLATFORM_API.md) |
-| Bitácora | [docs/BITACORA_API.md](docs/BITACORA_API.md) |
+| Autenticación (login, refresh, OAuth, registro, reset pwd, QR) | [../docs/auth-service/api/auth.md](../docs/auth-service/api/auth.md) |
+| Personas | [../docs/auth-service/api/personas.md](../docs/auth-service/api/personas.md) |
+| Usuarios Staff, Roles y Permisos | [../docs/auth-service/api/usuarios-staff.md](../docs/auth-service/api/usuarios-staff.md) |
+| Usuarios App (clientes) | [../docs/auth-service/api/app-usuarios.md](../docs/auth-service/api/app-usuarios.md) |
+| Plataforma (usuarios, roles, permisos, compañías) | [../docs/auth-service/api/platform.md](../docs/auth-service/api/platform.md) |
+| Bitácora | [../docs/auth-service/api/bitacora.md](../docs/auth-service/api/bitacora.md) |
 
 ---
 

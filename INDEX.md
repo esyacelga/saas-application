@@ -36,10 +36,10 @@ Redis 7 (6379)
 |-----------|-------------|
 | [DOCKER.md](DOCKER.md) | Guía completa para levantar/detener el stack con Docker Compose |
 | [docker-compose.yml](docker-compose.yml) | Configuración de todos los servicios, puertos y variables de entorno |
-| [gym-administrator/OVERVIEW.md](gym-administrator/OVERVIEW.md) | Arquitectura general, modelo de negocio y decisiones de diseño |
-| [gym-administrator/DATABASE_SCHEMA.md](gym-administrator/DATABASE_SCHEMA.md) | Esquema completo de la base de datos (42 tablas, 10 schemas) |
-| [gym-administrator/DEVELOPMENT_ROADMAP.md](gym-administrator/DEVELOPMENT_ROADMAP.md) | Orden de construcción de microservicios y roadmap |
-| [gym-administrator/PROYECTO.md](gym-administrator/PROYECTO.md) | Resumen ejecutivo del proyecto |
+| [gym-administrator/docs/OVERVIEW.md](gym-administrator/docs/OVERVIEW.md) | Arquitectura general, modelo de negocio y decisiones de diseño |
+| [gym-administrator/docs/DATABASE_SCHEMA.md](gym-administrator/docs/DATABASE_SCHEMA.md) | Esquema completo de la base de datos (42 tablas, 10 schemas) |
+| [gym-administrator/docs/DEVELOPMENT_ROADMAP.md](gym-administrator/docs/DEVELOPMENT_ROADMAP.md) | Orden de construcción de microservicios y roadmap |
+| [gym-administrator/docs/PROYECTO.md](gym-administrator/docs/PROYECTO.md) | Resumen ejecutivo del proyecto |
 
 ---
 
@@ -52,8 +52,7 @@ Punto único de autenticación y autorización para toda la plataforma.
 |-----------|-------------|
 | [auth-service/README.md](auth-service/README.md) | Documentación completa: arquitectura, endpoints, JWT, seguridad, testing |
 | [auth-service/CLAUDE.md](auth-service/CLAUDE.md) | Guía de desarrollo y convenciones del servicio |
-| [auth-service/docs/PERSONAS_API.md](auth-service/docs/PERSONAS_API.md) | API de gestión de personas (identidad global) |
-| [auth-service/bd-credentials.md](auth-service/bd-credentials.md) | Credenciales de base de datos (local) |
+| [docs/auth-service/INDEX.md](docs/auth-service/INDEX.md) | Índice de documentación de API (auth, personas, usuarios-staff, app-usuarios, platform, bitácora) |
 
 **Responsabilidades clave:**
 - 3 flujos de login independientes: operadores de plataforma, staff de gym, clientes app
@@ -73,7 +72,8 @@ Gestión del SaaS: empresas, sucursales, planes y suscripciones.
 | Documento | Descripción |
 |-----------|-------------|
 | [platform-service/README.md](platform-service/README.md) | Documentación completa: arquitectura, endpoints, seguridad |
-| [platform-service/CLAUDE.md](platform-service/CLAUDE.md) | Guía extensa de desarrollo, patrones y convenciones (450+ líneas) |
+| [platform-service/CLAUDE.md](platform-service/CLAUDE.md) | Guía de desarrollo, patrones y convenciones |
+| [docs/platform-service/INDEX.md](docs/platform-service/INDEX.md) | Índice de documentación centralizada |
 
 **Responsabilidades clave:**
 - CRUD de empresas (tenants) y sucursales
@@ -95,7 +95,7 @@ Gestión de clientes y membresías; validación de acceso al gym.
 |-----------|-------------|
 | [core-service/README.md](core-service/README.md) | Documentación completa: arquitectura, endpoints, modos de membresía |
 | [core-service/CLAUDE.md](core-service/CLAUDE.md) | Guía de desarrollo y convenciones del servicio |
-| [core-service/docs/CLIENTES_API.md](core-service/docs/CLIENTES_API.md) | API detallada de clientes |
+| [docs/core-service/INDEX.md](docs/core-service/INDEX.md) | Índice de documentación de API (clientes) |
 
 **Responsabilidades clave:**
 - Registro y gestión de clientes (miembros del gym)
@@ -119,6 +119,7 @@ Registro de asistencias y mensajería automatizada.
 |-----------|-------------|
 | [attendance-service/README.md](attendance-service/README.md) | Documentación completa: arquitectura, endpoints, plantillas, mensajería |
 | [attendance-service/CLAUDE.md](attendance-service/CLAUDE.md) | Guía de desarrollo y convenciones del servicio |
+| [docs/attendance-service/INDEX.md](docs/attendance-service/INDEX.md) | Índice de documentación centralizada |
 
 **Responsabilidades clave:**
 - 3 métodos de registro de asistencia:
@@ -141,11 +142,11 @@ Panel de administración y staff (web).
 
 | Documento | Descripción |
 |-----------|-------------|
-| [auth-service-frond-end/FRONTEND_AUTH_SPEC.md](auth-service-frond-end/FRONTEND_AUTH_SPEC.md) | Especificación funcional del frontend |
-| [auth-service-frond-end/FRONTEND_AUTH_IMPL.md](auth-service-frond-end/FRONTEND_AUTH_IMPL.md) | Guía de implementación |
-| [auth-service-frond-end/DESIGN_GUIDELINES.md](auth-service-frond-end/DESIGN_GUIDELINES.md) | Lineamientos de diseño UI/UX |
-| [auth-service-frond-end/api_index.md](auth-service-frond-end/api_index.md) | Índice de APIs consumidas |
-| [auth-service-frond-end/documentacion/](auth-service-frond-end/documentacion/) | 24+ documentos de implementación por módulo (IMPL_00 a IMPL_13+) |
+| [auth-service-frond-end/README.md](auth-service-frond-end/README.md) | Stack, catálogo de permisos, inicio rápido |
+| [auth-service-frond-end/CLAUDE.md](auth-service-frond-end/CLAUDE.md) | Arquitectura, patrones de código, JWT, guards |
+| [docs/auth-service-frond-end/INDEX.md](docs/auth-service-frond-end/INDEX.md) | Índice completo: 17 docs de implementación por módulo, prompts de backend, design guidelines |
+| [docs/gym-administrator/frontend/auth-frontend-spec.md](docs/gym-administrator/frontend/auth-frontend-spec.md) | Especificación funcional del frontend |
+| [docs/gym-administrator/frontend/auth-frontend-impl.md](docs/gym-administrator/frontend/auth-frontend-impl.md) | Guía de implementación (incluye sistema de diseño y tokens) |
 
 **Stack:** React 19, TypeScript 5.7, Vite 6, Tailwind CSS 4, React Router 7, Zustand 5, React Hook Form + Zod, PrimeReact, shadcn/ui, Axios, i18next
 
@@ -167,8 +168,8 @@ App móvil Progressive Web App para miembros del gym.
 
 | Documento | Descripción |
 |-----------|-------------|
-| [gym-member-pwa/CLAUDE.md](gym-member-pwa/CLAUDE.md) | Guía completa: arquitectura, flujos, patrones, convenciones (160+ líneas) |
-| [gym-member-pwa/README.md](gym-member-pwa/README.md) | Documentación base del proyecto |
+| [gym-member-pwa/CLAUDE.md](gym-member-pwa/CLAUDE.md) | Guía completa: arquitectura, flujos, patrones, convenciones |
+| [docs/gym-member-pwa/INDEX.md](docs/gym-member-pwa/INDEX.md) | Índice de documentación centralizada y backlog de pendientes |
 
 **Stack:** React 19, TypeScript 6.0, Vite, Tailwind CSS 4, Zustand 5, React Hook Form + Zod, html5-qrcode, vite-plugin-pwa
 
@@ -191,21 +192,18 @@ App móvil Progressive Web App para miembros del gym.
 ### Base de datos y migraciones
 
 #### gym-administrator
-Migraciones Liquibase, especificaciones y documentación de referencia del proyecto.
+Migraciones Liquibase (`gym-administrator/db/`); su documentación de arquitectura, specs y frontend se centralizó en `docs/gym-administrator/`.
+
+**Ver [docs/gym-administrator/INDEX.md](docs/gym-administrator/INDEX.md)** para el índice completo (arquitectura, specs por servicio, frontend, infra). Documentos clave:
 
 | Documento | Descripción |
 |-----------|-------------|
-| [gym-administrator/OVERVIEW.md](gym-administrator/OVERVIEW.md) | Arquitectura general y modelo de negocio |
-| [gym-administrator/DATABASE_SCHEMA.md](gym-administrator/DATABASE_SCHEMA.md) | Esquema completo de BD con diagramas ASCII |
-| [gym-administrator/PROYECTO.md](gym-administrator/PROYECTO.md) | Resumen ejecutivo del proyecto |
-| [gym-administrator/DEVELOPMENT_ROADMAP.md](gym-administrator/DEVELOPMENT_ROADMAP.md) | Roadmap y orden de desarrollo |
-| [gym-administrator/AUTH_SERVICE_SPEC.md](gym-administrator/AUTH_SERVICE_SPEC.md) | Especificación del auth-service |
-| [gym-administrator/PLATFORM_SERVICE_SPEC.md](gym-administrator/PLATFORM_SERVICE_SPEC.md) | Especificación del platform-service |
-| [gym-administrator/CORE_SERVICE_SPEC.md](gym-administrator/CORE_SERVICE_SPEC.md) | Especificación del core-service |
-| [gym-administrator/ATTENDANCE_SERVICE_SPEC.md](gym-administrator/ATTENDANCE_SERVICE_SPEC.md) | Especificación del attendance-service |
-| [gym-administrator/FINANCE_SERVICE_SPEC.md](gym-administrator/FINANCE_SERVICE_SPEC.md) | Especificación módulo finanzas (futuro) |
-| [gym-administrator/MARKETING_SERVICE_SPEC.md](gym-administrator/MARKETING_SERVICE_SPEC.md) | Especificación módulo marketing (futuro) |
-| [gym-administrator/INVENTORY_SERVICE_SPEC.md](gym-administrator/INVENTORY_SERVICE_SPEC.md) | Especificación módulo inventario (futuro) |
+| [docs/gym-administrator/architecture/overview.md](docs/gym-administrator/architecture/overview.md) | Arquitectura general y modelo de negocio |
+| [docs/gym-administrator/architecture/database-schema.md](docs/gym-administrator/architecture/database-schema.md) | Esquema completo de BD con diagramas ASCII |
+| [docs/gym-administrator/architecture/roadmap.md](docs/gym-administrator/architecture/roadmap.md) | Roadmap y orden de desarrollo |
+| [docs/gym-administrator/specs/](docs/gym-administrator/specs/) | Especificaciones por microservicio (auth, platform, core, attendance, finance, marketing, inventory, billing) |
+| [docs/gym-administrator/frontend/](docs/gym-administrator/frontend/) | Especificaciones de los módulos frontend (auth, platform) |
+| [docs/gym-administrator/infra/docker.md](docs/gym-administrator/infra/docker.md) | Guía Docker específica de gym-administrator |
 
 **Schemas de PostgreSQL (42 tablas totales):**
 

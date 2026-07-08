@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+API endpoint documentation lives in [../docs/core-service/](../docs/core-service/INDEX.md).
+
+**When you add or change an endpoint or business rule (e.g. membership modes), update the matching file in `../docs/core-service/api/` (and README.md/this file if the change affects architecture or conventions) in the same task.**
+
 ## Commands
 
 ```bash

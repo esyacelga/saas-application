@@ -152,17 +152,17 @@ Test HTTP clients (`helpers/client.ts`) never throw on HTTP errors (`validateSta
 
 The JWT helper (`helpers/jwt.ts`) generates signed test tokens for all role types without hitting the auth service.
 
-## Multi-repo ecosystem
+## Monorepo ecosystem
 
-This frontend is part of a multi-repo system. All repos live under `C:\Respos\own-aplications\`:
+This frontend is one folder in the `gym-administrator` monorepo (`C:\Respos\own-aplications\`). See [../INDEX.md](../INDEX.md) for the full service map.
 
-| Repo | Path | Role |
-|---|---|---|
-| **auth-service-frond-end** | `auth-service-frond-end/` | This React frontend |
-| **auth-service** | `auth-service/` | Spring WebFlux, port **8080** |
-| **platform-service** | `platform-service/` | Spring WebFlux, port **8081** |
-| **core-service** | `core-service/` | Spring WebFlux (R2DBC + PostgreSQL), port **8083** |
-| **gym-administrator** | `gym-administrator/` | Liquibase migrations for the full DB (`gym_administrator`) |
+| Folder | Role |
+|---|---|
+| **auth-service-frond-end** | This React frontend |
+| **auth-service** | Spring WebFlux, port **8080** |
+| **platform-service** | Spring WebFlux, port **8081** |
+| **core-service** | Spring WebFlux (R2DBC + PostgreSQL), port **8083** |
+| **gym-administrator** | Liquibase migrations for the full DB (`gym_administrator`) — docs centralized in `../docs/gym-administrator/` |
 
 ### core-service (puerto 8083)
 
@@ -198,4 +198,6 @@ Si agregas un nuevo endpoint en el backend, verifica que el `TipoMembresiaRespon
 
 ## Implementation Roadmap
 
-The `documentacion/` folder contains detailed specs for each planned module (IMPL_00 through IMPL_13). IMPL_00 (base setup) is complete. Before implementing any new module, read the corresponding `IMPL_XX_*.md` file and `FRONTEND_AUTH_SPEC.md` for the backend API contract. `documentacion/DESIGN_GUIDELINES.md` is the canonical reference for visual/UX conventions.
+See [../docs/auth-service-frond-end/INDEX.md](../docs/auth-service-frond-end/INDEX.md) for the full documentation index. Detailed specs for each module live in [../docs/auth-service-frond-end/impl/](../docs/auth-service-frond-end/impl/) (02 through 18). Before implementing any new module, read the corresponding `impl/NN-*.md` file and [../docs/gym-administrator/frontend/auth-frontend-spec.md](../docs/gym-administrator/frontend/auth-frontend-spec.md) for the backend API contract. [../docs/auth-service-frond-end/design-guidelines.md](../docs/auth-service-frond-end/design-guidelines.md) is the canonical reference for visual/UX conventions.
+
+**When you add or change a route, permission, use case, or pattern described above, update this file in the same task. When you complete an implementation step, update the matching file in `../docs/auth-service-frond-end/impl/`.**

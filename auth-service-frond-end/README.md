@@ -110,24 +110,9 @@ Las capas internas nunca importan de las externas.
 
 ## Documentación de implementación
 
-Los pasos de implementación están en [`documentacion/`](./documentacion/):
+Ver [../docs/auth-service-frond-end/INDEX.md](../docs/auth-service-frond-end/INDEX.md) para el índice completo. Los pasos de implementación por módulo están en [../docs/auth-service-frond-end/impl/](../docs/auth-service-frond-end/impl/) (02 a 18).
 
-| Archivo | Contenido | Estado |
-|---|---|---|
-| [IMPL_00_BASE_SETUP.md](./documentacion/IMPL_00_BASE_SETUP.md) | Configuración base + arquitectura hexagonal | ✅ |
-| [IMPL_01_LOGIN_STAFF.md](./documentacion/IMPL_01_LOGIN_STAFF.md) | Login de staff | ⬜ |
-| [IMPL_02_LOGIN_PLATAFORMA.md](./documentacion/IMPL_02_LOGIN_PLATAFORMA.md) | Login de plataforma | ⬜ |
-| [IMPL_03_RESET_SOLICITUD.md](./documentacion/IMPL_03_RESET_SOLICITUD.md) | Solicitud de reset de contraseña | ⬜ |
-| [IMPL_04_RESET_CONFIRMAR.md](./documentacion/IMPL_04_RESET_CONFIRMAR.md) | Confirmación de reset | ⬜ |
-| [IMPL_05_CAMBIO_PASSWORD.md](./documentacion/IMPL_05_CAMBIO_PASSWORD.md) | Cambio de contraseña | ⬜ |
-| [IMPL_06_ADMIN_LAYOUT.md](./documentacion/IMPL_06_ADMIN_LAYOUT.md) | Layout del panel admin | ⬜ |
-| [IMPL_07_USUARIOS.md](./documentacion/IMPL_07_USUARIOS.md) | Gestión de usuarios | ⬜ |
-| [IMPL_08_BITACORA.md](./documentacion/IMPL_08_BITACORA.md) | Bitácora de actividad | ⬜ |
-| [IMPL_09_CLIENTES_APP.md](./documentacion/IMPL_09_CLIENTES_APP.md) | Clientes de la app | ⬜ |
-| [IMPL_10_ROLES_PERMISOS.md](./documentacion/IMPL_10_ROLES_PERMISOS.md) | Roles y permisos | ⬜ |
-| [IMPL_11_PLATAFORMA.md](./documentacion/IMPL_11_PLATAFORMA.md) | Módulo de plataforma | ⬜ |
-
-Para la especificación del API backend ver [`documentacion/FRONTEND_AUTH_SPEC.md`](./documentacion/FRONTEND_AUTH_SPEC.md).
+Para la especificación del API backend ver [../docs/gym-administrator/frontend/auth-frontend-spec.md](../docs/gym-administrator/frontend/auth-frontend-spec.md).
 
 ---
 

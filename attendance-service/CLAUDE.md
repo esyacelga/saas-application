@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+See also [../docs/attendance-service/INDEX.md](../docs/attendance-service/INDEX.md) for centralized docs.
+
+**When you add or change an endpoint, business rule, or messaging template type, update README.md's endpoint table (and this file if it affects conventions) in the same task.**
+
 ## Commands
 
 ```bash
@@ -25,35 +29,7 @@ Tests require a `.env` file at the project root — the `DotEnvInitializer` load
 
 ## Architecture
 
-**Attendance tracking microservice** for a gym administration SaaS platform. Runs on port `8084`.
-
-**Stack**: Java 21, Spring Boot 3.3.5 with WebFlux (fully reactive/non-blocking), Spring Data R2DBC, PostgreSQL.
-
-### Hexagonal (Ports & Adapters) layout
-
-```
-com.gymadmin.attendance/
-├── domain/
-│   ├── model/          # Asistencia, PlantillaMensaje, MensajeLog
-│   └── port/
-│       ├── in/         # Use case interfaces (input ports)
-│       └── out/        # Repository interfaces (output ports)
-├── application/
-│   └── service/        # Implements use case interfaces
-└── infrastructure/
-    ├── adapter/
-    │   ├── in/web/     # REST controllers (WebFlux RouterFunction style)
-    │   └── out/        # R2DBC repository adapters, CoreServiceClient, AuthServiceClient
-    ├── config/         # SecurityConfig, JwtConfig, CorsConfig, WebClientConfig, AppProperties
-    ├── exception/      # GlobalExceptionHandler + custom exceptions
-    └── scheduler/      # MensajeriaJob (cron)
-```
-
-### Key domains
-
-- **Asistencia** — Records gym attendance. Three entry methods: QR scan (client self-check-in), manual staff entry, and owner override. Unique constraint on `(id_membresia, fecha)`. The `id_membresia` column is nullable (override entries have no membership).
-- **PlantillaMensaje** — CRUD for automated message templates. `tipo` is a CHECK constraint enum.
-- **MensajeLog** — Tracks sent messages; `MensajeriaJob` fires daily at 00:15 UTC to send absence/recovery notifications.
+For the folder layout, stack, main domains, and endpoint list, see [README.md](README.md) — this file only covers conventions and implementation details not already documented there.
 
 ### External dependencies
 

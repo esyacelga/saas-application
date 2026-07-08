@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+See also [../docs/gym-member-pwa/INDEX.md](../docs/gym-member-pwa/INDEX.md) for the backlog and centralized docs.
+
+**When you complete or add a pending task, update [../docs/gym-member-pwa/pendientes-backlog.md](../docs/gym-member-pwa/pendientes-backlog.md) (or pendientes-checkin-qr.md if it's about the QR check-in flow) in the same task. When you add or change a flow, store, or convention described below, update this file too.**
+
 ## Commands
 
 ```bash

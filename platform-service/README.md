@@ -182,7 +182,7 @@ El esquema debe existir antes del primer arranque. Los esquemas requeridos son:
 - `seguridad` — usuarios, roles, permisos, bitácora
 - `identidad` — personas
 
-Aplica los scripts SQL del repositorio de infraestructura antes de iniciar el servicio.
+Aplica las migraciones Liquibase de `gym-administrator/db/` (mismo monorepo) antes de iniciar el servicio.
 
 ---
 
