@@ -1,0 +1,53 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: attendance-service
+
+  r2dbc:
+    url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:gym_administrator}${DB_SSL_OPTIONS:}
+    username: ${DB_USER:gym_user}
+    password: ${DB_PASSWORD:gym_pass}
+    pool:
+      initial-size: 5
+      max-size: 20
+      max-idle-time: 30m
+
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    time-zone: America/Guayaquil
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+jwt:
+  secret: ${JWT_SECRET:Y2hhbmdlLW1lLWluLXByb2R1Y3Rpb24tdGhpcy1rZXktbXVzdC1iZS0yNTYtYml0cw==}
+
+services:
+  core-service:
+    url: ${CORE_SERVICE_URL:http://localhost:8082}
+  auth-service:
+    url: ${AUTH_SERVICE_URL:http://localhost:8080}
+
+scheduling:
+  messaging-job-cron: ${MESSAGING_JOB_CRON:0 15 0 * * *}
+
+app:
+  cors:
+    allow-all: ${CORS_ALLOW_ALL:false}
+    allowed-origins:
+      - ${CORS_ORIGIN_1:http://localhost:5173}
+      - ${CORS_ORIGIN_2:http://localhost:3000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+logging:
+  level:
+    com.gymadmin.attendance: DEBUG
+    org.springframework.r2dbc: INFO

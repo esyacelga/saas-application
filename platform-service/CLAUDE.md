@@ -1,0 +1,95 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Commands
+
+```bash
+mvn clean package          # Build JAR → target/platform-service-new.jar
+mvn spring-boot:run        # Run locally (reads .env via spring-dotenv)
+mvn test                   # Unit tests
+```
+
+Copy `.env.example` to `.env` and configure before running. Required vars: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `REDIS_HOST`, `JWT_SECRET`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`.
+
+## Architecture
+
+Clean (hexagonal) architecture with Spring WebFlux (fully reactive — no blocking I/O):
+
+```
+domain/model/           → Domain entities (no framework dependencies)
+domain/port/in/         → Use case interfaces (commands as inner Records)
+domain/port/out/        → Repository interfaces
+application/service/    → Use case implementations + infrastructure services
+infrastructure/
+  adapter/in/web/       → @RestController classes + DTOs
+  adapter/out/persistence/ → R2DBC repositories, entity mappers
+  config/               → Security, Redis, Cloudinary, R2DBC auditing
+```
+
+All controllers return `Mono<T>` / `Flux<T>`. Never mix blocking calls into reactive chains.
+
+## Key Patterns
+
+**Security context** — JWT is parsed by `JwtAuthenticationFilter` (WebFilter) into a `JwtPrincipal` (implements `Principal`). Controllers extract it with:
+```java
+ReactiveSecurityContextHolder.getContext()
+    .map(SecurityContext::getAuthentication)
+    .map(Authentication::getPrincipal)
+    .cast(JwtPrincipal.class)
+```
+`JwtPrincipal` convenience methods: `isStaff()`, `isSuperAdmin()`, `isSoporte()`, `isAdminCompania()`, `isPlataforma()`.
+
+**Access control** — Always gate handlers through `AccessControlService`:
+- `requirePlataforma(principal)` — any platform operator (super_admin, soporte, viewer)
+- `requireSuperAdmin(principal)` — super_admin only
+- `requireSuperAdminOrSoporte(principal)` — super_admin or soporte
+- `requireStaff(principal)` — gym staff token
+- `requireAccessToCompania(principal, idCompania)` — staff must belong to that company
+
+**Use case commands** — Use cases define inner `record` types for commands (e.g., `CompaniaUseCase.ActualizarCompaniaCommand`). Always pass commands, not raw primitives, to use case methods.
+
+**Persistence** — R2DBC (reactive, no JPA). DB schema is `tenant` for company data, `saas` for platform data. All entities extend `BaseAuditEntity` (creacionFecha, creacionUsuario, modificaFecha, modificaUsuario populated automatically via R2DBC auditing from JWT context). **Soft-delete**: all entities have an `eliminado` boolean — filter on `eliminado = false` in all queries.
+
+**Cloudinary** — `CloudinaryService` (in `application/service/`) runs uploads on `Schedulers.boundedElastic()` to avoid blocking the event loop. Logos are stored in `gym-admin/logos/` with `public_id = "compania-{id}"`. Inject `CloudinaryService`, not the raw `Cloudinary` bean.
+
+**File uploads** — Multipart handling in reactive context uses `DataBufferUtils.join(filePart.content())` to collect bytes before calling Cloudinary.
+
+**Error handling** — `GlobalExceptionHandler` maps domain exceptions (`NotFoundException`, `ConflictException`, `ForbiddenException`, etc.) to HTTP responses. Throw these from services; do not return error `Mono`s with generic `RuntimeException`.
+
+**Redis caching** — Module check results are cached in Redis (TTL: `MODULE_CHECK_CACHE_TTL_SECONDS`, default 300s). Redis is required at startup.
+
+**Scheduled job** — `SubscriptionJobService` runs daily at 00:05 (`SUBSCRIPTION_JOB_CRON`) to check and update subscription states. Controlled by `@EnableScheduling`.
+
+**QR tokens** — 32-char random tokens (configurable via `QR_TOKEN_LENGTH`) issued per sucursal for mobile app entry validation. Endpoint `/api/v1/modulos/check` is public (no auth).
+
+## Domain Entities
+
+`Compania` (tenant company), `Sucursal` (branch), `Plan` (subscription template), `CompaniaPlan` (active subscription linking Compania+Plan), `PagoSuscripcion` (payment record), `Caracteristica` (plan feature), `PlanCaracteristica` (join), `ConfigNotifSuscripcion` (renewal notification config), `ActividadPlataforma` (audit log).
+
+## Endpoints
+
+Port **8081**. All endpoints under `/api/v1/`. Public: `/api/v1/modulos/check`, `/actuator/health`. All others require `Authorization: Bearer <jwt>`.
+
+Key route groups:
+- `CompaniaController` → `/api/v1/companias` — CRUD + wizard registration + logo upload (`POST /{id}/logo`)
+- `MiEmpresaController` → `/api/v1/mi-empresa` — staff self-service (logo upload, sucursal, QR renewal)
+- `SuscripcionController` → `/api/v1/companias/{id}/suscripciones`
+- `PagoController` → `/api/v1/companias/{id}/pagos`
+- `SucursalController` → `/api/v1/sucursales`
+- `PlanController` → `/api/v1/planes`
+- `NotifConfigController` → `/api/v1/companias/{id}/notif-config`
+
+## Multi-repo Context
+
+This service is part of a multi-repo system under `C:\Respos\own-aplications\`:
+
+| Repo | Port | Role |
+|---|---|---|
+| `auth-service` | 8080 | JWT auth, users, roles, personas |
+| **platform-service** | **8081** | **This service — SaaS platform management** |
+| `core-service` | 8083 | Gym operations (clients, memberships) |
+| `attendance-service` | 8084 | Attendance tracking |
+| `auth-service-frond-end` | 5173 | React frontend |
+
+All services share the same `JWT_SECRET` and the same PostgreSQL instance (`gym-app-saas` DB). The `identidad` schema (personas, usuarios) is owned by auth-service. Platform-service owns schemas `tenant` (companias, sucursales) and `saas` (planes, pagos, etc.).

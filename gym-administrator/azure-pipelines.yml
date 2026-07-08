@@ -1,0 +1,31 @@
+trigger:
+  branches:
+    include:
+      - master
+      - develop
+      - feature/*
+      - hotfix/*
+      - release/*
+  paths:
+    include:
+      - db/**
+      - build.gradle
+
+pool:
+  name: $(AGENT_POOL_LIQUIBASE_GRADLE)
+
+variables:
+  - group: liq-cross-gym-administrator
+
+  - ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/develop'), startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')) }}:
+    - group: liq-dev-gym-administrator
+  - ${{ if startsWith(variables['Build.SourceBranch'], 'refs/heads/release/') }}:
+    - group: liq-test-gym-administrator
+  - ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/master') }}:
+    - group: liq-prod-gym-administrator
+
+stages:
+  - template: templates/liquibase-migrate.yml@common-templates
+    parameters:
+      image: $(IMAGE_LIQUIBASE_GRADLE)
+      contexts: $(LIQUIBASE_CONTEXTS)

@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Respos/own-aplications/auth-service/src/main/java/com/gymadmin/auth/domain/model/**)",
+      "Read(//c/Respos/own-aplications/auth-service/src/main/java/com/gymadmin/auth/infrastructure/adapter/out/persistence/entity/**)",
+      "Read(//c/Respos/own-aplications/auth-service/src/main/java/com/gymadmin/auth/dto/request/**)",
+      "Read(//c/Respos/own-aplications/auth-service/src/main/java/com/gymadmin/auth/infrastructure/adapter/out/persistence/mapper/**)",
+      "Read(//c/Respos/own-aplications/auth-service/src/main/java/com/gymadmin/auth/infrastructure/adapter/out/persistence/adapter/**)",
+      "Read(//c/Respos/own-aplications/auth-service/src/main/java/com/gymadmin/auth/application/service/**)",
+      "Read(//c/Respos/own-aplications/auth-service/src/test/java/com/gymadmin/auth/**)",
+      "Read(//c/Respos/own-aplications/auth-service/**)",
+      "Bash(./mvnw compile *)"
+    ],
+    "additionalDirectories": [
+      "C:\\Respos\\own-aplications\\auth-service\\src\\main\\java\\com\\gymadmin\\auth\\domain\\model",
+      "C:\\Respos\\own-aplications\\auth-service\\src\\main\\java\\com\\gymadmin\\auth\\infrastructure\\adapter\\out\\persistence\\entity",
+      "C:\\Respos\\own-aplications\\auth-service\\src\\main\\java\\com\\gymadmin\\auth\\dto\\request",
+      "C:\\Respos\\own-aplications\\auth-service\\src\\main\\java\\com\\gymadmin\\auth\\infrastructure\\adapter\\out\\persistence\\mapper",
+      "C:\\Respos\\own-aplications\\auth-service\\src\\main\\java\\com\\gymadmin\\auth\\infrastructure\\adapter\\out\\persistence\\adapter",
+      "C:\\Respos\\own-aplications\\auth-service\\src\\main\\java\\com\\gymadmin\\auth\\application\\service",
+      "C:\\Respos\\own-aplications\\auth-service\\src\\test\\java\\com\\gymadmin\\auth",
+      "C:\\Respos\\own-aplications\\auth-service"
+    ]
+  }
+}

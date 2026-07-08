@@ -1,0 +1,280 @@
+{
+  "nav": {
+    "aria": "Navegación principal",
+    "home": "Inicio",
+    "checkin": "Check-in",
+    "membership": "Membresía",
+    "profile": "Perfil"
+  },
+  "login": {
+    "title": "Bienvenido",
+    "subtitle": "Inicia sesión en tu gimnasio",
+    "verifyingQr": "Verificando QR...",
+    "tabs": {
+      "login": "Iniciar sesión",
+      "register": "Crear cuenta"
+    },
+    "fields": {
+      "gymId": "ID de tu gimnasio",
+      "gymIdHint": "Lo encontrarás en el QR de tu gimnasio",
+      "login": "Correo o usuario",
+      "password": "Contraseña"
+    },
+    "links": {
+      "forgotPassword": "¿Olvidaste tu contraseña?"
+    },
+    "buttons": {
+      "submit": "Iniciar sesión",
+      "submitting": "Entrando…",
+      "facebook": "Continuar con Facebook"
+    },
+    "separator": "o continúa con",
+    "errors": {
+      "invalidCredentials": "Credenciales inválidas",
+      "googleError": "Error al iniciar sesión con Google",
+      "facebookError": "Error al iniciar sesión con Facebook",
+      "gymIdRequired": "Ingresa el ID de tu gimnasio primero",
+      "invalidQr": "QR inválido o expirado"
+    }
+  },
+  "registro": {
+    "title": "Crear cuenta",
+    "subtitle": "Únete a tu gimnasio",
+    "fields": {
+      "nombre": "Nombre completo",
+      "correo": "Correo electrónico",
+      "password": "Contraseña (mín. 8 caracteres)",
+      "confirmPassword": "Confirmar contraseña"
+    },
+    "buttons": {
+      "submit": "Crear cuenta",
+      "submitting": "Creando cuenta…"
+    },
+    "errors": {
+      "correoEnUso": "Ya existe una cuenta con ese correo",
+      "error": "No se pudo crear la cuenta"
+    },
+    "success": "¡Cuenta creada! Bienvenido."
+  },
+  "home": {
+    "greeting": "Hola,",
+    "cards": {
+      "membership": {
+        "title": "Mi membresía",
+        "description": "Estado y vencimiento"
+      },
+      "checkin": {
+        "title": "Check-in QR",
+        "description": "Registrar asistencia"
+      },
+      "history": {
+        "title": "Historial",
+        "description": "Últimas asistencias"
+      }
+    }
+  },
+  "checkin": {
+    "title": "Check-in",
+    "subtitle": "Registra tu asistencia",
+    "hint": "Apunta al código QR de la entrada del gimnasio",
+    "button": "Registrar asistencia",
+    "noGymInfo": "Escanea el QR del gimnasio la primera vez para configurar tu sucursal",
+    "loading": "Registrando asistencia…",
+    "yaRegistrado": {
+      "titulo": "¡Ya estás registrado hoy!",
+      "detalle": "Tu entrada de hoy ya fue registrada. ¡A entrenar!"
+    },
+    "success": {
+      "title": "¡Asistencia registrada!",
+      "labels": {
+        "date": "Fecha",
+        "entryTime": "Hora de entrada",
+        "membership": "Membresía",
+        "expires": "Vence",
+        "remainingAccess": "Accesos restantes"
+      },
+      "scanAnother": "Escanear otro código"
+    },
+    "error": {
+      "title": "No se pudo registrar",
+      "retry": "Intentar de nuevo",
+      "dismiss": "Entendido",
+      "defaultMessage": "No se pudo registrar la asistencia",
+      "razones": {
+        "sin_membresia": {
+          "titulo": "Sin membresía activa",
+          "detalle": "Acércate a recepción para adquirir un plan."
+        },
+        "membresia_expirada": {
+          "titulo": "Tu membresía venció",
+          "detalle": "Renuévala en recepción para seguir entrenando."
+        },
+        "accesos_agotados": {
+          "titulo": "Accesos agotados",
+          "detalle": "Usaste todos los ingresos de este período."
+        },
+        "congelado": {
+          "titulo": "Membresía congelada",
+          "detalle": "Tu membresía está pausada. Reactívala en la sección Membresía para volver a ingresar."
+        }
+      }
+    }
+  },
+  "membresia": {
+    "title": "Mi membresía",
+    "status": {
+      "activo": "Activo",
+      "proximo_vencer": "Próximo a vencer",
+      "vencido": "Vencido",
+      "congelado": "Congelado",
+      "riesgo_abandono": "Riesgo de abandono"
+    },
+    "card": {
+      "plan": "Plan",
+      "labels": {
+        "start": "Inicio",
+        "expiry": "Vencimiento",
+        "daysRemaining": "Días restantes",
+        "accessUsed": "Accesos usados",
+        "accessRemaining": "Accesos restantes",
+        "days": "{{count}} días"
+      }
+    },
+    "freeze": {
+      "title": "Membresía congelada",
+      "description": "Congelada desde el {{date}}. Al reactivar, la fecha de vencimiento se extenderá por los días transcurridos.",
+      "reactivate": "Reactivar membresía",
+      "reactivating": "Reactivando…"
+    },
+    "reactivated": "Membresía reactivada. La fecha de vencimiento fue extendida.",
+    "empty": {
+      "title": "Sin membresía activa",
+      "description": "Habla con recepción para adquirir un plan.",
+      "retry": "Reintentar"
+    },
+    "update": "Actualizar",
+    "errors": {
+      "load": "Error al cargar tu membresía",
+      "reactivate": "No se pudo reactivar la membresía"
+    },
+    "success": {
+      "reactivated": "Membresía reactivada correctamente"
+    }
+  },
+  "historial": {
+    "title": "Historial de asistencias",
+    "back": "Volver",
+    "stats": {
+      "daysAttended": "Días asistidos",
+      "currentStreak": "Racha actual",
+      "bestStreak": "Mejor racha"
+    },
+    "heatmap": {
+      "title": "Últimos 30 días",
+      "legend": {
+        "attended": "Asistió",
+        "absent": "Ausente",
+        "noData": "Sin datos"
+      }
+    },
+    "records": {
+      "title": "Registros recientes",
+      "total": "{{count}} en total",
+      "empty": "Sin registros"
+    },
+    "errors": {
+      "load": "Error al cargar el historial"
+    }
+  },
+  "profile": {
+    "title": "Mi perfil",
+    "labels": {
+      "name": "Nombre",
+      "gym": "Gimnasio"
+    },
+    "theme": {
+      "title": "Tema de color",
+      "hint": "El punto indica el tema sugerido según tu perfil"
+    },
+    "language": {
+      "title": "Idioma"
+    },
+    "edit": {
+      "title": "Mis datos",
+      "ciLocked": "no editable una vez guardada",
+      "fields": {
+        "correo": "Correo electrónico",
+        "nombre": "Nombre completo",
+        "ci": "Cédula de identidad",
+        "telefono": "Teléfono",
+        "sexo": "Sexo",
+        "fechaNacimiento": "Fecha de nacimiento"
+      },
+      "sexo": {
+        "M": "Masculino",
+        "F": "Femenino"
+      },
+      "buttons": {
+        "save": "Guardar cambios",
+        "saving": "Guardando…",
+        "changePhoto": "Cambiar foto"
+      },
+      "errors": {
+        "load": "Error al cargar tu perfil",
+        "save": "Error al guardar los cambios",
+        "photoSize": "La foto debe pesar menos de 5 MB",
+        "photoUpload": "Error al subir la foto"
+      },
+      "success": "Perfil actualizado"
+    },
+    "logout": "Cerrar sesión",
+    "success": {
+      "logout": "Sesión cerrada"
+    }
+  },
+  "forgotPassword": {
+    "title": "Recuperar contraseña",
+    "subtitle": "Te enviaremos instrucciones a tu correo",
+    "fields": {
+      "gymId": "ID de tu gimnasio",
+      "email": "Correo electrónico"
+    },
+    "buttons": {
+      "submit": "Enviar instrucciones",
+      "submitting": "Enviando…",
+      "backToLogin": "Volver al inicio de sesión"
+    },
+    "success": {
+      "title": "Revisa tu correo",
+      "message": "Si el correo está registrado, recibirás las instrucciones en breve."
+    },
+    "errors": {
+      "send": "No se pudieron enviar las instrucciones"
+    }
+  },
+  "install": {
+    "title": "Instalar GymMember",
+    "description": "Accede más rápido desde tu pantalla de inicio",
+    "button": "Instalar",
+    "dismiss": "Cerrar"
+  },
+  "resetPassword": {
+    "title": "Nueva contraseña",
+    "subtitle": "Ingresa tu nueva contraseña",
+    "fields": {
+      "gymId": "ID de tu gimnasio",
+      "newPassword": "Nueva contraseña",
+      "confirmPassword": "Confirmar contraseña"
+    },
+    "buttons": {
+      "submit": "Cambiar contraseña",
+      "submitting": "Cambiando…"
+    },
+    "errors": {
+      "passwordMismatch": "Las contraseñas no coinciden",
+      "invalidToken": "El enlace es inválido o ha expirado",
+      "reset": "No se pudo cambiar la contraseña"
+    },
+    "success": "Contraseña cambiada correctamente"
+  }
+}

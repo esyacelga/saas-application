@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Respos/own-aplications/gym-administrator/**)",
+      "Read(//c/Respos/own-aplications/auth-service/**)",
+      "Bash(cd \"C:\\\\Respos\\\\own-aplications\\\\platform-service\" && find . -type f -name \"*.java\" | grep -i \"config\\\\|security\" | head -20)",
+      "Read(//c/Respos/own-aplications/platform-service/**)"
+    ]
+  }
+}

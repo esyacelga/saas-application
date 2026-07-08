@@ -1,0 +1,41 @@
+plugins {
+    id 'org.liquibase.gradle' version '2.2.0'
+    id 'java'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+group = 'com.gymsystem'
+version = '1.0.0'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    liquibaseRuntime 'org.liquibase:liquibase-core:4.25.0'
+    liquibaseRuntime 'org.liquibase:liquibase-groovy-dsl:3.0.3'
+    liquibaseRuntime 'org.postgresql:postgresql:42.6.0'
+    liquibaseRuntime 'org.yaml:snakeyaml:2.2'
+    liquibaseRuntime 'info.picocli:picocli:4.7.5'
+}
+
+liquibase {
+    activities {
+        main {
+            changelogFile 'db/scripts/main-changelog.yml'
+            url dbUrl
+            username dbUser
+            password dbPassword
+            driver 'org.postgresql.Driver'
+            logLevel logLevel
+            contexts contexts
+            defaultSchemaName defaultSchema
+            liquibaseSchemaName defaultLiquibaseSchema
+        }
+    }
+    runList = 'main'
+}

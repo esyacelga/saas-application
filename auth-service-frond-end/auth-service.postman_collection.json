@@ -1,0 +1,743 @@
+{
+  "info": {
+    "name": "Auth Service — Gym Administrator",
+    "description": "Colección completa de endpoints del Auth Service (v1). Base URL: http://localhost:8080/api/v1",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url",         "value": "http://localhost:8080/api/v1" },
+    { "key": "access_token",     "value": "" },
+    { "key": "refresh_token",    "value": "" },
+    { "key": "platform_token",   "value": "" },
+    { "key": "staff_token",      "value": "" },
+    { "key": "cliente_token",    "value": "" }
+  ],
+  "item": [
+    {
+      "name": "🔐 Autenticación",
+      "item": [
+        {
+          "name": "Login Plataforma (super_admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('platform_token', body.access_token);",
+                  "  pm.collectionVariables.set('refresh_token', body.refresh_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/auth/platform/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"root@gym-admin.local\",\n  \"password\": \"seya1922\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login Staff",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('staff_token', body.access_token);",
+                  "  pm.collectionVariables.set('refresh_token', body.refresh_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"root@gym-admin.local\",\n  \"password\": \"seya1922\",\n  \"id_compania\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Login Cliente (App móvil)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('cliente_token', body.access_token);",
+                  "  pm.collectionVariables.set('refresh_token', body.refresh_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/auth/app/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"maria@test.com\",\n  \"password\": \"Test2026!\",\n  \"id_compania\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('access_token', body.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/auth/refresh",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" }
+            ],
+            "url": "{{base_url}}/auth/logout"
+          }
+        },
+        {
+          "name": "Solicitar Reset de Contraseña",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/auth/password/reset-request",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"root@gym-admin.local\",\n  \"id_compania\": 1,\n  \"tipo\": \"staff\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Aplicar Reset de Contraseña",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/auth/password/reset",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<token_recuperacion>\",\n  \"nueva_password\": \"NuevaClave789!\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏢 Usuarios de Plataforma",
+      "description": "Requiere JWT tipo plataforma con rol_plataforma=super_admin",
+      "item": [
+        {
+          "name": "Listar Operadores de Plataforma",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{platform_token}}" }
+            ],
+            "url": "{{base_url}}/platform/usuarios"
+          }
+        },
+        {
+          "name": "Crear Operador de Plataforma",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{platform_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": "{{base_url}}/platform/usuarios",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Ana Soporte\",\n  \"correo\": \"ana@gymadministrator.com\",\n  \"password\": \"TempPass2026!\",\n  \"rol\": \"soporte\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Desactivar Operador de Plataforma",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{platform_token}}" }
+            ],
+            "url": "{{base_url}}/platform/usuarios/2/desactivar"
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 Personas",
+      "item": [
+        {
+          "name": "Buscar Persona por CI",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" }
+            ],
+            "url": "{{base_url}}/personas/ci/1001234567"
+          }
+        },
+        {
+          "name": "Crear Persona",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": "{{base_url}}/personas",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ci\": \"1001234567\",\n  \"nombre\": \"María López\",\n  \"telefono\": \"0991234567\",\n  \"correo\": \"maria@gmail.com\",\n  \"fecha_nacimiento\": \"1990-05-15\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Actualizar Persona",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": "{{base_url}}/personas/10",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telefono\": \"0999999999\",\n  \"correo\": \"nuevocorreo@gmail.com\",\n  \"foto_url\": \"https://cdn.example.com/fotos/persona-10.jpg\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎭 Roles",
+      "description": "Requiere JWT staff + permiso roles:leer / roles:crear",
+      "item": [
+        {
+          "name": "Listar Roles de la Compañía",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" }
+            ],
+            "url": "{{base_url}}/roles"
+          }
+        },
+        {
+          "name": "Crear Rol",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": "{{base_url}}/roles",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Entrenador\",\n  \"descripcion\": \"Acceso a clientes y asistencia\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Ver Permisos del Rol",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" }
+            ],
+            "url": "{{base_url}}/roles/1/permisos"
+          }
+        },
+        {
+          "name": "Actualizar Permisos del Rol (bulk)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": "{{base_url}}/roles/1/permisos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_permisos\": [1, 2, 3, 4]\n}"
+            }
+          }
+        },
+        {
+          "name": "Buscar Rol por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" }
+            ],
+            "url": "{{base_url}}/roles/1"
+          }
+        },
+        {
+          "name": "Eliminar Rol",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" }
+            ],
+            "url": "{{base_url}}/roles/3"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔑 Permisos",
+      "item": [
+        {
+          "name": "Listar Permisos de la Compañía",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" }
+            ],
+            "url": "{{base_url}}/permisos"
+          }
+        },
+        {
+          "name": "Permisos por Rol",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" }
+            ],
+            "url": "{{base_url}}/permisos/by-rol/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "👥 Usuarios Staff",
+      "description": "Requiere permiso usuarios:leer / usuarios:crear",
+      "item": [
+        {
+          "name": "Listar Usuarios Staff",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" }
+            ],
+            "url": "{{base_url}}/usuarios"
+          }
+        },
+        {
+          "name": "Crear Usuario Staff",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": "{{base_url}}/usuarios",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Ana Torres\",\n  \"correo\": \"ana@gym.com\",\n  \"id_rol\": 2,\n  \"id_sucursal\": 1,\n  \"password_temporal\": \"TempAna2026!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Editar Usuario Staff",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": "{{base_url}}/usuarios/42",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Ana Torres Actualizado\",\n  \"correo\": \"ana.nuevo@gym.com\",\n  \"id_rol\": 3\n}"
+            }
+          }
+        },
+        {
+          "name": "Ver Permisos Resueltos del Usuario",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" }
+            ],
+            "url": "{{base_url}}/usuarios/42/permisos"
+          }
+        },
+        {
+          "name": "Desactivar Usuario Staff",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" }
+            ],
+            "url": "{{base_url}}/usuarios/42/desactivar"
+          }
+        },
+        {
+          "name": "Activar Usuario Staff",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" }
+            ],
+            "url": "{{base_url}}/usuarios/42/activar"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📱 Usuarios App (Clientes)",
+      "item": [
+        {
+          "name": "Crear Acceso App para Cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": "{{base_url}}/app-usuarios",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_persona\": 10,\n  \"login\": \"maria@gmail.com\",\n  \"password\": \"PrimerAcceso123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Activar Usuario App",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" }
+            ],
+            "url": "{{base_url}}/app-usuarios/1/activar"
+          }
+        },
+        {
+          "name": "Desactivar Usuario App",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" }
+            ],
+            "url": "{{base_url}}/app-usuarios/1/desactivar"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔍 Roles — Panel Plataforma",
+      "description": "GET: cualquier token plataforma (super_admin, soporte, viewer). POST / PATCH / DELETE / PUT permisos: solo super_admin.",
+      "item": [
+        {
+          "name": "Listar Todos los Roles",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{platform_token}}" }
+            ],
+            "url": "{{base_url}}/platform/roles"
+          }
+        },
+        {
+          "name": "Listar Compañías",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{platform_token}}" }
+            ],
+            "url": "{{base_url}}/platform/companias"
+          }
+        },
+        {
+          "name": "Ver Rol con Permisos",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{platform_token}}" }
+            ],
+            "url": "{{base_url}}/platform/roles/1/permisos"
+          }
+        },
+        {
+          "name": "Ver Rol con Permisos — 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{platform_token}}" }
+            ],
+            "url": "{{base_url}}/platform/roles/999999/permisos"
+          }
+        },
+        {
+          "name": "Crear Rol de Plataforma",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{platform_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": "{{base_url}}/platform/roles",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Administrador Gym\",\n  \"descripcion\": \"Rol con acceso completo a la compañía\",\n  \"id_compania\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Crear Rol de Plataforma (sin descripción)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{platform_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": "{{base_url}}/platform/roles",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Recepción\",\n  \"id_compania\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Crear Rol — Validación 400 (nombre vacío)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{platform_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": "{{base_url}}/platform/roles",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"\",\n  \"id_compania\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Actualizar Rol de Plataforma",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{platform_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": "{{base_url}}/platform/roles/1",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Administrador General\",\n  \"descripcion\": \"Acceso completo actualizado\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Actualizar Rol — Borrar descripción (null)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{platform_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": "{{base_url}}/platform/roles/1",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Administrador General\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Actualizar Rol — 404",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{platform_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": "{{base_url}}/platform/roles/999999",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"No existe\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reemplazar Permisos del Rol",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{platform_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": "{{base_url}}/platform/roles/1/permisos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_permisos\": [1, 2, 3, 4]\n}"
+            }
+          }
+        },
+        {
+          "name": "Reemplazar Permisos — Vaciar todos",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{platform_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": "{{base_url}}/platform/roles/1/permisos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_permisos\": []\n}"
+            }
+          }
+        },
+        {
+          "name": "Reemplazar Permisos — 404",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{platform_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": "{{base_url}}/platform/roles/999999/permisos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_permisos\": [1]\n}"
+            }
+          }
+        },
+        {
+          "name": "Eliminar Rol de Plataforma",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{platform_token}}" }
+            ],
+            "url": "{{base_url}}/platform/roles/5"
+          }
+        },
+        {
+          "name": "Eliminar Rol — 409 (tiene usuarios)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{platform_token}}" }
+            ],
+            "url": "{{base_url}}/platform/roles/1"
+          }
+        },
+        {
+          "name": "Eliminar Rol — 404",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{platform_token}}" }
+            ],
+            "url": "{{base_url}}/platform/roles/999999"
+          }
+        },
+        {
+          "name": "Escritura — Token Staff (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": "{{base_url}}/platform/roles",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Acceso Negado\",\n  \"id_compania\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Lectura — Token Staff (403)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" }
+            ],
+            "url": "{{base_url}}/platform/roles"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📋 Bitácora",
+      "item": [
+        {
+          "name": "Consultar Bitácora (sin filtros)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/bitacora?pagina=1&limit=50",
+              "host": ["{{base_url}}"],
+              "path": ["bitacora"],
+              "query": [
+                { "key": "pagina", "value": "1" },
+                { "key": "limit",  "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consultar Bitácora (con filtros)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{staff_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/bitacora?modulo=seguridad&desde=2026-05-01T00:00:00Z&hasta=2026-05-31T23:59:59Z&idUsuario=42&pagina=1&limit=50",
+              "host": ["{{base_url}}"],
+              "path": ["bitacora"],
+              "query": [
+                { "key": "modulo",     "value": "seguridad" },
+                { "key": "desde",      "value": "2026-05-01T00:00:00Z" },
+                { "key": "hasta",      "value": "2026-05-31T23:59:59Z" },
+                { "key": "idUsuario",  "value": "42" },
+                { "key": "pagina",     "value": "1" },
+                { "key": "limit",      "value": "50" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

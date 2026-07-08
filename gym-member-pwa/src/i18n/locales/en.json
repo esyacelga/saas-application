@@ -1,0 +1,280 @@
+{
+  "nav": {
+    "aria": "Main navigation",
+    "home": "Home",
+    "checkin": "Check-in",
+    "membership": "Membership",
+    "profile": "Profile"
+  },
+  "login": {
+    "title": "Welcome",
+    "subtitle": "Sign in to your gym",
+    "verifyingQr": "Verifying QR...",
+    "tabs": {
+      "login": "Sign in",
+      "register": "Create account"
+    },
+    "fields": {
+      "gymId": "Gym ID",
+      "gymIdHint": "Found in your gym's QR code",
+      "login": "Email or username",
+      "password": "Password"
+    },
+    "links": {
+      "forgotPassword": "Forgot your password?"
+    },
+    "buttons": {
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "facebook": "Continue with Facebook"
+    },
+    "separator": "or continue with",
+    "errors": {
+      "invalidCredentials": "Invalid credentials",
+      "googleError": "Error signing in with Google",
+      "facebookError": "Error signing in with Facebook",
+      "gymIdRequired": "Enter your gym ID first",
+      "invalidQr": "Invalid or expired QR"
+    }
+  },
+  "registro": {
+    "title": "Create account",
+    "subtitle": "Join your gym",
+    "fields": {
+      "nombre": "Full name",
+      "correo": "Email address",
+      "password": "Password (min. 8 characters)",
+      "confirmPassword": "Confirm password"
+    },
+    "buttons": {
+      "submit": "Create account",
+      "submitting": "Creating account…"
+    },
+    "errors": {
+      "correoEnUso": "An account with that email already exists",
+      "error": "Could not create account"
+    },
+    "success": "Account created! Welcome."
+  },
+  "home": {
+    "greeting": "Hello,",
+    "cards": {
+      "membership": {
+        "title": "My membership",
+        "description": "Status and expiry"
+      },
+      "checkin": {
+        "title": "QR Check-in",
+        "description": "Register attendance"
+      },
+      "history": {
+        "title": "History",
+        "description": "Recent attendances"
+      }
+    }
+  },
+  "checkin": {
+    "title": "Check-in",
+    "subtitle": "Register your attendance",
+    "hint": "Point at the QR code at the gym entrance",
+    "button": "Register attendance",
+    "noGymInfo": "Scan the gym QR code once to set up your branch",
+    "loading": "Registering attendance…",
+    "yaRegistrado": {
+      "titulo": "You're already checked in today!",
+      "detalle": "Your entry for today was already recorded. Go train!"
+    },
+    "success": {
+      "title": "Attendance registered!",
+      "labels": {
+        "date": "Date",
+        "entryTime": "Entry time",
+        "membership": "Membership",
+        "expires": "Expires",
+        "remainingAccess": "Remaining access"
+      },
+      "scanAnother": "Scan another code"
+    },
+    "error": {
+      "title": "Could not register",
+      "retry": "Try again",
+      "dismiss": "Got it",
+      "defaultMessage": "Could not register attendance",
+      "razones": {
+        "sin_membresia": {
+          "titulo": "No active membership",
+          "detalle": "Visit reception to get a plan."
+        },
+        "membresia_expirada": {
+          "titulo": "Your membership has expired",
+          "detalle": "Renew it at reception to keep training."
+        },
+        "accesos_agotados": {
+          "titulo": "Access passes used up",
+          "detalle": "You've used all entries for this period."
+        },
+        "congelado": {
+          "titulo": "Membership frozen",
+          "detalle": "Your membership is paused. Reactivate it in the Membership section to check in again."
+        }
+      }
+    }
+  },
+  "membresia": {
+    "title": "My membership",
+    "status": {
+      "activo": "Active",
+      "proximo_vencer": "Expiring soon",
+      "vencido": "Expired",
+      "congelado": "Frozen",
+      "riesgo_abandono": "Churn risk"
+    },
+    "card": {
+      "plan": "Plan",
+      "labels": {
+        "start": "Start",
+        "expiry": "Expiry",
+        "daysRemaining": "Days remaining",
+        "accessUsed": "Access used",
+        "accessRemaining": "Access remaining",
+        "days": "{{count}} days"
+      }
+    },
+    "freeze": {
+      "title": "Membership frozen",
+      "description": "Frozen since {{date}}. Upon reactivation, the expiry date will be extended by the elapsed days.",
+      "reactivate": "Reactivate membership",
+      "reactivating": "Reactivating…"
+    },
+    "reactivated": "Membership reactivated. Expiry date has been extended.",
+    "empty": {
+      "title": "No active membership",
+      "description": "Talk to reception to get a plan.",
+      "retry": "Retry"
+    },
+    "update": "Update",
+    "errors": {
+      "load": "Error loading your membership",
+      "reactivate": "Could not reactivate membership"
+    },
+    "success": {
+      "reactivated": "Membership reactivated successfully"
+    }
+  },
+  "historial": {
+    "title": "Attendance history",
+    "back": "Go back",
+    "stats": {
+      "daysAttended": "Days attended",
+      "currentStreak": "Current streak",
+      "bestStreak": "Best streak"
+    },
+    "heatmap": {
+      "title": "Last 30 days",
+      "legend": {
+        "attended": "Attended",
+        "absent": "Absent",
+        "noData": "No data"
+      }
+    },
+    "records": {
+      "title": "Recent records",
+      "total": "{{count}} total",
+      "empty": "No records"
+    },
+    "errors": {
+      "load": "Error loading history"
+    }
+  },
+  "profile": {
+    "title": "My profile",
+    "labels": {
+      "name": "Name",
+      "gym": "Gym"
+    },
+    "theme": {
+      "title": "Color theme",
+      "hint": "The dot indicates the suggested theme based on your profile"
+    },
+    "language": {
+      "title": "Language"
+    },
+    "edit": {
+      "title": "My data",
+      "ciLocked": "not editable once saved",
+      "fields": {
+        "correo": "Email address",
+        "nombre": "Full name",
+        "ci": "ID number",
+        "telefono": "Phone",
+        "sexo": "Sex",
+        "fechaNacimiento": "Date of birth"
+      },
+      "sexo": {
+        "M": "Male",
+        "F": "Female"
+      },
+      "buttons": {
+        "save": "Save changes",
+        "saving": "Saving…",
+        "changePhoto": "Change photo"
+      },
+      "errors": {
+        "load": "Error loading your profile",
+        "save": "Error saving changes",
+        "photoSize": "Photo must be less than 5 MB",
+        "photoUpload": "Error uploading photo"
+      },
+      "success": "Profile updated"
+    },
+    "logout": "Sign out",
+    "success": {
+      "logout": "Signed out"
+    }
+  },
+  "forgotPassword": {
+    "title": "Recover password",
+    "subtitle": "We'll send instructions to your email",
+    "fields": {
+      "gymId": "Gym ID",
+      "email": "Email address"
+    },
+    "buttons": {
+      "submit": "Send instructions",
+      "submitting": "Sending…",
+      "backToLogin": "Back to sign in"
+    },
+    "success": {
+      "title": "Check your email",
+      "message": "If the email is registered, you will receive instructions shortly."
+    },
+    "errors": {
+      "send": "Could not send instructions"
+    }
+  },
+  "install": {
+    "title": "Install GymMember",
+    "description": "Access faster from your home screen",
+    "button": "Install",
+    "dismiss": "Dismiss"
+  },
+  "resetPassword": {
+    "title": "New password",
+    "subtitle": "Enter your new password",
+    "fields": {
+      "gymId": "Gym ID",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm password"
+    },
+    "buttons": {
+      "submit": "Change password",
+      "submitting": "Changing…"
+    },
+    "errors": {
+      "passwordMismatch": "Passwords don't match",
+      "invalidToken": "The link is invalid or has expired",
+      "reset": "Could not change password"
+    },
+    "success": "Password changed successfully"
+  }
+}

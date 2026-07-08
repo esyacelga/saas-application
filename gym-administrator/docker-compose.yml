@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: gym-app-saas-db
+    environment:
+      POSTGRES_DB: "gym-app-saas"
+      POSTGRES_USER: "administrador"
+      POSTGRES_PASSWORD: "seya1922"
+    ports:
+      - "5432:5432"
+    volumes:
+      - gym_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U administrador -d gym-app-saas"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  liquibase:
+    image: liquibase/liquibase:4.25.0
+    container_name: gym-app-saas-liquibase
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./db/scripts:/liquibase/changelog
+    command:
+      - "--changelog-file=main-changelog.yml"
+      - "--url=jdbc:postgresql://postgres:5432/gym-app-saas"
+      - "--username=administrador"
+      - "--password=seya1922"
+      - "--log-level=INFO"
+      - "update"
+
+volumes:
+  gym_db_data:
+    name: gym-app-saas-data

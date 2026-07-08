@@ -1,0 +1,24 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: platform-service-test
+  r2dbc:
+    url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:gym-app-saas}
+    username: ${DB_USER:administrador}
+    password: ${DB_PASSWORD:seya1922}
+jwt:
+  secret: ${JWT_SECRET:Y2hhbmdlLW1lLWluLXByb2R1Y3Rpb24tdGhpcy1rZXktbXVzdC1iZS0yNTYtYml0cw==}
+
+qr-token:
+  length: 32
+
+subscription:
+  job:
+    cron: "-"
+
+logging:
+  level:
+    com.gymadmin.platform: DEBUG
+    io.r2dbc: DEBUG

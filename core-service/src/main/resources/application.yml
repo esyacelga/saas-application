@@ -1,0 +1,40 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: core-service
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+  r2dbc:
+    url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:gym_administrator}${DB_SSL_OPTIONS:}
+    username: ${DB_USER:gym_user}
+    password: ${DB_PASSWORD:gym_pass}
+jwt:
+  secret: ${JWT_SECRET:Y2hhbmdlLW1lLWluLXByb2R1Y3Rpb24tdGhpcy1rZXktbXVzdC1iZS0yNTYtYml0cw==}
+
+platform-service:
+  url: ${PLATFORM_SERVICE_URL:http://localhost:8081}
+
+client:
+  status:
+    job:
+      cron: ${CLIENT_STATUS_JOB_CRON:0 10 0 * * *}
+
+carnet:
+  prefix: ${CARNET_PREFIX:GYM}
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+    allow-all: ${CORS_ALLOW_ALL:true}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+logging:
+  level:
+    com.gymadmin.core: DEBUG

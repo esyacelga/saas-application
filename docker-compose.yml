@@ -1,0 +1,286 @@
+services:
+
+  # ── Infrastructure ────────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: gym-postgres
+    environment:
+      POSTGRES_DB: gym-app-saas
+      POSTGRES_USER: administrador
+      POSTGRES_PASSWORD: seya1922
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U administrador -d gym-app-saas"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - gymadmin-net
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: gym-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - gymadmin-net
+    restart: unless-stopped
+
+  liquibase:
+    image: liquibase/liquibase:4.25.0
+    container_name: gym-liquibase
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./gym-administrator/db/scripts:/liquibase/changelog
+    command:
+      - "--changelog-file=main-changelog.yml"
+      - "--url=jdbc:postgresql://postgres:5432/gym-app-saas"
+      - "--username=administrador"
+      - "--password=seya1922"
+      - "--log-level=INFO"
+      - "update"
+    networks:
+      - gymadmin-net
+
+  # ── Microservices ─────────────────────────────────────────────────────────────
+
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: gym-app-saas
+      DB_USER: administrador
+      DB_PASSWORD: seya1922
+      JWT_SECRET: ${JWT_SECRET:-Y2hhbmdlLW1lLWluLXByb2R1Y3Rpb24tdGhpcy1rZXktbXVzdC1iZS0yNTYtYml0cw==}
+      JWT_EXPIRY_STAFF: ${JWT_EXPIRY_STAFF:-28800}
+      JWT_EXPIRY_CLIENTE: ${JWT_EXPIRY_CLIENTE:-604800}
+      JWT_REFRESH_EXPIRY: ${JWT_REFRESH_EXPIRY:-2592000}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
+      MAX_LOGIN_ATTEMPTS: ${MAX_LOGIN_ATTEMPTS:-5}
+      LOGIN_LOCKOUT_MINUTES: ${LOGIN_LOCKOUT_MINUTES:-15}
+      PWD_RESET_TOKEN_EXPIRY_HOURS: ${PWD_RESET_TOKEN_EXPIRY_HOURS:-1}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      CORS_ALLOW_ALL: ${CORS_ALLOW_ALL:-true}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      liquibase:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - gymadmin-net
+    restart: unless-stopped
+
+  platform-service:
+    build:
+      context: ./platform-service
+      dockerfile: Dockerfile
+    container_name: platform-service
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: gym-app-saas
+      DB_USER: administrador
+      DB_PASSWORD: seya1922
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-Y2hhbmdlLW1lLWluLXByb2R1Y3Rpb24tdGhpcy1rZXktbXVzdC1iZS0yNTYtYml0cw==}
+      MODULE_CHECK_CACHE_TTL_SECONDS: ${MODULE_CHECK_CACHE_TTL_SECONDS:-300}
+      QR_TOKEN_LENGTH: ${QR_TOKEN_LENGTH:-32}
+      SUBSCRIPTION_JOB_CRON: ${SUBSCRIPTION_JOB_CRON:-0 5 0 * * *}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      CORS_ALLOW_ALL: ${CORS_ALLOW_ALL:-true}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      liquibase:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - gymadmin-net
+    restart: unless-stopped
+
+  core-service:
+    build:
+      context: ./core-service
+      dockerfile: Dockerfile
+    container_name: core-service
+    ports:
+      - "8083:8083"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: gym-app-saas
+      DB_USER: administrador
+      DB_PASSWORD: seya1922
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-Y2hhbmdlLW1lLWluLXByb2R1Y3Rpb24tdGhpcy1rZXktbXVzdC1iZS0yNTYtYml0cw==}
+      PLATFORM_SERVICE_URL: http://platform-service:8081
+      CLIENT_STATUS_JOB_CRON: ${CLIENT_STATUS_JOB_CRON:-0 10 0 * * *}
+      CARNET_PREFIX: ${CARNET_PREFIX:-GYM}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      CORS_ALLOW_ALL: ${CORS_ALLOW_ALL:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      liquibase:
+        condition: service_completed_successfully
+      platform-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8083/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - gymadmin-net
+    restart: unless-stopped
+
+  attendance-service:
+    build:
+      context: ./attendance-service
+      dockerfile: Dockerfile
+    container_name: attendance-service
+    ports:
+      - "8084:8084"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: gym-app-saas
+      DB_USER: administrador
+      DB_PASSWORD: seya1922
+      JWT_SECRET: ${JWT_SECRET:-Y2hhbmdlLW1lLWluLXByb2R1Y3Rpb24tdGhpcy1rZXktbXVzdC1iZS0yNTYtYml0cw==}
+      CORE_SERVICE_URL: http://core-service:8083
+      AUTH_SERVICE_URL: http://auth-service:8080
+      MESSAGING_JOB_CRON: ${MESSAGING_JOB_CRON:-0 15 0 * * *}
+      CORS_ALLOW_ALL: ${CORS_ALLOW_ALL:-false}
+      CORS_ORIGIN_1: ${CORS_ORIGIN_1:-http://localhost:5173}
+      CORS_ORIGIN_2: ${CORS_ORIGIN_2:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      liquibase:
+        condition: service_completed_successfully
+      auth-service:
+        condition: service_healthy
+      core-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8084/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - gymadmin-net
+    restart: unless-stopped
+
+  admin-frontend:
+    build:
+      context: ./auth-service-frond-end
+      dockerfile: Dockerfile
+      args:
+        VITE_API_AUTH_URL: ${VITE_API_AUTH_URL:-http://localhost:8080/api/v1}
+        VITE_API_PLATFORM_URL: ${VITE_API_PLATFORM_URL:-http://localhost:8081/api/v1}
+        VITE_API_CORE_URL: ${VITE_API_CORE_URL:-http://localhost:8083/api/v1}
+        VITE_API_ATTENDANCE_URL: ${VITE_API_ATTENDANCE_URL:-http://localhost:8084/api/v1}
+        VITE_APP_NAME: ${VITE_APP_NAME:-GymAdmin}
+        VITE_CLIENT_APP_URL: ${VITE_CLIENT_APP_URL:-http://localhost:5174}
+        VITE_API_BASE_URL: ${VITE_API_AUTH_URL:-http://localhost:8080/api/v1}
+        VITE_AVATAR_HOMBRE_URL: ${VITE_AVATAR_HOMBRE_URL:-https://res.cloudinary.com/dmlco6mio/image/upload/v1781449426/hombre_avatar_ej8fbn.png}
+        VITE_AVATAR_MUJER_URL: ${VITE_AVATAR_MUJER_URL:-https://res.cloudinary.com/dmlco6mio/image/upload/v1781449480/mujer_avatar_02_pkgg19.png}
+        VITE_AVATAR_LOGO_COMPANY: ${VITE_AVATAR_LOGO_COMPANY:-}
+    container_name: admin-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      platform-service:
+        condition: service_healthy
+      core-service:
+        condition: service_healthy
+      attendance-service:
+        condition: service_healthy
+    networks:
+      - gymadmin-net
+    restart: unless-stopped
+
+  member-pwa:
+    build:
+      context: ./gym-member-pwa
+      dockerfile: Dockerfile
+      args:
+        VITE_AUTH_API_URL: ${VITE_AUTH_API_URL:-http://localhost:8080/api/v1}
+        VITE_CORE_API_URL: ${VITE_CORE_API_URL:-http://localhost:8083/api/v1}
+        VITE_ATTENDANCE_API_URL: ${VITE_ATTENDANCE_API_URL:-http://localhost:8084/api/v1}
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
+        VITE_FACEBOOK_APP_ID: ${VITE_FACEBOOK_APP_ID:-}
+    container_name: member-pwa
+    ports:
+      - "5174:80"
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      core-service:
+        condition: service_healthy
+      attendance-service:
+        condition: service_healthy
+    networks:
+      - gymadmin-net
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+
+networks:
+  gymadmin-net:
+    driver: bridge

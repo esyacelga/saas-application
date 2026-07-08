@@ -1,0 +1,604 @@
+// ============================================================
+// Gym Administrator — Diagrama de Base de Datos
+// Schemas: saas, identidad, tenant, config, seguridad,
+//          core, asistencia, finanzas, marketing, inventario
+// Generado: 2026-05-18 | HU: GYM-001
+// ============================================================
+
+// ── SaaS ─────────────────────────────────────────────────────
+
+Table "saas"."planes" {
+  id             int           [pk, increment, not null]
+  nombre         varchar(100)  [not null]
+  descripcion    text
+  precio_mensual decimal(10,2) [not null]
+  activo         boolean       [not null, default: true]
+  created_at     timestamptz   [not null, default: `now()`]
+}
+
+Table "saas"."caracteristicas" {
+  id     int          [pk, increment, not null]
+  codigo varchar(50)  [not null, unique]
+  nombre varchar(100) [not null]
+  modulo varchar(50)  [not null]
+  activo boolean      [not null, default: true]
+}
+
+Table "saas"."plan_caracteristicas" {
+  id_plan           int [not null, ref: > "saas"."planes".id]
+  id_caracteristica int [not null, ref: > "saas"."caracteristicas".id]
+
+  indexes {
+    (id_plan, id_caracteristica) [pk]
+  }
+}
+
+// ── Identidad ─────────────────────────────────────────────────
+
+Table "identidad"."personas" {
+  id               int          [pk, increment, not null]
+  ci               varchar(20)  [not null, unique]
+  nombre           varchar(150) [not null]
+  telefono         varchar(20)
+  correo           varchar(150)
+  foto_url         varchar(255)
+  fecha_nacimiento date
+  created_at       timestamptz  [not null, default: `now()`]
+}
+
+Table "identidad"."usuarios_app" {
+  id                  int          [pk, increment, not null]
+  id_persona          int          [not null, ref: > "identidad"."personas".id]
+  id_compania         int          [not null]
+  login               varchar(150) [not null]
+  password_hash       varchar(255) [not null]
+  requiere_cambio_pwd boolean      [not null, default: true]
+  activo              boolean      [not null, default: true]
+  ultimo_acceso       timestamptz
+  token_recuperacion  varchar(100)
+  token_expira        timestamptz
+  created_at          timestamptz  [not null, default: `now()`]
+
+  indexes {
+    (id_persona, id_compania) [unique]
+    (id_compania, login)      [unique]
+  }
+}
+
+// ── Tenant ────────────────────────────────────────────────────
+
+Table "tenant"."companias" {
+  id         int          [pk, increment, not null]
+  nombre     varchar(150) [not null]
+  ruc        varchar(20)  [not null, unique]
+  logo_url   varchar(255)
+  telefono   varchar(20)
+  whatsapp   varchar(20)
+  correo     varchar(150)
+  activo     boolean      [not null, default: true]
+  created_at timestamptz  [not null, default: `now()`]
+}
+
+Table "tenant"."sucursales" {
+  id           int          [pk, increment, not null]
+  id_compania  int          [not null, ref: > "tenant"."companias".id]
+  nombre       varchar(150) [not null]
+  direccion    varchar(255)
+  es_principal boolean      [not null, default: false]
+  activo       boolean      [not null, default: true]
+  created_at   timestamptz  [not null, default: `now()`]
+}
+
+Table "tenant"."compania_planes" {
+  id                    int           [pk, increment, not null]
+  id_compania           int           [not null, ref: > "tenant"."companias".id]
+  id_plan               int           [not null, ref: > "saas"."planes".id]
+  fecha_inicio          date          [not null]
+  fecha_fin             date          [not null]
+  dias_gracia           int           [not null, default: 5]
+  fecha_ultimo_pago     date
+  motivo_suspension     text
+  estado                varchar(20)   [not null, note: 'activo|en_gracia|vencido|suspendido|cancelado|programado']
+  tipo_cambio           varchar(20)   [not null, note: 'nuevo|renovacion|upgrade|downgrade']
+  id_compania_plan_orig int           [ref: > "tenant"."compania_planes".id]
+  credito_monto         decimal(10,2) [not null, default: 0]
+  created_at            timestamptz   [not null, default: `now()`]
+}
+
+Table "tenant"."pagos_suscripcion" {
+  id               int           [pk, increment, not null]
+  id_compania_plan int           [not null, ref: > "tenant"."compania_planes".id]
+  monto            decimal(10,2) [not null]
+  fecha_pago       date          [not null]
+  periodo_desde    date
+  periodo_hasta    date
+  metodo_pago      varchar(30)   [note: 'efectivo|transferencia|tarjeta']
+  tipo_pago        varchar(30)   [note: 'pago_completo|diferencia_upgrade|credito_downgrade|renovacion']
+  estado           varchar(20)   [not null, default: 'pendiente', note: 'pagado|fallido|pendiente']
+  referencia       varchar(100)
+  created_at       timestamptz   [not null, default: `now()`]
+}
+
+Table "tenant"."config_notif_suscripcion" {
+  id_compania int         [not null]
+  dias_antes  int         [not null]
+  canal       varchar(20) [not null, note: 'email|whatsapp|ambos']
+  activo      boolean     [not null, default: true]
+
+  indexes {
+    (id_compania, dias_antes) [pk]
+  }
+}
+
+Table "tenant"."notificaciones_suscripcion" {
+  id               int         [pk, increment, not null]
+  id_compania_plan int         [not null, ref: > "tenant"."compania_planes".id]
+  dias_antes       int         [not null]
+  canal            varchar(20) [not null, note: 'email|whatsapp']
+  estado           varchar(20) [not null, default: 'pendiente', note: 'enviado|fallido']
+  fecha_envio      timestamptz
+}
+
+// ── Config ────────────────────────────────────────────────────
+
+Table "config"."gym_config" {
+  id_compania int          [not null]
+  id_sucursal int          [not null]
+  clave       varchar(100) [not null]
+  valor       text
+  descripcion varchar(255)
+  tipo        varchar(20)  [not null, default: 'texto', note: 'texto|numero|booleano|json']
+  updated_at  timestamptz  [not null, default: `now()`]
+
+  indexes {
+    (id_compania, id_sucursal, clave) [pk]
+  }
+}
+
+Table "config"."metodos_pago" {
+  id          int          [pk, increment, not null]
+  id_compania int          [not null]
+  id_sucursal int          [not null]
+  nombre      varchar(100) [not null]
+  activo      boolean      [not null, default: true]
+}
+
+// ── Seguridad ─────────────────────────────────────────────────
+
+Table "seguridad"."roles" {
+  id          int          [pk, increment, not null]
+  id_compania int          [not null]
+  id_sucursal int          [not null]
+  nombre      varchar(50)  [not null]
+  descripcion varchar(255)
+
+  indexes {
+    (id_compania, nombre) [unique]
+  }
+}
+
+Table "seguridad"."permisos" {
+  id          int          [pk, increment, not null]
+  id_compania int          [not null]
+  id_sucursal int          [not null]
+  nombre      varchar(100) [not null]
+  descripcion varchar(255)
+  modulo      varchar(50)  [not null]
+
+  indexes {
+    (id_compania, nombre) [unique]
+  }
+}
+
+Table "seguridad"."rol_permisos" {
+  id_compania int [not null]
+  id_sucursal int [not null]
+  id_rol      int [not null, ref: > "seguridad"."roles".id]
+  id_permiso  int [not null, ref: > "seguridad"."permisos".id]
+
+  indexes {
+    (id_compania, id_sucursal, id_rol, id_permiso) [pk]
+  }
+}
+
+Table "seguridad"."usuarios" {
+  id            int          [pk, increment, not null]
+  id_compania   int          [not null]
+  id_sucursal   int          [not null]
+  id_rol        int          [not null, ref: > "seguridad"."roles".id]
+  nombre        varchar(100) [not null]
+  correo        varchar(150) [not null]
+  password_hash varchar(255) [not null]
+  activo        boolean      [not null, default: true]
+  ultimo_acceso timestamptz
+  created_at    timestamptz  [not null, default: `now()`]
+
+  indexes {
+    (id_compania, correo) [unique]
+  }
+}
+
+Table "seguridad"."bitacora_accesos" {
+  id          bigint       [pk, increment, not null]
+  id_compania int          [not null]
+  id_sucursal int          [not null]
+  id_usuario  int          [not null, ref: > "seguridad"."usuarios".id]
+  modulo      varchar(50)  [not null]
+  accion      varchar(100) [not null]
+  entidad_id  int
+  detalle     jsonb
+  ip          varchar(45)
+  fecha       timestamptz  [not null, default: `now()`]
+
+  indexes {
+    (id_compania, fecha) [name: 'idx_bitacora_compania_fecha']
+  }
+}
+
+// ── Core ──────────────────────────────────────────────────────
+
+Table "core"."clientes" {
+  id            int          [pk, increment, not null]
+  id_persona    int          [not null, ref: > "identidad"."personas".id]
+  id_compania   int          [not null]
+  id_sucursal   int          [not null]
+  peso_kg       decimal(5,2)
+  altura_cm     decimal(5,1)
+  objetivos     text
+  lesiones      text
+  estado        varchar(20)  [not null, default: 'activo', note: 'activo|proximo_vencer|vencido|congelado|riesgo_abandono']
+  fecha_ingreso date         [not null, default: `current_date`]
+  qr_codigo     varchar(100) [unique]
+  created_at    timestamptz  [not null, default: `now()`]
+  updated_at    timestamptz
+
+  indexes {
+    (id_persona, id_compania) [unique]
+  }
+}
+
+Table "core"."tipos_membresia" {
+  id             int           [pk, increment, not null]
+  id_compania    int           [not null]
+  id_sucursal    int           [not null]
+  nombre         varchar(100)  [not null]
+  duracion_tipo  varchar(20)   [not null, note: 'dias|semanas|meses|años']
+  duracion_valor int           [not null]
+  precio         decimal(10,2) [not null]
+  activo         boolean       [not null, default: true]
+}
+
+Table "core"."membresias" {
+  id                  int           [pk, increment, not null]
+  id_compania         int           [not null]
+  id_sucursal         int           [not null]
+  id_cliente          int           [not null, ref: > "core"."clientes".id]
+  id_tipo_membresia   int           [not null, ref: > "core"."tipos_membresia".id]
+  id_metodo_pago      int
+  id_usuario_registro int
+  fecha_inicio        date          [not null]
+  fecha_fin           date          [not null]
+  precio_pagado       decimal(10,2) [not null]
+  descuento_aplicado  decimal(5,2)  [not null, default: 0]
+  estado              varchar(20)   [not null, default: 'activa', note: 'activa|vencida|congelada|anulada']
+  created_at          timestamptz   [not null, default: `now()`]
+}
+
+Table "core"."congelamientos" {
+  id                  int          [pk, increment, not null]
+  id_compania         int          [not null]
+  id_sucursal         int          [not null]
+  id_membresia        int          [not null, ref: > "core"."membresias".id]
+  fecha_inicio        date         [not null]
+  fecha_fin           date
+  motivo              varchar(30)  [note: 'viaje|lesion|enfermedad|voluntario|otro']
+  detalle             text
+  retroactivo         boolean      [not null, default: false]
+  documento_respaldo  varchar(255)
+  aprobado_por        int
+  fecha_aprobacion    date
+  id_usuario_registro int
+  created_at          timestamptz  [not null, default: `now()`]
+}
+
+// ── Asistencia ────────────────────────────────────────────────
+
+Table "asistencia"."asistencias" {
+  id              bigint      [pk, increment, not null]
+  id_compania     int         [not null]
+  id_sucursal     int         [not null]
+  id_cliente      int         [not null, ref: > "core"."clientes".id]
+  id_membresia    int         [not null, ref: > "core"."membresias".id]
+  fecha           date        [not null]
+  hora_entrada    time        [not null]
+  metodo_registro varchar(20) [not null, default: 'qr', note: 'qr|manual']
+
+  indexes {
+    (id_compania, id_cliente, fecha) [name: 'idx_asistencias_cliente_fecha']
+  }
+}
+
+Table "asistencia"."plantillas_mensajes" {
+  id          int          [pk, increment, not null]
+  id_compania int          [not null]
+  id_sucursal int          [not null]
+  tipo        varchar(50)  [not null, note: 'motivacional|ausencia_2d|recuperacion_5d|recuperacion_10d|recuperacion_15d|vencimiento_3d|vencimiento_hoy']
+  nombre      varchar(100) [not null]
+  contenido   text         [not null]
+  activo      boolean      [not null, default: true]
+}
+
+Table "asistencia"."mensajes_log" {
+  id               bigint      [pk, increment, not null]
+  id_compania      int         [not null]
+  id_sucursal      int         [not null]
+  id_cliente       int         [not null, ref: > "core"."clientes".id]
+  id_plantilla     int         [ref: > "asistencia"."plantillas_mensajes".id]
+  tipo             varchar(50) [not null]
+  canal            varchar(20) [not null, note: 'whatsapp|email|llamada']
+  contenido        text        [not null]
+  estado           varchar(20) [not null, default: 'pendiente', note: 'pendiente|enviado|fallido']
+  fecha_programada timestamptz
+  fecha_envio      timestamptz
+  id_usuario_envio int
+}
+
+// ── Finanzas ──────────────────────────────────────────────────
+
+Table "finanzas"."categorias_ingreso" {
+  id          int          [pk, increment, not null]
+  id_compania int          [not null]
+  id_sucursal int          [not null]
+  nombre      varchar(100) [not null]
+  activo      boolean      [not null, default: true]
+}
+
+Table "finanzas"."ingresos" {
+  id                  int           [pk, increment, not null]
+  id_compania         int           [not null]
+  id_sucursal         int           [not null]
+  id_categoria        int           [not null, ref: > "finanzas"."categorias_ingreso".id]
+  id_membresia        int
+  id_venta            int
+  monto               decimal(10,2) [not null]
+  descripcion         text
+  fecha               date          [not null, default: `current_date`]
+  id_usuario_registro int
+  created_at          timestamptz   [not null, default: `now()`]
+}
+
+Table "finanzas"."categorias_egreso" {
+  id          int          [pk, increment, not null]
+  id_compania int          [not null]
+  id_sucursal int          [not null]
+  nombre      varchar(100) [not null]
+  activo      boolean      [not null, default: true]
+}
+
+Table "finanzas"."egresos" {
+  id                  int           [pk, increment, not null]
+  id_compania         int           [not null]
+  id_sucursal         int           [not null]
+  id_categoria        int           [not null, ref: > "finanzas"."categorias_egreso".id]
+  monto               decimal(10,2) [not null]
+  descripcion         text
+  fecha               date          [not null, default: `current_date`]
+  id_usuario_registro int
+  created_at          timestamptz   [not null, default: `now()`]
+}
+
+// ── Marketing ─────────────────────────────────────────────────
+
+Table "marketing"."promociones" {
+  id                   int           [pk, increment, not null]
+  id_compania          int           [not null]
+  id_sucursal          int           [not null]
+  nombre               varchar(150)  [not null]
+  tipo                 varchar(30)   [not null, note: '2x1|porcentaje|servicio_extra|regalo']
+  descripcion          text
+  condiciones          text
+  descuento_porcentaje decimal(5,2)
+  max_personas         int
+  fecha_inicio         date
+  fecha_fin            date
+  activa               boolean       [not null, default: true]
+  aplica_a_fidelidad   boolean       [not null, default: false]
+}
+
+Table "marketing"."cliente_promociones" {
+  id               int         [pk, increment, not null]
+  id_compania      int         [not null]
+  id_sucursal      int         [not null]
+  id_cliente       int         [not null, ref: > "core"."clientes".id]
+  id_promocion     int         [not null, ref: > "marketing"."promociones".id]
+  id_membresia     int
+  fecha_asignacion date        [not null, default: `current_date`]
+  fecha_uso        date
+  estado           varchar(20) [not null, default: 'asignada', note: 'asignada|usada|expirada']
+}
+
+Table "marketing"."reglas_beneficios" {
+  id               int           [pk, increment, not null]
+  id_compania      int           [not null]
+  id_sucursal      int           [not null]
+  meses_sin_faltas int           [not null]
+  tipo_beneficio   varchar(30)   [not null, note: 'descuento|servicio|regalo']
+  descripcion      varchar(255)  [not null]
+  valor            decimal(10,2)
+  activo           boolean       [not null, default: true]
+
+  indexes {
+    (id_compania, id_sucursal, meses_sin_faltas) [unique]
+  }
+}
+
+Table "marketing"."cliente_beneficios" {
+  id             int         [pk, increment, not null]
+  id_compania    int         [not null]
+  id_sucursal    int         [not null]
+  id_cliente     int         [not null, ref: > "core"."clientes".id]
+  id_regla       int         [not null, ref: > "marketing"."reglas_beneficios".id]
+  fecha_otorgado date        [not null, default: `current_date`]
+  estado         varchar(20) [not null, default: 'pendiente', note: 'pendiente|aplicado|expirado']
+}
+
+// ── Inventario ────────────────────────────────────────────────
+
+Table "inventario"."categorias_producto" {
+  id          int          [pk, increment, not null]
+  id_compania int          [not null]
+  id_sucursal int          [not null]
+  nombre      varchar(100) [not null]
+  activo      boolean      [not null, default: true]
+}
+
+Table "inventario"."proveedores" {
+  id          int          [pk, increment, not null]
+  id_compania int          [not null]
+  id_sucursal int          [not null]
+  nombre      varchar(150) [not null]
+  telefono    varchar(20)
+  correo      varchar(150)
+  activo      boolean      [not null, default: true]
+}
+
+Table "inventario"."productos" {
+  id            int           [pk, increment, not null]
+  id_compania   int           [not null]
+  id_sucursal   int           [not null]
+  id_categoria  int           [not null, ref: > "inventario"."categorias_producto".id]
+  id_proveedor  int           [ref: > "inventario"."proveedores".id]
+  nombre        varchar(150)  [not null]
+  descripcion   text
+  codigo_barras varchar(50)   [unique]
+  precio_venta  decimal(10,2) [not null]
+  precio_costo  decimal(10,2) [not null]
+  stock_minimo  int           [not null, default: 0]
+  activo        boolean       [not null, default: true]
+  created_at    timestamptz   [not null, default: `now()`]
+}
+
+Table "inventario"."inventario" {
+  id                   int         [pk, increment, not null]
+  id_compania          int         [not null]
+  id_sucursal          int         [not null]
+  id_producto          int         [not null, ref: > "inventario"."productos".id]
+  stock_actual         int         [not null, default: 0]
+  ultima_actualizacion timestamptz [not null, default: `now()`]
+
+  indexes {
+    (id_producto, id_compania, id_sucursal) [unique]
+  }
+}
+
+Table "inventario"."ventas" {
+  id               int           [pk, increment, not null]
+  id_compania      int           [not null]
+  id_sucursal      int           [not null]
+  id_cliente       int           [ref: > "core"."clientes".id]
+  id_metodo_pago   int
+  id_usuario_venta int
+  total            decimal(10,2) [not null]
+  fecha            date          [not null, default: `current_date`]
+  created_at       timestamptz   [not null, default: `now()`]
+}
+
+Table "inventario"."detalle_ventas" {
+  id              int           [pk, increment, not null]
+  id_venta        int           [not null, ref: > "inventario"."ventas".id]
+  id_producto     int           [not null, ref: > "inventario"."productos".id]
+  cantidad        int           [not null]
+  precio_unitario decimal(10,2) [not null]
+  subtotal        decimal(10,2) [not null]
+}
+
+Table "inventario"."movimientos_inventario" {
+  id           bigint      [pk, increment, not null]
+  id_compania  int         [not null]
+  id_sucursal  int         [not null]
+  id_producto  int         [not null, ref: > "inventario"."productos".id]
+  id_proveedor int         [ref: > "inventario"."proveedores".id]
+  id_venta     int         [ref: > "inventario"."ventas".id]
+  tipo         varchar(20) [not null, note: 'entrada|venta|ajuste|devolucion']
+  cantidad     int         [not null]
+  fecha        date        [not null, default: `current_date`]
+  observacion  text
+  id_usuario   int
+  created_at   timestamptz [not null, default: `now()`]
+
+  indexes {
+    (id_compania, id_producto, fecha) [name: 'idx_movimientos_producto']
+  }
+}
+
+// ── Table Groups ──────────────────────────────────────────────
+
+TableGroup "saas" {
+  "saas"."planes"
+  "saas"."caracteristicas"
+  "saas"."plan_caracteristicas"
+}
+
+TableGroup "identidad" {
+  "identidad"."personas"
+  "identidad"."usuarios_app"
+}
+
+TableGroup "tenant" {
+  "tenant"."companias"
+  "tenant"."sucursales"
+  "tenant"."compania_planes"
+  "tenant"."pagos_suscripcion"
+  "tenant"."config_notif_suscripcion"
+  "tenant"."notificaciones_suscripcion"
+}
+
+TableGroup "config" {
+  "config"."gym_config"
+  "config"."metodos_pago"
+}
+
+TableGroup "seguridad" {
+  "seguridad"."roles"
+  "seguridad"."permisos"
+  "seguridad"."rol_permisos"
+  "seguridad"."usuarios"
+  "seguridad"."bitacora_accesos"
+}
+
+TableGroup "core" {
+  "core"."clientes"
+  "core"."tipos_membresia"
+  "core"."membresias"
+  "core"."congelamientos"
+}
+
+TableGroup "asistencia" {
+  "asistencia"."asistencias"
+  "asistencia"."plantillas_mensajes"
+  "asistencia"."mensajes_log"
+}
+
+TableGroup "finanzas" {
+  "finanzas"."categorias_ingreso"
+  "finanzas"."ingresos"
+  "finanzas"."categorias_egreso"
+  "finanzas"."egresos"
+}
+
+TableGroup "marketing" {
+  "marketing"."promociones"
+  "marketing"."cliente_promociones"
+  "marketing"."reglas_beneficios"
+  "marketing"."cliente_beneficios"
+}
+
+TableGroup "inventario" {
+  "inventario"."categorias_producto"
+  "inventario"."proveedores"
+  "inventario"."productos"
+  "inventario"."inventario"
+  "inventario"."ventas"
+  "inventario"."detalle_ventas"
+  "inventario"."movimientos_inventario"
+}

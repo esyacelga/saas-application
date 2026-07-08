@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+/* ── Theme tokens — sobreescriben por [data-theme] en <html> ── */
+:root {
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
+
+  /* Default accent = Acero */
+  --accent-300: #93c5fd;
+  --accent-400: #60a5fa;
+  --accent-500: #3b82f6;
+  --accent-600: #2563eb;
+  --accent-700: #1d4ed8;
+  --accent-800: #1e40af;
+  --accent-900: #172554;
+}
+
+/* ── Acero — Azul eléctrico (Masculino, default) ── */
+[data-theme="acero"] {
+  --accent-300: #93c5fd;
+  --accent-400: #60a5fa;
+  --accent-500: #3b82f6;
+  --accent-600: #2563eb;
+  --accent-700: #1d4ed8;
+  --accent-800: #1e40af;
+  --accent-900: #172554;
+  --color-slate-950: #070d1a;
+  --color-slate-900: #0e1829;
+  --color-slate-800: #162338;
+  --color-slate-700: #1e3050;
+}
+
+/* ── Volcán — Naranja intenso (Masculino) ── */
+[data-theme="volcan"] {
+  --accent-300: #fdba74;
+  --accent-400: #fb923c;
+  --accent-500: #f97316;
+  --accent-600: #ea580c;
+  --accent-700: #c2410c;
+  --accent-800: #9a3412;
+  --accent-900: #431407;
+  --color-slate-950: #130a04;
+  --color-slate-900: #1e1008;
+  --color-slate-800: #2a1810;
+  --color-slate-700: #38221a;
+}
+
+/* ── Bosque — Verde militar (Masculino) ── */
+[data-theme="bosque"] {
+  --accent-300: #86efac;
+  --accent-400: #4ade80;
+  --accent-500: #22c55e;
+  --accent-600: #16a34a;
+  --accent-700: #15803d;
+  --accent-800: #166534;
+  --accent-900: #052e16;
+  --color-slate-950: #050e08;
+  --color-slate-900: #0b1710;
+  --color-slate-800: #122017;
+  --color-slate-700: #1c3022;
+}
+
+/* ── Coral — Rosa intenso (Femenino) ── */
+[data-theme="coral"] {
+  --accent-300: #fda4af;
+  --accent-400: #fb7185;
+  --accent-500: #f43f5e;
+  --accent-600: #e11d48;
+  --accent-700: #be123c;
+  --accent-800: #9f1239;
+  --accent-900: #4c0519;
+  --color-slate-950: #130608;
+  --color-slate-900: #1e0c10;
+  --color-slate-800: #2a1018;
+  --color-slate-700: #381520;
+}
+
+/* ── Violeta — Púrpura elegante (Femenino) ── */
+[data-theme="violeta"] {
+  --accent-300: #d8b4fe;
+  --accent-400: #c084fc;
+  --accent-500: #a855f7;
+  --accent-600: #9333ea;
+  --accent-700: #7e22ce;
+  --accent-800: #6b21a8;
+  --accent-900: #2e1065;
+  --color-slate-950: #0a0614;
+  --color-slate-900: #12091f;
+  --color-slate-800: #1c1030;
+  --color-slate-700: #281a42;
+}
+
+/* ── Aurora — Cian vibrante (Femenino) ── */
+[data-theme="aurora"] {
+  --accent-300: #67e8f9;
+  --accent-400: #22d3ee;
+  --accent-500: #06b6d4;
+  --accent-600: #0891b2;
+  --accent-700: #0e7490;
+  --accent-800: #155e75;
+  --accent-900: #083344;
+  --color-slate-950: #040c12;
+  --color-slate-900: #08161e;
+  --color-slate-800: #0e2230;
+  --color-slate-700: #163040;
+}
+
+@theme inline {
+  --color-accent-300: var(--accent-300);
+  --color-accent-400: var(--accent-400);
+  --color-accent-500: var(--accent-500);
+  --color-accent-600: var(--accent-600);
+  --color-accent-700: var(--accent-700);
+  --color-accent-800: var(--accent-800);
+  --color-accent-900: var(--accent-900);
+}
+
+@keyframes floatFitness {
+  0%, 100% { transform: translateY(0px)   rotate(0deg); opacity: 0.13; }
+  50%       { transform: translateY(-28px) rotate(8deg); opacity: 0.25; }
+}
+
+@keyframes ecgScroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@keyframes heartPulseRing {
+  0%   { transform: scale(0.9);  opacity: 0;    }
+  10%  { transform: scale(1.2);  opacity: 0.55; }
+  100% { transform: scale(6);    opacity: 0;    }
+}
+
+* { -webkit-tap-highlight-color: transparent; }
+
+body {
+  margin: 0;
+  background: var(--color-slate-950);
+  color: #f1f5f9;
+  font-family: system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}

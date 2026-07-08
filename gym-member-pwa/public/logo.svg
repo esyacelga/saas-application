@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="#0f172a"/>
+  <!-- Left end cap -->
+  <rect x="32" y="188" width="64" height="136" rx="16" fill="#6366f1"/>
+  <!-- Left inner sleeve -->
+  <rect x="96" y="216" width="44" height="80" rx="10" fill="#818cf8"/>
+  <!-- Bar -->
+  <rect x="140" y="240" width="232" height="32" rx="10" fill="#a5b4fc"/>
+  <!-- Right inner sleeve -->
+  <rect x="372" y="216" width="44" height="80" rx="10" fill="#818cf8"/>
+  <!-- Right end cap -->
+  <rect x="416" y="188" width="64" height="136" rx="16" fill="#6366f1"/>
+</svg>

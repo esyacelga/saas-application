@@ -1,0 +1,4 @@
+databaseChangeLog:
+  - include:
+      file: 202605_GYM-001/partial-changelog.yml
+      relativeToChangelogFile: true

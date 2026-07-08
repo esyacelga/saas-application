@@ -1,0 +1,77 @@
+export interface Caracteristica {
+  id: number
+  codigo: string
+  nombre: string
+  modulo: string
+  activo: boolean
+}
+
+export interface Plan {
+  id: number
+  nombre: string
+  descripcion: string
+  precioMensual: number
+  activo: boolean
+  caracteristicas: Caracteristica[]
+}
+
+export interface PlanActivo {
+  nombre: string
+  estado: 'ACTIVO' | 'EN_GRACIA' | 'VENCIDO' | 'PROGRAMADO' | 'CANCELADO' | 'SUSPENDIDO'
+  fechaFin: string
+  diasRestantes: number
+}
+
+export interface Compania {
+  id: number
+  nombre: string
+  ruc: string
+  telefono: string
+  whatsapp: string
+  correo: string
+  logoUrl: string | null
+  activo: boolean
+  planActivo: PlanActivo | null
+}
+
+export interface Sucursal {
+  id: number
+  idCompania: number
+  nombre: string
+  direccion: string
+  esPrincipal: boolean
+  activo: boolean
+  qrToken: string
+  qrTokenExpira: string | null
+}
+
+export interface CompaniaPlan {
+  id: number
+  idPlan: number
+  estado: string
+  fechaInicio: string
+  fechaFin: string
+  diasRestantes: number
+  diasGracia: number
+  tipoCambio: string
+}
+
+export interface Pago {
+  id: number
+  idCompaniaPlan: number
+  monto: number
+  fechaPago: string
+  periodoDesde: string | null
+  periodoHasta: string | null
+  metodoPago: string
+  tipoPago: string
+  estado: 'PENDIENTE' | 'PAGADO' | 'FALLIDO'
+  referencia: string | null
+}
+
+export interface NotifConfig {
+  idCompania: number
+  diasAntes: number
+  canal: 'EMAIL' | 'WHATSAPP' | 'AMBOS'
+  activo: boolean
+}

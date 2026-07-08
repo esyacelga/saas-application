@@ -1,0 +1,33 @@
+spring:
+  config:
+    import: optional:file:./.env[.properties]
+  r2dbc:
+    url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:gym-app-saas}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: 0
+
+jwt:
+  secret: Y2hhbmdlLW1lLWluLXByb2R1Y3Rpb24tdGhpcy1rZXktbXVzdC1iZS0yNTYtYml0cw==
+  expiry-staff-seconds: 28800
+  expiry-cliente-seconds: 604800
+  refresh-expiry-seconds: 2592000
+
+app:
+  bcrypt-rounds: 4
+  max-login-attempts: 5
+  login-lockout-minutes: 15
+  pwd-reset-token-expiry-hours: 1
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

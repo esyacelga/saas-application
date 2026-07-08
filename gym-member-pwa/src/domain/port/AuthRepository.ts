@@ -1,0 +1,21 @@
+import type {
+  LoginManualRequest, LoginGoogleRequest, LoginFacebookRequest,
+  LoginAppResponse, RefreshResponse,
+  ForgotPasswordRequest, ResetPasswordRequest, GymByQrResponse,
+  RegistroAppRequest, PersonaResponse, ActualizarPersonaRequest,
+} from '@/application/usecase/auth.types'
+
+export interface AuthRepository {
+  loginManual(req: LoginManualRequest): Promise<LoginAppResponse>
+  loginGoogle(req: LoginGoogleRequest): Promise<LoginAppResponse>
+  loginFacebook(req: LoginFacebookRequest): Promise<LoginAppResponse>
+  registrar(req: RegistroAppRequest): Promise<LoginAppResponse>
+  refresh(refreshToken: string): Promise<RefreshResponse>
+  logout(): Promise<void>
+  forgotPassword(req: ForgotPasswordRequest): Promise<void>
+  resetPassword(req: ResetPasswordRequest): Promise<void>
+  getGymByQr(token: string): Promise<GymByQrResponse>
+  getPersona(id: number): Promise<PersonaResponse>
+  actualizarPersona(id: number, req: ActualizarPersonaRequest): Promise<PersonaResponse>
+  subirFotoMiembro(id: number, file: File): Promise<PersonaResponse>
+}

@@ -1,0 +1,55 @@
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: gym-postgres
+    environment:
+      POSTGRES_DB: gym-app-saas
+      POSTGRES_USER: administrador
+      POSTGRES_PASSWORD: seya1922
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U administrador -d gym-app-saas"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: gym-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  core-service:
+    build: .
+    container_name: gym-core-service
+    ports:
+      - "8083:8083"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: gym-app-saas
+      DB_USER: administrador
+      DB_PASSWORD: seya1922
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-Y2hhbmdlLW1lLWluLXByb2R1Y3Rpb24tdGhpcy1rZXktbXVzdC1iZS0yNTYtYml0cw==}
+      PLATFORM_SERVICE_URL: ${PLATFORM_SERVICE_URL:-http://localhost:8081}
+      CLIENT_STATUS_JOB_CRON: ${CLIENT_STATUS_JOB_CRON:-0 10 0 * * *}
+      CARNET_PREFIX: ${CARNET_PREFIX:-GYM}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

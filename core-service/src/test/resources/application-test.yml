@@ -1,0 +1,35 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: core-service-test
+  r2dbc:
+    url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:gym-app-saas}
+    username: ${DB_USER:administrador}
+    password: ${DB_PASSWORD:seya1922}
+    pool:
+      initial-size: 2
+      max-size: 5
+jwt:
+  secret: ${JWT_SECRET:Y2hhbmdlLW1lLWluLXByb2R1Y3Rpb24tdGhpcy1rZXktbXVzdC1iZS0yNTYtYml0cw==}
+
+platform-service:
+  url: ${PLATFORM_SERVICE_URL:http://localhost:8081}
+
+client:
+  status:
+    job:
+      cron: "-"
+
+carnet:
+  prefix: ${CARNET_PREFIX:GYM}
+
+app:
+  cors:
+    allow-all: true
+
+logging:
+  level:
+    com.gymadmin.core: DEBUG
+    io.r2dbc: DEBUG
