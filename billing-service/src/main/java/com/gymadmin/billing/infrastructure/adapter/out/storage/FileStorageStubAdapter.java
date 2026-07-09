@@ -1,10 +1,8 @@
 package com.gymadmin.billing.infrastructure.adapter.out.storage;
 
 import com.gymadmin.billing.domain.port.out.FileStoragePort;
-import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
-@Component
 public class FileStorageStubAdapter implements FileStoragePort {
 
     @Override
@@ -25,5 +23,10 @@ public class FileStorageStubAdapter implements FileStoragePort {
     @Override
     public Mono<String> readFile(String path) {
         return Mono.just("stub-path");
+    }
+
+    @Override
+    public Mono<byte[]> readFileBytes(String path) {
+        return Mono.just(new byte[0]);
     }
 }

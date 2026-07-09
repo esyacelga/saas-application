@@ -52,4 +52,7 @@ public class ConfigSriEntity extends BaseAuditEntity {
 
     @Column("activo")
     private Boolean activo;
+
+    @Column("email_notificacion")
+    private String emailNotificacion;
 }

@@ -11,14 +11,16 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Map;
 
 @Tag(name = "Comprobantes", description = "Facturación electrónica SRI Ecuador")
@@ -144,6 +146,76 @@ public class ComprobanteController {
                         toIntegerSafe(principal.getIdCompania()),
                         idSucursal))
                 .map(c -> ResponseEntity.ok(ComprobanteResponse.from(c)));
+    }
+
+    @Operation(summary = "Descargar XML firmado del comprobante", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "XML firmado"),
+            @ApiResponse(responseCode = "404", description = "Comprobante o XML no encontrado"),
+            @ApiResponse(responseCode = "401", description = "No autenticado")
+    })
+    @GetMapping("/{id}/xml-firmado")
+    public Mono<ResponseEntity<byte[]>> descargarXmlFirmado(@PathVariable Long id) {
+        return extractPrincipal()
+                .flatMap(principal -> comprobanteUseCase.buscarPorId(id, toIntegerSafe(principal.getIdCompania()))
+                        .flatMap(comprobante -> comprobanteUseCase.leerXmlFirmado(id, toIntegerSafe(principal.getIdCompania()))
+                                .map(xmlContent -> {
+                                    byte[] bytes = xmlContent.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                                    HttpHeaders headers = new HttpHeaders();
+                                    headers.setContentType(MediaType.APPLICATION_XML);
+                                    headers.setContentDisposition(ContentDisposition.attachment()
+                                            .filename("factura_" + comprobante.getClaveAcceso() + ".xml")
+                                            .build());
+                                    return ResponseEntity.ok().headers(headers).body(bytes);
+                                })));
+    }
+
+    @Operation(summary = "Descargar RIDE PDF del comprobante", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "RIDE PDF"),
+            @ApiResponse(responseCode = "404", description = "Comprobante o PDF no encontrado"),
+            @ApiResponse(responseCode = "401", description = "No autenticado")
+    })
+    @GetMapping("/{id}/ride")
+    public Mono<ResponseEntity<byte[]>> descargarRide(@PathVariable Long id) {
+        return extractPrincipal()
+                .flatMap(principal -> comprobanteUseCase.buscarPorId(id, toIntegerSafe(principal.getIdCompania()))
+                        .flatMap(comprobante -> comprobanteUseCase.leerRidePdf(id, toIntegerSafe(principal.getIdCompania()))
+                                .map(pdfBytes -> {
+                                    HttpHeaders headers = new HttpHeaders();
+                                    headers.setContentType(MediaType.APPLICATION_PDF);
+                                    headers.setContentDisposition(ContentDisposition.attachment()
+                                            .filename("ride_" + comprobante.getClaveAcceso() + ".pdf")
+                                            .build());
+                                    return ResponseEntity.ok().headers(headers).body(pdfBytes);
+                                })));
+    }
+
+    @Operation(summary = "Anular comprobante", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Comprobante anulado"),
+            @ApiResponse(responseCode = "404", description = "Comprobante no encontrado"),
+            @ApiResponse(responseCode = "422", description = "Estado no permite anulación"),
+            @ApiResponse(responseCode = "401", description = "No autenticado")
+    })
+    @PostMapping("/{id}/anular")
+    public Mono<ResponseEntity<ComprobanteResponse>> anularComprobante(@PathVariable Long id) {
+        return extractPrincipal()
+                .flatMap(principal -> comprobanteUseCase.anularComprobante(id, toIntegerSafe(principal.getIdCompania())))
+                .map(c -> ResponseEntity.ok(ComprobanteResponse.from(c)));
+    }
+
+    @Operation(summary = "Reenviar RIDE por email", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Email enviado"),
+            @ApiResponse(responseCode = "404", description = "Comprobante o PDF no encontrado"),
+            @ApiResponse(responseCode = "401", description = "No autenticado")
+    })
+    @PostMapping("/{id}/reenviar-email")
+    public Mono<ResponseEntity<Map<String, String>>> reenviarEmail(@PathVariable Long id) {
+        return extractPrincipal()
+                .flatMap(principal -> comprobanteUseCase.reenviarEmail(id, toIntegerSafe(principal.getIdCompania())))
+                .then(Mono.just(ResponseEntity.ok(Map.of("mensaje", "Email enviado"))));
     }
 
     private Mono<JwtPrincipal> extractPrincipal() {

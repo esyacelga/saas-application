@@ -1,8 +1,11 @@
 package com.gymadmin.billing.infrastructure.adapter.out.persistence.adapter;
 
 import com.gymadmin.billing.domain.model.Comprobante;
+import com.gymadmin.billing.domain.model.ComprobanteDetalle;
 import com.gymadmin.billing.domain.port.out.ComprobanteRepository;
+import com.gymadmin.billing.infrastructure.adapter.out.persistence.entity.ComprobanteDetalleEntity;
 import com.gymadmin.billing.infrastructure.adapter.out.persistence.entity.ComprobanteEntity;
+import com.gymadmin.billing.infrastructure.adapter.out.persistence.repository.ComprobanteDetalleR2dbcRepository;
 import com.gymadmin.billing.infrastructure.adapter.out.persistence.repository.ComprobanteR2dbcRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -16,6 +19,7 @@ import java.time.OffsetDateTime;
 public class ComprobantePersistenceAdapter implements ComprobanteRepository {
 
     private final ComprobanteR2dbcRepository repository;
+    private final ComprobanteDetalleR2dbcRepository detalleRepository;
 
     @Override
     public Mono<Comprobante> save(Comprobante comprobante) {
@@ -139,6 +143,26 @@ public class ComprobantePersistenceAdapter implements ComprobanteRepository {
                 .xmlAutorizadoPath(c.getXmlAutorizadoPath())
                 .ridePdfPath(c.getRidePdfPath())
                 .idUsuarioRegistro(c.getIdUsuarioRegistro())
+                .build();
+    }
+
+    @Override
+    public Flux<ComprobanteDetalle> findDetallesByIdComprobante(Long idComprobante) {
+        return detalleRepository.findByIdComprobante(idComprobante).map(this::detalleEntityToDomain);
+    }
+
+    private ComprobanteDetalle detalleEntityToDomain(ComprobanteDetalleEntity e) {
+        return ComprobanteDetalle.builder()
+                .id(e.getId())
+                .idComprobante(e.getIdComprobante())
+                .codigoPrincipal(e.getCodigoPrincipal())
+                .codigoAuxiliar(e.getCodigoAuxiliar())
+                .descripcion(e.getDescripcion())
+                .cantidad(e.getCantidad())
+                .precioUnitario(e.getPrecioUnitario())
+                .descuento(e.getDescuento())
+                .precioTotalSinImpuesto(e.getPrecioTotalSinImpuesto())
+                .orden(e.getOrden())
                 .build();
     }
 

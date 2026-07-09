@@ -84,6 +84,18 @@ databaseChangeLog:
             relativeToChangelogFile: true
             splitStatements: false
 
+  - changeSet:
+      id: GYM-002-8b
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/08b_alter_sri_motivos_anulacion_nc_codigo.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+      rollback:
+        - sql: ALTER TABLE sri.motivos_anulacion_nc ALTER COLUMN codigo TYPE VARCHAR(10);
+
   # ── Seed catálogos SRI ───────────────────────────────────────────────────────
 
   - changeSet:
@@ -313,3 +325,31 @@ databaseChangeLog:
             path: ddl/rollback/29_rollback_alter_finanzas_ingresos.sql
             relativeToChangelogFile: true
             splitStatements: false
+
+  # ── Tabla comprobantes_detalle ────────────────────────────────────────────────
+
+  - changeSet:
+      id: GYM-002-30
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/30_create_table_facturacion_comprobantes_detalle.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+      rollback:
+        - sql: DROP TABLE IF EXISTS facturacion.comprobantes_detalle;
+
+  # ── ALTER config_sri: email notificación ─────────────────────────────────────
+
+  - changeSet:
+      id: GYM-002-31
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/31_alter_facturacion_config_sri_email.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+      rollback:
+        - sql: ALTER TABLE facturacion.config_sri DROP COLUMN IF EXISTS email_notificacion;

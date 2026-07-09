@@ -16,4 +16,12 @@ public interface ComprobanteUseCase {
     Mono<Long> contarPorEmpresa(Integer idCompania, Integer idSucursal, String estado);
 
     Mono<Comprobante> procesarEnvioSri(Long id, Integer idCompania, Integer idSucursal);
+
+    Mono<String> leerXmlFirmado(Long id, Integer idCompania);
+
+    Mono<byte[]> leerRidePdf(Long id, Integer idCompania);
+
+    Mono<Comprobante> anularComprobante(Long id, Integer idCompania);
+
+    Mono<Void> reenviarEmail(Long id, Integer idCompania);
 }

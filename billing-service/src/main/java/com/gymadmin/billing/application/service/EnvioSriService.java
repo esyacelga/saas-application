@@ -2,12 +2,16 @@ package com.gymadmin.billing.application.service;
 
 import com.gymadmin.billing.domain.model.ColaEnvio;
 import com.gymadmin.billing.domain.model.Comprobante;
+import com.gymadmin.billing.domain.model.ComprobanteDetalle;
 import com.gymadmin.billing.domain.model.EnvioSri;
 import com.gymadmin.billing.domain.port.out.CertificadoRepository;
 import com.gymadmin.billing.domain.port.out.ColaEnvioRepository;
 import com.gymadmin.billing.domain.port.out.ComprobanteRepository;
+import com.gymadmin.billing.domain.port.out.ConfigSriRepository;
+import com.gymadmin.billing.domain.port.out.EmailNotificationPort;
 import com.gymadmin.billing.domain.port.out.EnvioSriRepository;
 import com.gymadmin.billing.domain.port.out.FileStoragePort;
+import com.gymadmin.billing.domain.port.out.RidePdfPort;
 import com.gymadmin.billing.domain.port.out.SriSoapPort;
 import com.gymadmin.billing.domain.port.out.XmlSignaturePort;
 import com.gymadmin.billing.infrastructure.adapter.out.xml.FacturaXmlBuilder;
@@ -35,6 +39,9 @@ public class EnvioSriService {
     private final XmlSignaturePort xmlSignaturePort;
     private final FacturaXmlBuilder facturaXmlBuilder;
     private final FileStoragePort fileStoragePort;
+    private final RidePdfPort ridePdfPort;
+    private final EmailNotificationPort emailNotificationPort;
+    private final ConfigSriRepository configSriRepository;
 
     public Mono<Comprobante> procesarComprobante(Long idComprobante, Integer idCompania, Integer idSucursal) {
         return comprobanteRepository.findById(idComprobante)
@@ -167,7 +174,8 @@ public class EnvioSriService {
                                         null,
                                         respuestaAutorizacion.getFechaAutorizacion(),
                                         respuestaAutorizacion.getNumeroAutorizacion()
-                                ));
+                                ))
+                                .flatMap(comprobanteAutorizado -> generarYDistribuirRide(comprobanteAutorizado));
                     } else {
                         return envioSriRepository.save(envio)
                                 .then(scheduleRetry(cola, respuestaAutorizacion.getMensajes()))
@@ -192,6 +200,47 @@ public class EnvioSriService {
                             .then(scheduleRetry(cola, List.of(e.getMessage())))
                             .then(comprobanteRepository.updateEstado(
                                     comprobante.getId(), "ERROR", null, null, null, null, null));
+                });
+    }
+
+    private Mono<Comprobante> generarYDistribuirRide(Comprobante comprobante) {
+        Mono<List<ComprobanteDetalle>> detallesMono = comprobanteRepository
+                .findDetallesByIdComprobante(comprobante.getId())
+                .collectList()
+                .defaultIfEmpty(List.of());
+
+        Mono<com.gymadmin.billing.domain.model.ConfigSri> configMono = configSriRepository
+                .findByEmpresa(comprobante.getIdCompania(), comprobante.getIdSucursal())
+                .onErrorResume(e -> {
+                    log.warn("No se pudo obtener ConfigSri para comprobante {}: {}", comprobante.getId(), e.getMessage());
+                    return Mono.empty();
+                });
+
+        return Mono.zip(detallesMono, configMono.switchIfEmpty(Mono.just(com.gymadmin.billing.domain.model.ConfigSri.builder().build())))
+                .flatMap(tuple -> {
+                    List<ComprobanteDetalle> detalles = tuple.getT1();
+                    com.gymadmin.billing.domain.model.ConfigSri configSri = tuple.getT2();
+                    return ridePdfPort.generarRide(comprobante, detalles, configSri);
+                })
+                .flatMap(ridePdf -> fileStoragePort.saveRidePdf(comprobante.getId(), ridePdf)
+                        .flatMap(ridePdfPath -> comprobanteRepository.updateEstado(
+                                comprobante.getId(), comprobante.getEstado(),
+                                comprobante.getXmlFirmadoPath(),
+                                comprobante.getXmlAutorizadoPath(),
+                                ridePdfPath,
+                                comprobante.getFechaAutorizacion(),
+                                comprobante.getNumeroAutorizacion()
+                        ))
+                        .doOnNext(updated -> emailNotificationPort.enviarFactura(updated, ridePdf)
+                                .onErrorResume(e -> {
+                                    log.warn("Error al enviar email para comprobante {}: {}", updated.getId(), e.getMessage());
+                                    return Mono.empty();
+                                })
+                                .subscribe())
+                )
+                .onErrorResume(e -> {
+                    log.error("Error en generación de RIDE para comprobante {}: {}", comprobante.getId(), e.getMessage());
+                    return Mono.just(comprobante);
                 });
     }
 

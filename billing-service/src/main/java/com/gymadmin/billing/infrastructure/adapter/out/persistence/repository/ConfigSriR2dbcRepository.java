@@ -15,4 +15,13 @@ public interface ConfigSriR2dbcRepository extends ReactiveCrudRepository<ConfigS
             LIMIT 1
             """)
     Mono<ConfigSriEntity> findActiveByEmpresa(Integer idCompania, Integer idSucursal);
+
+    @Query("""
+            SELECT * FROM facturacion.config_sri
+            WHERE id_compania = :idCompania
+              AND activo = true
+            ORDER BY id ASC
+            LIMIT 1
+            """)
+    Mono<ConfigSriEntity> findFirstActiveByCompania(Integer idCompania);
 }

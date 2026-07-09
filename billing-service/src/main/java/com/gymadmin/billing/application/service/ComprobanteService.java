@@ -7,8 +7,11 @@ import com.gymadmin.billing.domain.port.in.ComprobanteUseCase;
 import com.gymadmin.billing.domain.port.out.CertificadoRepository;
 import com.gymadmin.billing.domain.port.out.ComprobanteRepository;
 import com.gymadmin.billing.domain.port.out.ConfigSriRepository;
+import com.gymadmin.billing.domain.port.out.EmailNotificationPort;
+import com.gymadmin.billing.domain.port.out.FileStoragePort;
 import com.gymadmin.billing.domain.port.out.XmlSignaturePort;
 import com.gymadmin.billing.infrastructure.adapter.out.xml.FacturaXmlBuilder;
+import com.gymadmin.billing.infrastructure.exception.BusinessException;
 import com.gymadmin.billing.infrastructure.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,10 +19,13 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class ComprobanteService implements ComprobanteUseCase {
+
+    private static final Set<String> ESTADOS_ANULABLES = Set.of("AUTORIZADO", "GENERADO");
 
     private final ComprobanteRepository comprobanteRepository;
     private final ConfigSriRepository configSriRepository;
@@ -27,6 +33,8 @@ public class ComprobanteService implements ComprobanteUseCase {
     private final XmlSignaturePort xmlSignaturePort;
     private final FacturaXmlBuilder facturaXmlBuilder;
     private final EnvioSriService envioSriService;
+    private final FileStoragePort fileStoragePort;
+    private final EmailNotificationPort emailNotificationPort;
 
     @Override
     public Mono<Comprobante> emitirFactura(EmitirFacturaCommand command) {
@@ -114,5 +122,51 @@ public class ComprobanteService implements ComprobanteUseCase {
     @Override
     public Mono<Comprobante> procesarEnvioSri(Long id, Integer idCompania, Integer idSucursal) {
         return envioSriService.procesarComprobante(id, idCompania, idSucursal);
+    }
+
+    @Override
+    public Mono<String> leerXmlFirmado(Long id, Integer idCompania) {
+        return buscarPorId(id, idCompania)
+                .flatMap(comprobante -> {
+                    if (comprobante.getXmlFirmadoPath() == null) {
+                        return Mono.error(new NotFoundException("XML firmado no disponible para el comprobante: " + id));
+                    }
+                    return fileStoragePort.readFile(comprobante.getXmlFirmadoPath());
+                });
+    }
+
+    @Override
+    public Mono<byte[]> leerRidePdf(Long id, Integer idCompania) {
+        return buscarPorId(id, idCompania)
+                .flatMap(comprobante -> {
+                    if (comprobante.getRidePdfPath() == null) {
+                        return Mono.error(new NotFoundException("RIDE PDF no disponible para el comprobante: " + id));
+                    }
+                    return fileStoragePort.readFileBytes(comprobante.getRidePdfPath());
+                });
+    }
+
+    @Override
+    public Mono<Comprobante> anularComprobante(Long id, Integer idCompania) {
+        return buscarPorId(id, idCompania)
+                .flatMap(comprobante -> {
+                    if (!ESTADOS_ANULABLES.contains(comprobante.getEstado())) {
+                        return Mono.error(new BusinessException(
+                                "No es posible anular un comprobante en estado: " + comprobante.getEstado()));
+                    }
+                    return comprobanteRepository.updateEstado(id, "ANULADO", null, null, null, null, null);
+                });
+    }
+
+    @Override
+    public Mono<Void> reenviarEmail(Long id, Integer idCompania) {
+        return buscarPorId(id, idCompania)
+                .flatMap(comprobante -> {
+                    if (comprobante.getRidePdfPath() == null) {
+                        return Mono.error(new NotFoundException("RIDE PDF no disponible para el comprobante: " + id));
+                    }
+                    return fileStoragePort.readFileBytes(comprobante.getRidePdfPath())
+                            .flatMap(pdfBytes -> emailNotificationPort.enviarFactura(comprobante, pdfBytes));
+                });
     }
 }

@@ -258,6 +258,48 @@ services:
       - gymadmin-net
     restart: unless-stopped
 
+  billing-service:
+    build:
+      context: ./billing-service
+      dockerfile: Dockerfile
+    container_name: billing-service
+    ports:
+      - "8086:8086"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: gym-app-saas
+      DB_USER: administrador
+      DB_PASSWORD: seya1922
+      JWT_SECRET: ${JWT_SECRET:-Y2hhbmdlLW1lLWluLXByb2R1Y3Rpb24tdGhpcy1rZXktbXVzdC1iZS0yNTYtYml0cw==}
+      SRI_AMBIENTE: ${SRI_AMBIENTE:-1}
+      CERT_ENCRYPTION_KEY: ${CERT_ENCRYPTION_KEY:-}
+      SRI_STORAGE_PATH: /app/storage/sri
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@gymadmin.com}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      CORS_ALLOW_ALL: ${CORS_ALLOW_ALL:-true}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+    volumes:
+      - billing-storage:/app/storage/sri
+    depends_on:
+      postgres:
+        condition: service_healthy
+      liquibase:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8086/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - gymadmin-net
+    restart: unless-stopped
+
   admin-frontend:
     build:
       context: ./auth-service-frond-end
@@ -318,6 +360,7 @@ services:
 
 volumes:
   postgres-data:
+  billing-storage:
 
 networks:
   gymadmin-net:

@@ -1,6 +1,7 @@
 package com.gymadmin.billing.domain.port.out;
 
 import com.gymadmin.billing.domain.model.Comprobante;
+import com.gymadmin.billing.domain.model.ComprobanteDetalle;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -20,4 +21,6 @@ public interface ComprobanteRepository {
 
     Mono<Comprobante> updateEstado(Long id, String estado, String xmlFirmadoPath, String xmlAutorizadoPath,
                                    String ridePdfPath, OffsetDateTime fechaAutorizacion, String numeroAutorizacion);
+
+    Flux<ComprobanteDetalle> findDetallesByIdComprobante(Long idComprobante);
 }

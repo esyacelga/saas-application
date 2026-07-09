@@ -19,6 +19,11 @@ public class ConfigSriPersistenceAdapter implements ConfigSriRepository {
         return repository.findActiveByEmpresa(idCompania, idSucursal).map(this::toDomain);
     }
 
+    @Override
+    public Mono<ConfigSri> findFirstByCompania(Integer idCompania) {
+        return repository.findFirstActiveByCompania(idCompania).map(this::toDomain);
+    }
+
     private ConfigSri toDomain(ConfigSriEntity e) {
         return ConfigSri.builder()
                 .id(e.getId())
@@ -34,6 +39,7 @@ public class ConfigSriPersistenceAdapter implements ConfigSriRepository {
                 .codEstablecimiento(e.getCodEstablecimiento())
                 .codPuntoEmision(e.getCodPuntoEmision())
                 .activo(e.getActivo())
+                .emailNotificacion(e.getEmailNotificacion())
                 .build();
     }
 }

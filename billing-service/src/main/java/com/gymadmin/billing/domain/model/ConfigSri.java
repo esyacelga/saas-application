@@ -20,4 +20,5 @@ public class ConfigSri {
     private String codEstablecimiento;
     private String codPuntoEmision;
     private Boolean activo;
+    private String emailNotificacion;
 }

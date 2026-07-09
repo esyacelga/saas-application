@@ -7,4 +7,5 @@ public interface FileStoragePort {
     Mono<String> saveXmlAutorizado(Long idComprobante, String xmlContent);
     Mono<String> saveRidePdf(Long idComprobante, byte[] pdfContent);
     Mono<String> readFile(String path);
+    Mono<byte[]> readFileBytes(String path);
 }
