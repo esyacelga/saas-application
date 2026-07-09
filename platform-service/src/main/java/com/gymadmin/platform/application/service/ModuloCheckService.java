@@ -39,6 +39,11 @@ public class ModuloCheckService implements ModuloCheckUseCase {
                 ));
     }
 
+    @Override
+    public Mono<Long> invalidateCacheByCompania(Long idCompania) {
+        return cache.invalidateByCompania(idCompania);
+    }
+
     private Mono<ModuloCheckResult> computeCheckAcceso(Long idCompania, String codigo) {
         return companiaPlanRepository.findActivoByIdCompania(idCompania)
                 .flatMap(cp -> checkCaracteristicaInPlan(cp.getIdPlan(), codigo)

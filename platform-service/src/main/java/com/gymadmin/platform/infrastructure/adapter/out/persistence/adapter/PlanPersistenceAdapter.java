@@ -43,6 +43,12 @@ public class PlanPersistenceAdapter implements PlanRepository {
     }
 
     @Override
+    public Mono<Plan> findByCodigo(String codigo) {
+        return planR2dbcRepository.findByCodigo(codigo)
+                .map(this::toDomain);
+    }
+
+    @Override
     public Mono<Plan> save(Plan plan) {
         PlanEntity entity = toEntity(plan);
         entity.setActivo(true);
@@ -58,6 +64,16 @@ public class PlanPersistenceAdapter implements PlanRepository {
                     existing.setDescripcion(plan.getDescripcion());
                     existing.setPrecioMensual(plan.getPrecioMensual());
                     existing.setActivo(plan.getActivo());
+                    // REQ-SAAS-001 — Sub-fase 1.2: propagar los nuevos campos del esquema Freemium.
+                    existing.setCodigo(plan.getCodigo());
+                    existing.setDuracionDias(plan.getDuracionDias());
+                    existing.setEsGratuito(plan.isEsGratuito());
+                    existing.setPlanDegradacionId(plan.getPlanDegradacionId());
+                    existing.setMaxSucursales(plan.getMaxSucursales());
+                    existing.setMaxClientesActivos(plan.getMaxClientesActivos());
+                    existing.setMaxStaff(plan.getMaxStaff());
+                    existing.setMoneda(plan.getMoneda());
+                    existing.setEsLegacy(plan.isEsLegacy());
                     return planR2dbcRepository.save(existing);
                 })
                 .map(this::toDomain);
@@ -139,6 +155,18 @@ public class PlanPersistenceAdapter implements PlanRepository {
         plan.setPrecioMensual(entity.getPrecioMensual());
         plan.setActivo(entity.getActivo());
         plan.setCaracteristicas(new ArrayList<>());
+
+        // REQ-SAAS-001 — Sub-fase 1.2: nuevos campos del esquema Free / Trial / Premium.
+        plan.setCodigo(entity.getCodigo());
+        plan.setDuracionDias(entity.getDuracionDias());
+        plan.setEsGratuito(Boolean.TRUE.equals(entity.getEsGratuito()));
+        plan.setPlanDegradacionId(entity.getPlanDegradacionId());
+        plan.setMaxSucursales(entity.getMaxSucursales());
+        plan.setMaxClientesActivos(entity.getMaxClientesActivos());
+        plan.setMaxStaff(entity.getMaxStaff());
+        plan.setMoneda(entity.getMoneda());
+        plan.setEsLegacy(Boolean.TRUE.equals(entity.getEsLegacy()));
+
         return plan;
     }
 
@@ -149,6 +177,17 @@ public class PlanPersistenceAdapter implements PlanRepository {
         entity.setDescripcion(plan.getDescripcion());
         entity.setPrecioMensual(plan.getPrecioMensual());
         entity.setActivo(plan.getActivo());
+
+        entity.setCodigo(plan.getCodigo());
+        entity.setDuracionDias(plan.getDuracionDias());
+        entity.setEsGratuito(plan.isEsGratuito());
+        entity.setPlanDegradacionId(plan.getPlanDegradacionId());
+        entity.setMaxSucursales(plan.getMaxSucursales());
+        entity.setMaxClientesActivos(plan.getMaxClientesActivos());
+        entity.setMaxStaff(plan.getMaxStaff());
+        entity.setMoneda(plan.getMoneda());
+        entity.setEsLegacy(plan.isEsLegacy());
+
         return entity;
     }
 }

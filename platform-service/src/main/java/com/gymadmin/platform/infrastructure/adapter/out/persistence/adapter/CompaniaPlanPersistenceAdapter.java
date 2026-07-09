@@ -1,5 +1,6 @@
 package com.gymadmin.platform.infrastructure.adapter.out.persistence.adapter;
 
+import com.gymadmin.platform.domain.exception.EstadoInvalidoException;
 import com.gymadmin.platform.domain.model.CompaniaPlan;
 import com.gymadmin.platform.domain.port.out.CompaniaPlanRepository;
 import com.gymadmin.platform.infrastructure.adapter.out.persistence.entity.CompaniaPlanEntity;
@@ -9,9 +10,28 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
+import java.util.Set;
 
+/**
+ * Persistence adapter para {@code tenant.compania_planes}.
+ * <p>
+ * Convención de enum (decisión D4): en DB los valores viven en <b>minúsculas</b>
+ * ({@code activo}, {@code en_gracia}, {@code reemplazada}, {@code degradacion_auto}, ...)
+ * pero en Java se representan en <b>MAYÚSCULAS</b> ({@code ACTIVO}, {@code EN_GRACIA}, ...).
+ * La conversión se hace aquí manualmente con {@code .name().toLowerCase()} al escribir y
+ * {@code Enum.valueOf(.toUpperCase())} al leer — este ya era el patrón existente para
+ * {@code Estado} y {@code TipoCambio}, se mantiene y se extiende a los nuevos valores.
+ * <p>
+ * REQ-SAAS-001 (sección 5bis): se validan las transiciones prohibidas en {@link #save(CompaniaPlan)}.
+ */
 @Component
 public class CompaniaPlanPersistenceAdapter implements CompaniaPlanRepository {
+
+    /** REQ-SAAS-001 (sección 5bis): estados terminales — no admiten transiciones salientes. */
+    private static final Set<CompaniaPlan.Estado> ESTADOS_TERMINALES = Set.of(
+            CompaniaPlan.Estado.CANCELADO,
+            CompaniaPlan.Estado.REEMPLAZADA
+    );
 
     private final CompaniaPlanR2dbcRepository repository;
 
@@ -36,8 +56,41 @@ public class CompaniaPlanPersistenceAdapter implements CompaniaPlanRepository {
 
     @Override
     public Mono<CompaniaPlan> save(CompaniaPlan companiaPlan) {
-        CompaniaPlanEntity entity = toEntity(companiaPlan);
-        return repository.save(entity).map(this::toDomain);
+        // REQ-SAAS-001 sección 5bis — validación de transiciones prohibidas.
+        // Solo aplica cuando ya existe un registro previo (UPDATE); en INSERT (id null)
+        // cualquier estado inicial es válido siempre que el CHECK de DB lo permita.
+        Mono<Void> validation = (companiaPlan.getId() == null)
+                ? Mono.empty()
+                : repository.findById(companiaPlan.getId())
+                    .flatMap(previous -> validateTransition(previous, companiaPlan));
+
+        return validation.then(Mono.defer(() -> {
+            CompaniaPlanEntity entity = toEntity(companiaPlan);
+            return repository.save(entity).map(this::toDomain);
+        }));
+    }
+
+    private Mono<Void> validateTransition(CompaniaPlanEntity previous, CompaniaPlan next) {
+        CompaniaPlan.Estado prev = parseEstado(previous.getEstado());
+        CompaniaPlan.Estado nuevo = next.getEstado();
+
+        if (prev == null || nuevo == null || prev == nuevo) {
+            return Mono.empty();
+        }
+
+        if (ESTADOS_TERMINALES.contains(prev)) {
+            return Mono.error(new EstadoInvalidoException(
+                    "Estado " + prev.name() + " es terminal — no admite transición a " + nuevo.name()
+                            + " (compania_plan id=" + previous.getId() + ")"));
+        }
+
+        if (nuevo == CompaniaPlan.Estado.PROGRAMADO) {
+            return Mono.error(new EstadoInvalidoException(
+                    "Estado PROGRAMADO solo puede producirse en la creación (INSERT), no en UPDATE"
+                            + " (compania_plan id=" + previous.getId() + ", estado previo=" + prev.name() + ")"));
+        }
+
+        return Mono.empty();
     }
 
     @Override
@@ -80,14 +133,13 @@ public class CompaniaPlanPersistenceAdapter implements CompaniaPlanRepository {
         cp.setDiasGracia(entity.getDiasGracia());
         cp.setFechaUltimoPago(entity.getFechaUltimoPago());
         cp.setMotivoSuspension(entity.getMotivoSuspension());
-        if (entity.getEstado() != null) {
-            cp.setEstado(CompaniaPlan.Estado.valueOf(entity.getEstado().toUpperCase()));
-        }
-        if (entity.getTipoCambio() != null) {
-            cp.setTipoCambio(CompaniaPlan.TipoCambio.valueOf(entity.getTipoCambio().toUpperCase()));
-        }
+        cp.setEstado(parseEstado(entity.getEstado()));
+        cp.setTipoCambio(parseTipoCambio(entity.getTipoCambio()));
         cp.setIdCompaniaPlanOrig(entity.getIdCompaniaPlanOrig());
         cp.setCreditoMonto(entity.getCreditoMonto());
+        cp.setSobreLimite(Boolean.TRUE.equals(entity.getSobreLimite()));
+        cp.setSobreLimiteHasta(entity.getSobreLimiteHasta());
+        cp.setCausaDegradacion(entity.getCausaDegradacion());
         return cp;
     }
 
@@ -109,6 +161,19 @@ public class CompaniaPlanPersistenceAdapter implements CompaniaPlanRepository {
         }
         entity.setIdCompaniaPlanOrig(cp.getIdCompaniaPlanOrig());
         entity.setCreditoMonto(cp.getCreditoMonto());
+        entity.setSobreLimite(cp.isSobreLimite());
+        entity.setSobreLimiteHasta(cp.getSobreLimiteHasta());
+        entity.setCausaDegradacion(cp.getCausaDegradacion());
         return entity;
+    }
+
+    private CompaniaPlan.Estado parseEstado(String value) {
+        if (value == null) return null;
+        return CompaniaPlan.Estado.valueOf(value.toUpperCase());
+    }
+
+    private CompaniaPlan.TipoCambio parseTipoCambio(String value) {
+        if (value == null) return null;
+        return CompaniaPlan.TipoCambio.valueOf(value.toUpperCase());
     }
 }

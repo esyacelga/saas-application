@@ -1,5 +1,7 @@
 package com.gymadmin.platform.domain.model;
 
+import java.time.Instant;
+
 public class Compania {
 
     private Long id;
@@ -10,6 +12,10 @@ public class Compania {
     private String whatsapp;
     private String correo;
     private Boolean activo;
+
+    // REQ-SAAS-001 — Sub-fase 1.2 (RN-01): Trial único e irrevocable por tenant.
+    private boolean trialUsado;
+    private Instant fechaTrialUsado;
 
     public Compania() {}
 
@@ -48,4 +54,10 @@ public class Compania {
 
     public Boolean getActivo() { return activo; }
     public void setActivo(Boolean activo) { this.activo = activo; }
+
+    public boolean isTrialUsado() { return trialUsado; }
+    public void setTrialUsado(boolean trialUsado) { this.trialUsado = trialUsado; }
+
+    public Instant getFechaTrialUsado() { return fechaTrialUsado; }
+    public void setFechaTrialUsado(Instant fechaTrialUsado) { this.fechaTrialUsado = fechaTrialUsado; }
 }

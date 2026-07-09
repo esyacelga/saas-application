@@ -9,6 +9,8 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
+import java.time.OffsetDateTime;
+
 @Table("tenant.companias")
 @Getter
 @Setter
@@ -41,4 +43,11 @@ public class CompaniaEntity extends BaseAuditEntity {
     @Column("activo")
     private Boolean activo;
 
+    // REQ-SAAS-001 — Sub-fase 1.2 (RN-01): Trial único e irrevocable por tenant.
+    // Columnas del script 02_alter_tenant_companias.sql.
+    @Column("trial_usado")
+    private Boolean trialUsado;
+
+    @Column("fecha_trial_usado")
+    private OffsetDateTime fechaTrialUsado;
 }

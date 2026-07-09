@@ -57,6 +57,13 @@ public class ActividadPlataformaPersistenceAdapter implements ActividadPlataform
             a.setUsuario(row.get("usuario", String.class));
             a.setIp(row.get("ip", String.class));
             a.setFecha(row.get("fecha", OffsetDateTime.class));
+            // REQ-SAAS-001 sección 6bis — nuevas columnas post-migración GYM-003.
+            a.setIdCompania(row.get("id_compania", Long.class));
+            a.setIdUsuarioActor(row.get("id_usuario_actor", Long.class));
+            String tipoActor = row.get("tipo_actor", String.class);
+            if (tipoActor != null) {
+                a.setTipoActor(ActividadPlataforma.TipoActor.valueOf(tipoActor.toUpperCase()));
+            }
             return a;
         }).all();
     }
@@ -106,6 +113,12 @@ public class ActividadPlataformaPersistenceAdapter implements ActividadPlataform
         e.setUsuario(a.getUsuario());
         e.setIp(a.getIp());
         e.setFecha(a.getFecha());
+        // REQ-SAAS-001 sección 6bis — nuevas columnas.
+        e.setIdCompania(a.getIdCompania());
+        e.setIdUsuarioActor(a.getIdUsuarioActor());
+        if (a.getTipoActor() != null) {
+            e.setTipoActor(a.getTipoActor().name());
+        }
         return e;
     }
 }

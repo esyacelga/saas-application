@@ -56,4 +56,19 @@ public class CompaniaPlanEntity extends BaseAuditEntity {
     @Column("credito_monto")
     private BigDecimal creditoMonto;
 
+    // REQ-SAAS-001 — Sub-fase 1.2 (RN-06, RN-03): sobre-límite y causa de degradación.
+    // Columnas del script 03_alter_tenant_compania_planes.sql.
+
+    @Column("sobre_limite")
+    private Boolean sobreLimite;
+
+    @Column("sobre_limite_hasta")
+    private LocalDate sobreLimiteHasta;
+
+    /**
+     * Valores permitidos (minúsculas, ver decisión D4): vencimiento / pago_rechazado /
+     * cancelacion_manual / suspension_root.
+     */
+    @Column("causa_degradacion")
+    private String causaDegradacion;
 }

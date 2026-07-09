@@ -6,11 +6,28 @@ import java.time.LocalDate;
 public class CompaniaPlan {
 
     public enum Estado {
-        ACTIVO, EN_GRACIA, VENCIDO, SUSPENDIDO, CANCELADO, PROGRAMADO
+        ACTIVO, EN_GRACIA, VENCIDO, SUSPENDIDO, CANCELADO, PROGRAMADO,
+        // REQ-SAAS-001 (RN-10): la ACTIVA/EN_GRACIA pasa a REEMPLAZADA cuando se activa un PROGRAMADO.
+        // Indica "vencida por upgrade" (no por vencimiento). Es un estado terminal.
+        REEMPLAZADA
     }
 
     public enum TipoCambio {
-        NUEVO, RENOVACION, UPGRADE, DOWNGRADE
+        NUEVO, RENOVACION, UPGRADE, DOWNGRADE,
+        // REQ-SAAS-001 (RN-03): degradación automática Trial/Premium → Free por vencimiento.
+        DEGRADACION_AUTO,
+        // REQ-SAAS-001 (RN-09): cancelación voluntaria iniciada por el owner.
+        CANCELACION,
+        // REQ-SAAS-001 (RN-09): suspensión administrativa iniciada por root.
+        SUSPENSION
+    }
+
+    /**
+     * REQ-SAAS-001: causa de la última degradación automática registrada en la fila.
+     * Se persiste en {@code compania_planes.causa_degradacion} (minúsculas en DB).
+     */
+    public enum CausaDegradacion {
+        VENCIMIENTO, PAGO_RECHAZADO, CANCELACION_MANUAL, SUSPENSION_ROOT
     }
 
     private Long id;
@@ -25,6 +42,12 @@ public class CompaniaPlan {
     private TipoCambio tipoCambio;
     private Long idCompaniaPlanOrig;
     private BigDecimal creditoMonto;
+
+    // REQ-SAAS-001 — Sub-fase 1.2 (RN-06): modo sobre-límite tras degradación a Free.
+    private boolean sobreLimite;
+    private LocalDate sobreLimiteHasta;
+    // Persistido como String para poder guardar NULL sin sentinel; se mapea a CausaDegradacion en la capa de dominio cuando aplica.
+    private String causaDegradacion;
 
     public CompaniaPlan() {}
 
@@ -63,4 +86,13 @@ public class CompaniaPlan {
 
     public BigDecimal getCreditoMonto() { return creditoMonto; }
     public void setCreditoMonto(BigDecimal creditoMonto) { this.creditoMonto = creditoMonto; }
+
+    public boolean isSobreLimite() { return sobreLimite; }
+    public void setSobreLimite(boolean sobreLimite) { this.sobreLimite = sobreLimite; }
+
+    public LocalDate getSobreLimiteHasta() { return sobreLimiteHasta; }
+    public void setSobreLimiteHasta(LocalDate sobreLimiteHasta) { this.sobreLimiteHasta = sobreLimiteHasta; }
+
+    public String getCausaDegradacion() { return causaDegradacion; }
+    public void setCausaDegradacion(String causaDegradacion) { this.causaDegradacion = causaDegradacion; }
 }

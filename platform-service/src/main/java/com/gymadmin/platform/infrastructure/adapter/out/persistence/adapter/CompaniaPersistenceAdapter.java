@@ -8,6 +8,9 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+
 @Component
 public class CompaniaPersistenceAdapter implements CompaniaRepository {
 
@@ -49,13 +52,15 @@ public class CompaniaPersistenceAdapter implements CompaniaRepository {
                     existing.setWhatsapp(compania.getWhatsapp());
                     existing.setCorreo(compania.getCorreo());
                     existing.setActivo(compania.getActivo());
+                    // trial_usado NO se toca aquí: es irrevocable (RN-01) y se actualiza en el flujo
+                    // "activar Trial" de la Sub-fase 1.3.
                     return repository.save(existing);
                 })
                 .map(this::toDomain);
     }
 
     private Compania toDomain(CompaniaEntity entity) {
-        return new Compania(
+        Compania c = new Compania(
                 entity.getId(),
                 entity.getNombre(),
                 entity.getRuc(),
@@ -65,6 +70,11 @@ public class CompaniaPersistenceAdapter implements CompaniaRepository {
                 entity.getCorreo(),
                 entity.getActivo()
         );
+        c.setTrialUsado(Boolean.TRUE.equals(entity.getTrialUsado()));
+        if (entity.getFechaTrialUsado() != null) {
+            c.setFechaTrialUsado(entity.getFechaTrialUsado().toInstant());
+        }
+        return c;
     }
 
     private CompaniaEntity toEntity(Compania c) {
@@ -77,6 +87,10 @@ public class CompaniaPersistenceAdapter implements CompaniaRepository {
         entity.setWhatsapp(c.getWhatsapp());
         entity.setCorreo(c.getCorreo());
         entity.setActivo(c.getActivo());
+        entity.setTrialUsado(c.isTrialUsado());
+        if (c.getFechaTrialUsado() != null) {
+            entity.setFechaTrialUsado(OffsetDateTime.ofInstant(c.getFechaTrialUsado(), ZoneOffset.UTC));
+        }
         return entity;
     }
 }
