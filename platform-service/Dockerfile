@@ -1,5 +1,5 @@
 # ── Stage 1: Build ───────────────────────────────────────────────────────────
-FROM maven:3.9.6-eclipse-temurin-21-alpine AS builder
+FROM maven:3.9-eclipse-temurin-25-alpine AS builder
 WORKDIR /app
 
 # Descarga dependencias primero (capa cacheada mientras pom.xml no cambie)
@@ -11,7 +11,7 @@ COPY src ./src
 RUN mvn package -DskipTests -q
 
 # ── Stage 2: Runtime ─────────────────────────────────────────────────────────
-FROM eclipse-temurin:21-jre-alpine AS runtime
+FROM eclipse-temurin:25-jre-alpine AS runtime
 WORKDIR /app
 
 RUN apk add --no-cache curl

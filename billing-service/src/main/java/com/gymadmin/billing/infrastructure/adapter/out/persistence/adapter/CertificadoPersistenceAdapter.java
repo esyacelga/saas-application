@@ -1,0 +1,33 @@
+package com.gymadmin.billing.infrastructure.adapter.out.persistence.adapter;
+
+import com.gymadmin.billing.domain.port.out.CertificadoRepository;
+import com.gymadmin.billing.infrastructure.adapter.out.crypto.CertificadoDecryptionService;
+import com.gymadmin.billing.infrastructure.adapter.out.persistence.repository.CertificadoR2dbcRepository;
+import com.gymadmin.billing.infrastructure.exception.NotFoundException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import reactor.core.publisher.Mono;
+
+@Component
+@RequiredArgsConstructor
+public class CertificadoPersistenceAdapter implements CertificadoRepository {
+
+    private final CertificadoR2dbcRepository repo;
+    private final CertificadoDecryptionService decryptionService;
+
+    @Override
+    public Mono<byte[]> getActiveCertificateContent(Integer idCompania, Integer idSucursal) {
+        return repo.findActiveByEmpresa(idCompania, idSucursal)
+                .switchIfEmpty(Mono.error(new NotFoundException(
+                        "Certificado activo no encontrado para la empresa " + idCompania)))
+                .map(e -> decryptionService.decrypt(e.getContenidoCifrado(), e.getIv()));
+    }
+
+    @Override
+    public Mono<String> getActiveCertificatePassword(Integer idCompania, Integer idSucursal) {
+        return repo.findActiveByEmpresa(idCompania, idSucursal)
+                .switchIfEmpty(Mono.error(new NotFoundException(
+                        "Certificado activo no encontrado para la empresa " + idCompania)))
+                .map(e -> decryptionService.decryptString(e.getContrasenaCifrada(), e.getIv()));
+    }
+}

@@ -1,0 +1,315 @@
+databaseChangeLog:
+
+  # ── Schemas nuevos ───────────────────────────────────────────────────────────
+
+  - changeSet:
+      id: GYM-002-1
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/01_create_schema_sri.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-002-2
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/02_create_schema_facturacion.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  # ── Tablas SRI (catálogos oficiales) ─────────────────────────────────────────
+
+  - changeSet:
+      id: GYM-002-3
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/03_create_table_sri_tipos_comprobante.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-002-4
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/04_create_table_sri_tipos_identificacion.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-002-5
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/05_create_table_sri_formas_pago.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-002-6
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/06_create_table_sri_tipos_impuesto.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-002-7
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/07_create_table_sri_tarifas_iva.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-002-8
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/08_create_table_sri_motivos_anulacion_nc.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  # ── Seed catálogos SRI ───────────────────────────────────────────────────────
+
+  - changeSet:
+      id: GYM-002-9
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/09_insert_seed_sri.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  # ── Tablas facturacion (operativas por tenant) ────────────────────────────────
+
+  - changeSet:
+      id: GYM-002-10
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/10_create_table_facturacion_config_sri.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-002-11
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/11_create_table_facturacion_certificados.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-002-12
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/12_create_table_facturacion_puntos_emision.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-002-13
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/13_create_table_facturacion_secuenciales.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-002-14
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/14_create_table_facturacion_comprobantes.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-002-15
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/15_create_table_facturacion_comprobante_detalles.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-002-16
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/16_create_table_facturacion_detalle_impuestos.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-002-17
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/17_create_table_facturacion_impuestos_totales.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-002-18
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/18_create_table_facturacion_pagos.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-002-19
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/19_create_table_facturacion_info_adicional.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-002-20
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/20_create_table_facturacion_nc_referencias.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-002-21
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/21_create_table_facturacion_envios_sri.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-002-22
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/22_create_table_facturacion_cola_envio.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-002-23
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/23_create_table_facturacion_notificaciones.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-002-24
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/24_create_table_facturacion_anulaciones.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-002-25
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/25_create_table_facturacion_reportes_ats.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  # ── Función PL/pgSQL ─────────────────────────────────────────────────────────
+
+  - changeSet:
+      id: GYM-002-26
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/26_create_function_next_secuencial.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  # ── Índices facturacion ───────────────────────────────────────────────────────
+
+  - changeSet:
+      id: GYM-002-27
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/27_create_indexes_facturacion.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  # ── ALTER tablas existentes ───────────────────────────────────────────────────
+
+  - changeSet:
+      id: GYM-002-28
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/28_alter_tenant_companias.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+      rollback:
+        - sqlFile:
+            path: ddl/rollback/28_rollback_alter_tenant_companias.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-002-29
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/29_alter_finanzas_ingresos.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+      rollback:
+        - sqlFile:
+            path: ddl/rollback/29_rollback_alter_finanzas_ingresos.sql
+            relativeToChangelogFile: true
+            splitStatements: false

@@ -1,0 +1,53 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: billing-service
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+  task:
+    scheduling:
+      pool:
+        size: 2
+  r2dbc:
+    url: ${DB_URL:r2dbc:postgresql://localhost:5432/gymadmin}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    pool:
+      initial-size: 2
+      max-size: 10
+  webflux:
+    base-path: /
+
+jwt:
+  secret: ${JWT_SECRET}
+
+app:
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:5173}
+    allow-all: ${CORS_ALLOW_ALL:false}
+
+# SRI electronic invoicing config
+sri:
+  ambiente: ${SRI_AMBIENTE:1}  # 1=pruebas, 2=produccion
+  wsdl:
+    recepcion: ${SRI_WSDL_RECEPCION:https://celcer.sri.gob.ec/comprobantes-electronicos-ws/RecepcionComprobantesOffline?wsdl}
+    autorizacion: ${SRI_WSDL_AUTORIZACION:https://celcer.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline?wsdl}
+  storage:
+    base-path: ${SRI_STORAGE_PATH:./storage/sri}
+
+# P12 certificate decryption key (symmetric, stored in env var)
+facturacion:
+  cert:
+    encryption-key: ${CERT_ENCRYPTION_KEY}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+logging:
+  level:
+    com.gymadmin.billing: DEBUG
