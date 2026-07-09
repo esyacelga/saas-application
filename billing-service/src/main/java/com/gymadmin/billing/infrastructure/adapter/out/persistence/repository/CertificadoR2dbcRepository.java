@@ -20,6 +20,15 @@ public interface CertificadoR2dbcRepository extends ReactiveCrudRepository<Certi
 
     @Query("""
             SELECT * FROM facturacion.certificados
+            WHERE id_compania = :idCompania
+              AND activo = true
+            ORDER BY fecha_vencimiento DESC
+            LIMIT 1
+            """)
+    Mono<CertificadoEntity> findActiveByEmpresaForAdmin(Integer idCompania);
+
+    @Query("""
+            SELECT * FROM facturacion.certificados
             WHERE activo = true
               AND fecha_vencimiento <= CURRENT_DATE + (:dias * INTERVAL '1 day')
               AND fecha_vencimiento > CURRENT_DATE

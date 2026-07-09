@@ -42,6 +42,14 @@ Redis 7 (6379)
 
 ---
 
+### Requerimientos activos
+
+| ID | Documento | Estado |
+|----|-----------|--------|
+| REQ-SAAS-001 | [Nuevo esquema de planes SaaS Freemium (Free / Trial / Premium)](docs/gym-administrator/requirements/planes-saas-freemium.md) | Aprobado v1.0 — pendiente de descomponer en tickets |
+
+---
+
 ### Backend — Microservicios Java (Spring Boot 3.3.5 / WebFlux / Java 21)
 
 #### auth-service — Puerto 8080
@@ -244,11 +252,25 @@ Migraciones Liquibase (`gym-administrator/db/`); su documentación de arquitectu
 
 ## Planes de suscripción
 
+### Esquema aprobado (REQ-SAAS-001 — en implementación)
+
+| Plan | Precio | Duración | Módulos | Notas |
+|------|--------|----------|---------|-------|
+| **Free** | $0 | Permanente | Clientes, membresías, asistencia, mensajería, seguridad, config | Hard limits: 1 sucursal / 50 clientes activos / 2 staff |
+| **Trial** | $0 | 2 meses | Todos (equivalente a Premium) | Único por tenant, irrevocable, degrada a Free al vencer |
+| **Premium** | $29.99/mes | 1 mes (prepago) | Free + Finanzas + Marketing + Inventario | Sin renovación automática; degrada a Free al vencer |
+
+Ver [REQ-SAAS-001](docs/gym-administrator/requirements/planes-saas-freemium.md) para reglas de negocio completas.
+
+### Esquema legacy (en migración)
+
 | Plan | Módulos |
 |------|---------|
 | **Básico** | Clientes, membresías, asistencias, acceso QR |
-| **Premium** | Básico + Finanzas + Marketing |
+| **Premium (legacy)** | Básico + Finanzas + Marketing |
 | **Enterprise** | Premium + Inventario + configuración avanzada |
+
+> Tenants existentes en planes legacy reciben Premium nuevo hasta que venza su ciclo actual. Ver sección 11.3 del requerimiento.
 
 ---
 

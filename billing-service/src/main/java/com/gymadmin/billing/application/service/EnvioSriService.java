@@ -15,8 +15,10 @@ import com.gymadmin.billing.domain.port.out.RidePdfPort;
 import com.gymadmin.billing.domain.port.out.SriSoapPort;
 import com.gymadmin.billing.domain.port.out.XmlSignaturePort;
 import com.gymadmin.billing.infrastructure.adapter.out.xml.FacturaXmlBuilder;
+import io.micrometer.core.instrument.Counter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuples;
@@ -25,7 +27,6 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class EnvioSriService {
 
@@ -42,6 +43,43 @@ public class EnvioSriService {
     private final RidePdfPort ridePdfPort;
     private final EmailNotificationPort emailNotificationPort;
     private final ConfigSriRepository configSriRepository;
+    private final Counter comprobantesEmitidosFactura;
+    private final Counter comprobantesAutorizados;
+    private final Counter comprobantesErroresSri;
+    private final Counter comprobantesReintentos;
+
+    public EnvioSriService(
+            ComprobanteRepository comprobanteRepository,
+            EnvioSriRepository envioSriRepository,
+            ColaEnvioRepository colaEnvioRepository,
+            SriSoapPort sriSoapPort,
+            CertificadoRepository certificadoRepository,
+            XmlSignaturePort xmlSignaturePort,
+            FacturaXmlBuilder facturaXmlBuilder,
+            FileStoragePort fileStoragePort,
+            RidePdfPort ridePdfPort,
+            EmailNotificationPort emailNotificationPort,
+            ConfigSriRepository configSriRepository,
+            @Qualifier("comprobantesEmitidosFactura") Counter comprobantesEmitidosFactura,
+            @Qualifier("comprobantesAutorizados") Counter comprobantesAutorizados,
+            @Qualifier("comprobantesErroresSri") Counter comprobantesErroresSri,
+            @Qualifier("comprobantesReintentos") Counter comprobantesReintentos) {
+        this.comprobanteRepository = comprobanteRepository;
+        this.envioSriRepository = envioSriRepository;
+        this.colaEnvioRepository = colaEnvioRepository;
+        this.sriSoapPort = sriSoapPort;
+        this.certificadoRepository = certificadoRepository;
+        this.xmlSignaturePort = xmlSignaturePort;
+        this.facturaXmlBuilder = facturaXmlBuilder;
+        this.fileStoragePort = fileStoragePort;
+        this.ridePdfPort = ridePdfPort;
+        this.emailNotificationPort = emailNotificationPort;
+        this.configSriRepository = configSriRepository;
+        this.comprobantesEmitidosFactura = comprobantesEmitidosFactura;
+        this.comprobantesAutorizados = comprobantesAutorizados;
+        this.comprobantesErroresSri = comprobantesErroresSri;
+        this.comprobantesReintentos = comprobantesReintentos;
+    }
 
     public Mono<Comprobante> procesarComprobante(Long idComprobante, Integer idCompania, Integer idSucursal) {
         return comprobanteRepository.findById(idComprobante)
@@ -70,6 +108,7 @@ public class EnvioSriService {
         .flatMap(tuple -> {
             String xmlFirmado = tuple.getT1();
             Comprobante updated = tuple.getT2();
+            comprobantesEmitidosFactura.increment();
             ColaEnvio cola = ColaEnvio.builder()
                     .idComprobante(updated.getId())
                     .idCompania(idCompania)
@@ -116,6 +155,7 @@ public class EnvioSriService {
                                         comprobante.getId(), "RECIBIDO", null, null, null, null, null))
                                 .flatMap(c -> autorizarComprobante(c, cola, ambiente, xmlFirmado));
                     } else {
+                        comprobantesErroresSri.increment();
                         return envioSriRepository.save(envio)
                                 .then(scheduleRetry(cola, respuestaRecepcion.getMensajes()))
                                 .then(comprobanteRepository.updateEstado(
@@ -124,6 +164,7 @@ public class EnvioSriService {
                 })
                 .onErrorResume(e -> {
                     log.error("Error al enviar comprobante {} al SRI: {}", comprobante.getId(), e.getMessage());
+                    comprobantesErroresSri.increment();
                     EnvioSri envioError = EnvioSri.builder()
                             .idComprobante(comprobante.getId())
                             .idCompania(comprobante.getIdCompania())
@@ -164,6 +205,7 @@ public class EnvioSriService {
                             .build();
 
                     if (exitoso) {
+                        comprobantesAutorizados.increment();
                         return envioSriRepository.save(envio)
                                 .then(markColaCompletada(cola))
                                 .then(comprobanteRepository.updateEstado(
@@ -177,6 +219,7 @@ public class EnvioSriService {
                                 ))
                                 .flatMap(comprobanteAutorizado -> generarYDistribuirRide(comprobanteAutorizado));
                     } else {
+                        comprobantesErroresSri.increment();
                         return envioSriRepository.save(envio)
                                 .then(scheduleRetry(cola, respuestaAutorizacion.getMensajes()))
                                 .then(comprobanteRepository.updateEstado(
@@ -185,6 +228,7 @@ public class EnvioSriService {
                 })
                 .onErrorResume(e -> {
                     log.error("Error al autorizar comprobante {}: {}", comprobante.getId(), e.getMessage());
+                    comprobantesErroresSri.increment();
                     EnvioSri envioError = EnvioSri.builder()
                             .idComprobante(comprobante.getId())
                             .idCompania(comprobante.getIdCompania())
@@ -251,6 +295,8 @@ public class EnvioSriService {
         int delayIndex = Math.min(nuevoIntento - 1, RETRY_DELAYS_MINUTES.length - 1);
         long delayMinutes = RETRY_DELAYS_MINUTES[delayIndex];
 
+        comprobantesReintentos.increment();
+
         ColaEnvio updated = cola.toBuilder()
                 .intentos(nuevoIntento)
                 .estado(nuevoEstado)
@@ -281,6 +327,6 @@ public class EnvioSriService {
     private String resolveAutorizacionEndpoint(String ambiente) {
         return "2".equals(ambiente)
                 ? "https://cel.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline"
-                : "https://celcer.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline";
+                : "https://celcer.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline?wsdl";
     }
 }
