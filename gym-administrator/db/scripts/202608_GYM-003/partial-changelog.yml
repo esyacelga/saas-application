@@ -1,0 +1,161 @@
+databaseChangeLog:
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # REQ-SAAS-001 — Sub-fase 1.1
+  # Nuevo esquema Free / Trial / Premium para la SaaS de gimnasios.
+  #
+  # Decisiones ya tomadas por el arquitecto:
+  #   D1: EXTENDER tenant.notificaciones_suscripcion (no crear tabla nueva).
+  #   D2: COEXISTIR con tenant.pagos_suscripcion; NUEVA tabla
+  #       tenant.pagos_pendientes_validacion como buzón previo a la aprobación
+  #       manual del root.
+  #   D3: MIGRAR schema de saas.actividad_plataforma (agregar id_compania,
+  #       id_usuario_actor, tipo_actor; TEXT->JSONB en detalle; VARCHAR->INET en ip).
+  #   D4: Mantener enums en DB en minúsculas (activo, en_gracia, reemplazada,
+  #       degradacion_auto, cancelacion, suspension, etc.).
+  #
+  # Documento fuente: docs/gym-administrator/requirements/planes-saas-freemium.md
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  # ── DDL ─────────────────────────────────────────────────────────────────────
+
+  - changeSet:
+      id: GYM-003-1
+      author: gesyacelga
+      context: dev, test, prod
+      comment: 'REQ-SAAS-001 — ALTER saas.planes: codigo, duracion_dias, es_gratuito, plan_degradacion_id, max_*, moneda, es_legacy'
+      changes:
+        - sqlFile:
+            path: ddl/01_alter_saas_planes.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+      rollback:
+        - sqlFile:
+            path: ddl/rollback/01_rollback_alter_saas_planes.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-003-2
+      author: gesyacelga
+      context: dev, test, prod
+      comment: 'REQ-SAAS-001 — ALTER tenant.companias: trial_usado, fecha_trial_usado (RN-01)'
+      changes:
+        - sqlFile:
+            path: ddl/02_alter_tenant_companias.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+      rollback:
+        - sqlFile:
+            path: ddl/rollback/02_rollback_alter_tenant_companias.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-003-3
+      author: gesyacelga
+      context: dev, test, prod
+      comment: 'REQ-SAAS-001 — ALTER tenant.compania_planes: sobre_limite, causa_degradacion, ampliación CHECK estado/tipo_cambio, índices (RN-06, RN-10, RN-03)'
+      changes:
+        - sqlFile:
+            path: ddl/03_alter_tenant_compania_planes.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+      rollback:
+        - sqlFile:
+            path: ddl/rollback/03_rollback_alter_tenant_compania_planes.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-003-4
+      author: gesyacelga
+      context: dev, test, prod
+      comment: 'REQ-SAAS-001 — ALTER tenant.notificaciones_suscripcion (D1): descartado_at, intentos, ultimo_error, canal=banner, estado=reintentar (RN-07)'
+      changes:
+        - sqlFile:
+            path: ddl/04_alter_tenant_notificaciones_suscripcion.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+      rollback:
+        - sqlFile:
+            path: ddl/rollback/04_rollback_alter_tenant_notificaciones_suscripcion.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-003-5
+      author: gesyacelga
+      context: dev, test, prod
+      comment: 'REQ-SAAS-001 — NUEVA tabla tenant.pagos_pendientes_validacion (D2, RN-08)'
+      changes:
+        - sqlFile:
+            path: ddl/05_create_table_tenant_pagos_pendientes_validacion.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+      rollback:
+        - sql: DROP TABLE IF EXISTS tenant.pagos_pendientes_validacion;
+
+  - changeSet:
+      id: GYM-003-6
+      author: gesyacelga
+      context: dev, test, prod
+      comment: 'REQ-SAAS-001 — NUEVA tabla saas.config_plataforma (clave-valor runtime, sección 11.4)'
+      changes:
+        - sqlFile:
+            path: ddl/06_create_table_saas_config_plataforma.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+      rollback:
+        - sql: DROP TABLE IF EXISTS saas.config_plataforma;
+
+  - changeSet:
+      id: GYM-003-7
+      author: gesyacelga
+      context: dev, test, prod
+      comment: 'REQ-SAAS-001 — ALTER saas.actividad_plataforma (D3): id_compania, id_usuario_actor, tipo_actor, detalle JSONB, ip INET (sección 6bis)'
+      changes:
+        - sqlFile:
+            path: ddl/07_alter_saas_actividad_plataforma.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+      rollback:
+        - sqlFile:
+            path: ddl/rollback/07_rollback_alter_saas_actividad_plataforma.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  # ── DML (seed + migración de tenants existentes) ────────────────────────────
+
+  - changeSet:
+      id: GYM-003-8
+      author: gesyacelga
+      context: dev, test, prod
+      comment: 'REQ-SAAS-001 — Seed 4 planes (FREE, TRIAL, PREMIUM, LEGACY_GRANDFATHERED) + degradaciones + marca planes viejos como es_legacy=true, activo=false'
+      changes:
+        - sqlFile:
+            path: dml/01_seed_saas_planes_freemium.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-003-9
+      author: gesyacelga
+      context: dev, test, prod
+      comment: 'REQ-SAAS-001 — Seed saas.config_plataforma con 7 claves pago.banco.* (valores de EJEMPLO — reemplazar en prod)'
+      changes:
+        - sqlFile:
+            path: dml/02_seed_saas_config_plataforma.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-003-10
+      author: gesyacelga
+      context: dev, test, prod
+      comment: 'REQ-SAAS-001 — Migra tenants existentes: suscripciones vigentes -> LEGACY_GRANDFATHERED; compañías -> trial_usado=TRUE (sección 11.3)'
+      changes:
+        - sqlFile:
+            path: dml/03_migrate_tenants_a_legacy_grandfathered.sql
+            relativeToChangelogFile: true
+            splitStatements: false
