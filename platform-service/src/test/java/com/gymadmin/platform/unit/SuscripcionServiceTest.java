@@ -26,6 +26,9 @@ import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -152,6 +155,8 @@ class SuscripcionServiceTest {
 
             when(companiaPlanRepository.findActivoByIdCompania(1L)).thenReturn(Mono.just(actual));
             when(planRepository.findById(2L)).thenReturn(Mono.just(plan));
+            when(companiaPlanRepository.updateEstadoById(anyLong(), anyString(), nullable(String.class)))
+                    .thenReturn(Mono.empty());
             when(companiaPlanRepository.save(any())).thenReturn(Mono.just(renovada));
 
             RenovarCommand cmd = new RenovarCommand(null, null);
@@ -176,6 +181,8 @@ class SuscripcionServiceTest {
 
             when(companiaPlanRepository.findActivoByIdCompania(1L)).thenReturn(Mono.just(actual));
             when(planRepository.findById(3L)).thenReturn(Mono.just(planNuevo));
+            when(companiaPlanRepository.updateEstadoById(anyLong(), anyString(), nullable(String.class)))
+                    .thenReturn(Mono.empty());
             when(companiaPlanRepository.save(any())).thenReturn(Mono.just(renovada));
 
             RenovarCommand cmd = new RenovarCommand(3L, 3);
@@ -209,8 +216,6 @@ class SuscripcionServiceTest {
             Plan planActual = buildPlan(2L, "Básico", BigDecimal.valueOf(100));
             Plan planNuevo  = buildPlan(3L, "Pro",    BigDecimal.valueOf(300));
 
-            CompaniaPlan cancelado = buildPlanActivo(10L, 1L, 2L,
-                    actual.getFechaInicio(), LocalDate.now(), CompaniaPlan.Estado.CANCELADO);
             CompaniaPlan nuevo = buildPlanActivo(11L, 1L, 3L,
                     LocalDate.now(), LocalDate.now().plusMonths(1), CompaniaPlan.Estado.ACTIVO);
             nuevo.setTipoCambio(CompaniaPlan.TipoCambio.UPGRADE);
@@ -218,9 +223,11 @@ class SuscripcionServiceTest {
             when(companiaPlanRepository.findActivoByIdCompania(1L)).thenReturn(Mono.just(actual));
             when(planRepository.findById(2L)).thenReturn(Mono.just(planActual));
             when(planRepository.findById(3L)).thenReturn(Mono.just(planNuevo));
-            when(companiaPlanRepository.save(any()))
-                    .thenReturn(Mono.just(cancelado))
-                    .thenReturn(Mono.just(nuevo));
+            // La fila actual se CANCELA con updateEstadoById (UPDATE sobre la existente),
+            // luego se inserta la nueva ACTIVA con un único save().
+            when(companiaPlanRepository.updateEstadoById(anyLong(), anyString(), nullable(String.class)))
+                    .thenReturn(Mono.empty());
+            when(companiaPlanRepository.save(any())).thenReturn(Mono.just(nuevo));
 
             StepVerifier.create(service.upgrade(1L, new UpgradeCommand(3L)))
                     .assertNext(r -> {

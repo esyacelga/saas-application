@@ -23,11 +23,20 @@ Fuente de verdad del enrutamiento: los `@RestController` bajo `infrastructure/ad
 ```bash
 mvn clean package                              # Build JAR → target/platform-service-new.jar
 mvn spring-boot:run                            # Run locally (reads .env via spring-dotenv)
-mvn test                                       # All integration tests (requires PostgreSQL + Redis)
+mvn test                                       # Unit + endpoint integration tests — EXCLUDES *IT.java
+mvn test -P fulltest                           # Everything incl. repository IT (*RepositoryIT.java)
+mvn test -P fulltest -Dtest='*RepositoryIT'    # Only the repository IT tests
 mvn test -Dtest=CompaniaIntegrationTest        # Run a single integration test class
 ```
 
-Java 21. All tests are integration tests (`BaseIntegrationTest` + `DotEnvInitializer`) — they hit a real PostgreSQL database, not mocks. Ensure your `.env` points to a reachable DB before running.
+Java 25 (the JVM that runs the tests must be Java 25 — set `JAVA_HOME` to a JDK 25 install, e.g. Zulu 25). All tests hit a real PostgreSQL database, not mocks. Ensure your `.env` points to a reachable DB before running.
+
+**Test flavors** (all extend `BaseIntegrationTest` + `DotEnvInitializer`, which loads `.env` and cleans the DB in FK-safe order in `@BeforeEach`):
+- `unit/*Test.java` — Mockito unit tests (no Spring context).
+- `integration/*IntegrationTest.java` — endpoint-level via `WebTestClient`, run by default with `mvn test`.
+- `integration/repository/*RepositoryIT.java` — R2DBC repository integration against the real local Postgres (happy-path only). **Excluded by default; run with the `fulltest` profile.**
+
+The `fulltest` profile (surefire include of `*IT.java`) mirrors attendance-service — same convention: no Testcontainers, the IT tests run against the local Postgres configured in `.env`.
 
 Copy `.env.example` to `.env` and configure before running. Required vars: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `REDIS_HOST`, `JWT_SECRET`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`.
 

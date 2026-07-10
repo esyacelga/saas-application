@@ -101,7 +101,8 @@ class AccessControlServiceTest {
         void permiteAccesoParaSuperAdmin() {
             JwtPrincipal principal = mock(JwtPrincipal.class);
             when(principal.isSuperAdmin()).thenReturn(true);
-            when(principal.isSoporte()).thenReturn(false);
+            // isSoporte() no se stubbea: el && corta al ser isSuperAdmin() true,
+            // así que el mock nunca lo invoca (evita UnnecessaryStubbingException).
 
             StepVerifier.create(service.requireSuperAdminOrSoporte(principal))
                     .verifyComplete();

@@ -62,7 +62,14 @@ public class SuscripcionService implements SuscripcionUseCase {
                                 renovacion.setEstado(CompaniaPlan.Estado.ACTIVO);
                                 renovacion.setTipoCambio(CompaniaPlan.TipoCambio.RENOVACION);
                                 renovacion.setIdCompaniaPlanOrig(currentPlan.getId());
-                                return companiaPlanRepository.save(renovacion);
+                                // RN-10: solo puede existir una fila vigente (activo/en_gracia) por
+                                // compañía (índice ux_compania_plan_vigente). La fila actual pasa a
+                                // REEMPLAZADA antes de insertar la nueva ACTIVA.
+                                return companiaPlanRepository.updateEstadoById(
+                                                currentPlan.getId(),
+                                                CompaniaPlan.Estado.REEMPLAZADA.name().toLowerCase(),
+                                                null)
+                                        .then(companiaPlanRepository.save(renovacion));
                             });
                 });
     }
@@ -99,22 +106,17 @@ public class SuscripcionService implements SuscripcionUseCase {
                                         montoAPagar = BigDecimal.ZERO;
                                     }
 
-                                    CompaniaPlan cancelado = new CompaniaPlan();
-                                    cancelado.setIdCompania(idCompania);
-                                    cancelado.setIdPlan(currentPlan.getIdPlan());
-                                    cancelado.setFechaInicio(currentPlan.getFechaInicio());
-                                    cancelado.setFechaFin(today);
-                                    cancelado.setDiasGracia(currentPlan.getDiasGracia());
-                                    cancelado.setEstado(CompaniaPlan.Estado.CANCELADO);
-                                    cancelado.setTipoCambio(CompaniaPlan.TipoCambio.UPGRADE);
-                                    cancelado.setIdCompaniaPlanOrig(currentPlan.getId());
-                                    cancelado.setCreditoMonto(creditoProporcional);
-
                                     BigDecimal finalMontoAPagar = montoAPagar;
                                     BigDecimal finalCreditoProporcional = creditoProporcional;
 
-                                    return companiaPlanRepository.save(cancelado)
-                                            .flatMap(cancelledPlan -> {
+                                    // RN-10: la fila vigente actual se CANCELA (UPDATE sobre la fila
+                                    // existente, no una fila nueva) antes de insertar la nueva ACTIVA,
+                                    // para no violar ux_compania_plan_vigente.
+                                    return companiaPlanRepository.updateEstadoById(
+                                                    currentPlan.getId(),
+                                                    CompaniaPlan.Estado.CANCELADO.name().toLowerCase(),
+                                                    null)
+                                            .then(Mono.defer(() -> {
                                                 CompaniaPlan nuevo = new CompaniaPlan();
                                                 nuevo.setIdCompania(idCompania);
                                                 nuevo.setIdPlan(command.idPlanNuevo());
@@ -123,7 +125,7 @@ public class SuscripcionService implements SuscripcionUseCase {
                                                 nuevo.setDiasGracia(7);
                                                 nuevo.setEstado(CompaniaPlan.Estado.ACTIVO);
                                                 nuevo.setTipoCambio(CompaniaPlan.TipoCambio.UPGRADE);
-                                                nuevo.setIdCompaniaPlanOrig(cancelledPlan.getId());
+                                                nuevo.setIdCompaniaPlanOrig(currentPlan.getId());
                                                 return companiaPlanRepository.save(nuevo)
                                                         .map(savedNuevo -> new UpgradeResult(
                                                                 savedNuevo.getId(),
@@ -131,7 +133,7 @@ public class SuscripcionService implements SuscripcionUseCase {
                                                                 finalMontoAPagar,
                                                                 true
                                                         ));
-                                            });
+                                            }));
                                 })
                 );
     }
