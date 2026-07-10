@@ -5,6 +5,7 @@ CREATE TABLE finanzas.ingresos (
   id_categoria        INT           NOT NULL REFERENCES finanzas.categorias_ingreso(id),
   id_membresia        INT,
   id_venta            INT,
+  id_comprobante      BIGINT        REFERENCES facturacion.comprobantes(id),
   monto               DECIMAL(10,2) NOT NULL CHECK (monto > 0),
   descripcion         TEXT,
   fecha               DATE          NOT NULL DEFAULT CURRENT_DATE,
@@ -15,3 +16,5 @@ CREATE TABLE finanzas.ingresos (
   modifica_fecha      TIMESTAMPTZ,
   modifica_usuario    VARCHAR(150)
 );
+
+COMMENT ON COLUMN finanzas.ingresos.id_comprobante IS 'FK opcional al comprobante electrónico SRI generado para este ingreso';

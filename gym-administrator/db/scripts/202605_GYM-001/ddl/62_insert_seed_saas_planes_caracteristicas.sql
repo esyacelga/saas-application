@@ -1,21 +1,51 @@
+-- Seed del esquema definitivo Free / Trial / Premium (REQ-SAAS-001).
+--   FREE    -> $0, permanente, límites 1/50/2
+--   TRIAL   -> $0, 60 días, features Premium, sin límites; degrada a FREE al vencer
+--   PREMIUM -> $29.99, 30 días, todas las features; degrada a FREE al vencer
 DO $$
 DECLARE
-  v_plan_basico   INT;
-  v_plan_premium  INT;
-  v_plan_enterprise INT;
+  v_plan_free    INT;
+  v_plan_trial   INT;
+  v_plan_premium INT;
 BEGIN
 
   -- ── Planes ──────────────────────────────────────────────────────────────────
 
-  INSERT INTO saas.planes (nombre, descripcion, precio_mensual, activo, creacion_usuario) VALUES
-    ('Básico',      'Funcionalidades esenciales para gestionar un gimnasio',              29.99,  TRUE, 'sistema'),
-    ('Premium',     'Funcionalidades avanzadas: finanzas, marketing e inventario',        59.99,  TRUE, 'sistema'),
-    ('Enterprise',  'Plan completo con soporte prioritario y sin límite de sucursales',  99.99,  TRUE, 'sistema')
-  ON CONFLICT DO NOTHING;
+  INSERT INTO saas.planes (
+    nombre, descripcion, precio_mensual, activo, creacion_usuario,
+    codigo, duracion_dias, es_gratuito,
+    max_sucursales, max_clientes_activos, max_staff,
+    moneda, es_legacy
+  ) VALUES
+    ('Free',
+     'Plan gratuito permanente con funcionalidades básicas',
+     0.00, TRUE, 'sistema',
+     'FREE', NULL, TRUE,
+     1, 50, 2,
+     'USD', FALSE),
 
-  SELECT id INTO v_plan_basico    FROM saas.planes WHERE nombre = 'Básico';
-  SELECT id INTO v_plan_premium   FROM saas.planes WHERE nombre = 'Premium';
-  SELECT id INTO v_plan_enterprise FROM saas.planes WHERE nombre = 'Enterprise';
+    ('Trial',
+     'Período de prueba de 60 días con todas las features Premium',
+     0.00, TRUE, 'sistema',
+     'TRIAL', 60, TRUE,
+     NULL, NULL, NULL,
+     'USD', FALSE),
+
+    ('Premium',
+     'Plan pago mensual con todas las funcionalidades',
+     29.99, TRUE, 'sistema',
+     'PREMIUM', 30, FALSE,
+     NULL, NULL, NULL,
+     'USD', FALSE)
+  ON CONFLICT (codigo) DO NOTHING;
+
+  SELECT id INTO v_plan_free    FROM saas.planes WHERE codigo = 'FREE';
+  SELECT id INTO v_plan_trial   FROM saas.planes WHERE codigo = 'TRIAL';
+  SELECT id INTO v_plan_premium FROM saas.planes WHERE codigo = 'PREMIUM';
+
+  -- Degradación al vencer: Trial -> Free, Premium -> Free, Free -> NULL (permanente)
+  UPDATE saas.planes SET plan_degradacion_id = v_plan_free
+   WHERE codigo IN ('TRIAL','PREMIUM') AND plan_degradacion_id IS DISTINCT FROM v_plan_free;
 
   -- ── Características ──────────────────────────────────────────────────────────
 
@@ -40,23 +70,22 @@ BEGIN
 
   -- ── Asignación de características por plan ───────────────────────────────────
 
-  -- Básico: core + asistencia + seguridad + config
+  -- Free: subconjunto básico (core + asistencia + seguridad + config)
   INSERT INTO saas.plan_caracteristicas (id_plan, id_caracteristica, creacion_usuario)
-  SELECT v_plan_basico, id, 'sistema'
+  SELECT v_plan_free, id, 'sistema'
   FROM saas.caracteristicas
   WHERE codigo IN ('CLIENTES', 'MEMBRESIAS', 'ASISTENCIA', 'MENSAJERIA', 'SEGURIDAD', 'CONFIGURACION')
   ON CONFLICT DO NOTHING;
 
-  -- Premium: todo lo de Básico + finanzas + marketing + inventario
+  -- Trial y Premium: todas las características activas
   INSERT INTO saas.plan_caracteristicas (id_plan, id_caracteristica, creacion_usuario)
-  SELECT v_plan_premium, id, 'sistema'
+  SELECT v_plan_trial, id, 'sistema'
   FROM saas.caracteristicas
   WHERE activo = TRUE
   ON CONFLICT DO NOTHING;
 
-  -- Enterprise: igual que Premium (diferencia está en soporte y límites, no en módulos)
   INSERT INTO saas.plan_caracteristicas (id_plan, id_caracteristica, creacion_usuario)
-  SELECT v_plan_enterprise, id, 'sistema'
+  SELECT v_plan_premium, id, 'sistema'
   FROM saas.caracteristicas
   WHERE activo = TRUE
   ON CONFLICT DO NOTHING;

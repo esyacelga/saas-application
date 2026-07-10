@@ -10,6 +10,7 @@ CREATE TABLE facturacion.config_sri (
   ambiente                 CHAR(1)      NOT NULL DEFAULT '1',
   tipo_emision             CHAR(1)      NOT NULL DEFAULT '1',
   facturacion_activa       BOOLEAN      NOT NULL DEFAULT FALSE,
+  email_notificacion       VARCHAR(255),
   updated_at               TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
   updated_by               VARCHAR(150) NOT NULL DEFAULT 'sistema',
   CONSTRAINT pk_facturacion_config_sri PRIMARY KEY (id_compania, id_sucursal),
