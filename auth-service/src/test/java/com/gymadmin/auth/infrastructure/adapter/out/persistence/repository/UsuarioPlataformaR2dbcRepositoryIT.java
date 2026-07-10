@@ -48,7 +48,7 @@ class UsuarioPlataformaR2dbcRepositoryIT extends IntegrationTestBase {
                     .idPersona(persona.getId())
                     .correo(correo)
                     .passwordHash("hashedpassword")
-                    .rol("admin")
+                    .rol("super_admin")
                     .activo(true)
                     .creacionFecha(OffsetDateTime.now())
                     .creacionUsuario("test")
@@ -59,7 +59,7 @@ class UsuarioPlataformaR2dbcRepositoryIT extends IntegrationTestBase {
                     .assertNext(retrieved -> {
                         assert retrieved.getCorreo().equals(correo);
                         assert retrieved.getIdPersona().equals(persona.getId());
-                        assert retrieved.getRol().equals("admin");
+                        assert retrieved.getRol().equals("super_admin");
                         assert retrieved.getActivo().equals(true);
                     })
                     .verifyComplete();
@@ -80,7 +80,7 @@ class UsuarioPlataformaR2dbcRepositoryIT extends IntegrationTestBase {
                     .idPersona(persona.getId())
                     .correo(correo)
                     .passwordHash("hashedpassword")
-                    .rol("manager")
+                    .rol("soporte")
                     .activo(true)
                     .creacionFecha(OffsetDateTime.now())
                     .creacionUsuario("test")
@@ -146,34 +146,25 @@ class UsuarioPlataformaR2dbcRepositoryIT extends IntegrationTestBase {
     class FindByIdPersona {
 
         @Test
-        @DisplayName("retorna los usuarios plataforma de una persona")
+        @DisplayName("retorna el usuario plataforma de una persona")
         void findByIdPersona_usuariosExisten_retornaFlux() {
             PersonaEntity persona = createTestPersona();
 
-            UsuarioPlataformaEntity usuario1 = UsuarioPlataformaEntity.builder()
+            UsuarioPlataformaEntity usuario = UsuarioPlataformaEntity.builder()
                     .idPersona(persona.getId())
-                    .correo("persona1" + UUID.randomUUID().toString().substring(0, 8) + "@platform.com")
-                    .passwordHash("hash1")
-                    .rol("admin")
-                    .creacionFecha(OffsetDateTime.now())
-                    .creacionUsuario("test")
-                    .build();
-            UsuarioPlataformaEntity usuario2 = UsuarioPlataformaEntity.builder()
-                    .idPersona(persona.getId())
-                    .correo("persona2" + UUID.randomUUID().toString().substring(0, 8) + "@platform.com")
-                    .passwordHash("hash2")
-                    .rol("manager")
+                    .correo("persona" + UUID.randomUUID().toString().substring(0, 8) + "@platform.com")
+                    .passwordHash("hash")
+                    .rol("super_admin")
                     .creacionFecha(OffsetDateTime.now())
                     .creacionUsuario("test")
                     .build();
 
-            StepVerifier.create(repository.save(usuario1)
-                    .then(repository.save(usuario2))
+            StepVerifier.create(repository.save(usuario)
                     .thenMany(repository.findByIdPersona(persona.getId())))
                     .recordWith(java.util.ArrayList::new)
                     .thenConsumeWhile(u -> true)
                     .consumeRecordedWith(usuarios -> {
-                        assert usuarios.size() >= 2 : "Debe haber al menos 2 usuarios plataforma";
+                        assert usuarios.size() >= 1 : "Debe haber al menos 1 usuario plataforma";
                         assert usuarios.stream().allMatch(u -> u.getIdPersona().equals(persona.getId()));
                     })
                     .verifyComplete();
@@ -198,7 +189,7 @@ class UsuarioPlataformaR2dbcRepositoryIT extends IntegrationTestBase {
         void countByRolAndActivoTrue_usuariosActivos_retornaLong() {
             PersonaEntity persona1 = createTestPersona();
             PersonaEntity persona2 = createTestPersona();
-            String rol = "admin";
+            String rol = "super_admin";
 
             UsuarioPlataformaEntity usuario1 = UsuarioPlataformaEntity.builder()
                     .idPersona(persona1.getId())

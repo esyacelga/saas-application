@@ -1,10 +1,10 @@
 spring:
   config:
-    import: optional:file:./.env.integration[.properties]
+    import: optional:file:./.env[.properties]
   r2dbc:
-    url: r2dbc:postgresql://${IT_DB_HOST:localhost}:${IT_DB_PORT:5432}/${IT_DB_NAME:gym-app-saas-it}
-    username: ${IT_DB_USER:postgres}
-    password: ${IT_DB_PASSWORD:postgres}
+    url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:gym-app-saas}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
 
   jackson:
     property-naming-strategy: SNAKE_CASE

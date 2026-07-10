@@ -85,14 +85,24 @@ Three **non-interchangeable** JWT user types (claim `tipo`):
 
 ## Testing
 
-Integration tests live in `src/test/`, use **Testcontainers** (real PostgreSQL container), extend `IntegrationTestBase`:
+Integration tests live in `src/test/`, corren contra **el PostgreSQL local del desarrollador** (no Testcontainers — aunque el `pom.xml` incluye la lib, no está cableada) y extienden `IntegrationTestBase`:
 
-- `@SpringBootTest` + `@Transactional` — auto-rollback per test, no manual cleanup
+- `@SpringBootTest` + `@ActiveProfiles("integration")` + `@Transactional` — auto-rollback per test, no manual cleanup
 - Seed helpers: `seedPlatform()`, `seedStaff()`, `seedPersona()`, `seedAppUser()`, `seedRol()`, `seedPermiso()`
 - Bearer token builders: `platformBearer()`, `staffBearer(String... permisos)`, `staffBearerWithRol(int idRol, String... permisos)`
 - Rate limiter reset before each test; all test data uses `id_compania = 99999` for isolation
 
-Test files follow `*IT.java` (e.g. `AuthIT.java`, `UsuarioStaffIT.java`). When adding an endpoint, seed required entities in `@BeforeEach`, then test happy path plus auth/permission failures.
+**Configuración de conexión (perfil `integration`)** — `src/test/resources/application-integration.yml` importa `./.env` y usa las **mismas variables** que el runtime de dev: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`. No definas `IT_DB_*` — es el mismo `.env` que ya tienes para `mvn spring-boot:run`. Los tests corren contra la BD dev y usan `@Transactional` para no dejar residuos.
+
+**Perfiles Maven:**
+
+| Comando | Qué corre |
+|---|---|
+| `mvn test` | Solo unit tests (`*Test.java`, `*Tests.java`) — excluye `*IT.java` |
+| `mvn test -P fulltest` | Unit tests + repository integration tests (`*IT.java`) — requiere `.env` con `DB_*` válido |
+| `mvn verify -P integration-tests` | Alias legado del anterior (`.env` obligatorio) |
+
+Test files follow `*IT.java` (e.g. `AuthIT.java`, `UsuarioStaffIT.java`, `PersonaR2dbcRepositoryIT.java`). When adding an endpoint, seed required entities in `@BeforeEach`, then test happy path plus auth/permission failures.
 
 ## Configuration
 
