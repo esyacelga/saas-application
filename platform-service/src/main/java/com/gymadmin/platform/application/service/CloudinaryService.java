@@ -143,22 +143,22 @@ public class CloudinaryService {
     public record ComprobanteSubidoResponse(String url, String hash) {}
 
     /** Expuesto para tests unitarios de la validación (no forma parte del contrato público). */
-    static String sanitizarParaTest(String nombreOriginal) {
+    public static String sanitizarParaTest(String nombreOriginal) {
         return new CloudinaryService(null).sanitizarNombre(nombreOriginal);
     }
 
     /** Expuesto para tests unitarios de la validación. */
-    static void validarTamanoParaTest(byte[] contenido) {
+    public static void validarTamanoParaTest(byte[] contenido) {
         new CloudinaryService(null).validarTamano(contenido);
     }
 
     /** Expuesto para tests unitarios de la validación. */
-    static void validarMagicBytesParaTest(byte[] contenido) {
+    public static void validarMagicBytesParaTest(byte[] contenido) {
         new CloudinaryService(null).validarMagicBytes(contenido);
     }
 
     /** Expuesto para tests unitarios. */
-    static String hashParaTest(byte[] contenido) {
+    public static String hashParaTest(byte[] contenido) {
         return new CloudinaryService(null).calcularSha256(contenido);
     }
 

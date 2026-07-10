@@ -4,9 +4,11 @@ import com.gymadmin.platform.domain.model.PagoPendienteValidacion;
 import com.gymadmin.platform.domain.port.out.PagoPendienteValidacionRepository;
 import com.gymadmin.platform.infrastructure.adapter.out.persistence.entity.PagoPendienteValidacionEntity;
 import com.gymadmin.platform.infrastructure.adapter.out.persistence.repository.PagoPendienteValidacionR2dbcRepository;
+import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
@@ -21,9 +23,12 @@ import java.time.ZoneOffset;
 public class PagoPendienteValidacionPersistenceAdapter implements PagoPendienteValidacionRepository {
 
     private final PagoPendienteValidacionR2dbcRepository repository;
+    private final DatabaseClient databaseClient;
 
-    public PagoPendienteValidacionPersistenceAdapter(PagoPendienteValidacionR2dbcRepository repository) {
+    public PagoPendienteValidacionPersistenceAdapter(PagoPendienteValidacionR2dbcRepository repository,
+                                                     DatabaseClient databaseClient) {
         this.repository = repository;
+        this.databaseClient = databaseClient;
     }
 
     @Override
@@ -39,6 +44,38 @@ public class PagoPendienteValidacionPersistenceAdapter implements PagoPendienteV
     @Override
     public Mono<PagoPendienteValidacion> findByHashIdempotencia(String hash) {
         return repository.findByHashIdempotencia(hash).map(this::toDomain);
+    }
+
+    @Override
+    public Mono<Long> marcarAprobado(Long idPago, Long idUsuarioRoot, Instant fechaAprobacion) {
+        return databaseClient.sql(
+                "UPDATE tenant.pagos_pendientes_validacion " +
+                "SET estado = 'aprobado', " +
+                "    aprobado_por = :idRoot, " +
+                "    fecha_aprobacion = :fecha " +
+                "WHERE id = :id AND estado = 'pendiente'")
+                .bind("idRoot", idUsuarioRoot)
+                .bind("fecha", OffsetDateTime.ofInstant(fechaAprobacion, ZoneOffset.UTC))
+                .bind("id", idPago)
+                .fetch()
+                .rowsUpdated();
+    }
+
+    @Override
+    public Mono<Long> marcarRechazado(Long idPago, Long idUsuarioRoot, String motivo, Instant fechaRechazo) {
+        return databaseClient.sql(
+                "UPDATE tenant.pagos_pendientes_validacion " +
+                "SET estado = 'rechazado', " +
+                "    motivo_rechazo = :motivo, " +
+                "    aprobado_por = :idRoot, " +
+                "    fecha_aprobacion = :fecha " +
+                "WHERE id = :id AND estado = 'pendiente'")
+                .bind("motivo", motivo)
+                .bind("idRoot", idUsuarioRoot)
+                .bind("fecha", OffsetDateTime.ofInstant(fechaRechazo, ZoneOffset.UTC))
+                .bind("id", idPago)
+                .fetch()
+                .rowsUpdated();
     }
 
     private PagoPendienteValidacion toDomain(PagoPendienteValidacionEntity entity) {

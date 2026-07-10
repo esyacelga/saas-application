@@ -1,15 +1,16 @@
 package com.gymadmin.platform.unit;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gymadmin.platform.application.service.ActividadPlataformaService;
 import com.gymadmin.platform.domain.model.ActividadPlataforma;
 import com.gymadmin.platform.domain.port.in.ActividadPlataformaUseCase.ListarQuery;
 import com.gymadmin.platform.domain.port.in.ActividadPlataformaUseCase.RegistrarCommand;
 import com.gymadmin.platform.domain.port.out.ActividadPlataformaRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
@@ -29,8 +30,12 @@ class ActividadPlataformaServiceTest {
     @Mock
     private ActividadPlataformaRepository repository;
 
-    @InjectMocks
     private ActividadPlataformaService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new ActividadPlataformaService(repository, new ObjectMapper());
+    }
 
     private ActividadPlataforma buildActividad(Long id, String tipoEvento, String modulo) {
         ActividadPlataforma a = new ActividadPlataforma();

@@ -3,12 +3,10 @@ package com.gymadmin.platform.domain.port.out;
 import com.gymadmin.platform.domain.model.PagoPendienteValidacion;
 import reactor.core.publisher.Mono;
 
+import java.time.Instant;
+
 /**
  * REQ-SAAS-001 (RN-08): puerto out para el buzón de pagos pendientes de validación.
- * <p>
- * Sub-fase 1.2 solo requiere lo mínimo (persistir, leer por id y por hash de
- * idempotencia). La Sub-fase 1.3 (aprobación/rechazo por root) añadirá listados
- * paginados y transiciones de estado.
  */
 public interface PagoPendienteValidacionRepository {
 
@@ -21,4 +19,16 @@ public interface PagoPendienteValidacionRepository {
      * Emite {@code Mono.empty()} si no existe uno vigente.
      */
     Mono<PagoPendienteValidacion> findByHashIdempotencia(String hash);
+
+    /**
+     * UPDATE atómico: transiciona {@code estado} de PENDIENTE a APROBADO.
+     * Retorna la cantidad de filas afectadas (0 si otro operador ya lo procesó).
+     */
+    Mono<Long> marcarAprobado(Long idPago, Long idUsuarioRoot, Instant fechaAprobacion);
+
+    /**
+     * UPDATE atómico: transiciona {@code estado} de PENDIENTE a RECHAZADO.
+     * Retorna la cantidad de filas afectadas.
+     */
+    Mono<Long> marcarRechazado(Long idPago, Long idUsuarioRoot, String motivo, Instant fechaRechazo);
 }
