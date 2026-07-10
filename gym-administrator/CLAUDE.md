@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project State
 
-Database-first SaaS gym management platform. The database layer (42 tables, 10 PostgreSQL schemas, Liquibase migrations) is complete and production-ready. Backend microservices and frontend live in sibling monorepo folders (`auth-service/`, `platform-service/`, `core-service/`, `attendance-service/`, `auth-service-frond-end/`, `gym-member-pwa/`) — this folder only contains the `db/` migrations.
+Database-first SaaS gym management platform. The database layer (69 tables across 12 PostgreSQL schemas, Liquibase migrations) is complete and production-ready. All DDL lives in a single consolidated story `db/scripts/202605_GYM-001/` (subfolders `ddl/` core, `ddl-facturacion/` SRI+facturación, `ddl-freemium/` planes Free/Trial/Premium) — every table is defined once in its `CREATE TABLE` with no follow-up `ALTER`, so a fresh database builds in one pass. Backend microservices and frontend live in sibling monorepo folders (`auth-service/`, `platform-service/`, `core-service/`, `attendance-service/`, `auth-service-frond-end/`, `gym-member-pwa/`) — this folder only contains the `db/` migrations.
 
 For architecture, schema organization, business rules, and the three user tiers, see [../docs/gym-administrator/architecture/overview.md](../docs/gym-administrator/architecture/overview.md) and [../docs/gym-administrator/architecture/database-schema.md](../docs/gym-administrator/architecture/database-schema.md) — this file only covers conventions not already documented there.
 
@@ -16,8 +16,8 @@ Antes de confiar en un doc como referencia, verifica su estado en [../docs/STATU
 
 | Área | Documento | Estado |
 |------|-----------|--------|
-| Esquema físico (fuente de verdad) | `db/scripts/202605_GYM-001/ddl/*.sql` (59 scripts) | ✅ Implementado |
-| Diagrama lógico | `db/scripts/202605_GYM-001/logical_diagram/schema.dbml` | ✅ Refleja las 42 tablas / 10 schemas |
+| Esquema físico (fuente de verdad) | `db/scripts/202605_GYM-001/{ddl,ddl-facturacion,ddl-freemium}/*.sql` | ✅ Implementado |
+| Diagrama lógico | `db/scripts/202605_GYM-001/logical_diagram/schema.dbml` | 🟡 Refleja el core histórico (42 tablas / 10 schemas); no incluye aún facturación/SRI |
 | Visión de arquitectura y modelo de negocio | [../docs/gym-administrator/architecture/overview.md](../docs/gym-administrator/architecture/overview.md) · [database-schema.md](../docs/gym-administrator/architecture/database-schema.md) · [roadmap.md](../docs/gym-administrator/architecture/roadmap.md) | 🟡 Arquitectura mezcla implementado + planeado — verifica contra código para detalle de implementación |
 | Specs de servicios ya implementados (auth, platform, core, attendance) | [../docs/gym-administrator/specs/](../docs/gym-administrator/INDEX.md) | 🟡 Spec de diseño — el código de cada servicio es la fuente de verdad |
 | Specs de servicios planeados (billing, finance, marketing, inventory) | [../docs/gym-administrator/specs/](../docs/gym-administrator/INDEX.md) | 📋 Planeado — el código todavía no existe |
@@ -78,7 +78,7 @@ Then append to `db/scripts/main-changelog.yml` (always at the end):
 
 DDL scripts within a story are two-digit prefixed in execution order: `01_`, `02_`, etc.
 
-The existing `202605_GYM-001` story uses a single-digit prefix with a wider range (01–61), creating schemas first, then tables grouped by schema, then indexes, then seed data.
+The existing `202605_GYM-001` story is the single consolidated baseline. Its DDL is split across three subfolders — `ddl/` (core: 10 base schemas + tables + indexes + seeds), `ddl-facturacion/` (SRI + facturación electrónica), `ddl-freemium/` (planes Free/Trial/Premium extras) — and its `partial-changelog.yml` orders them so every FK dependency resolves in one pass (notably: facturación is created before `finanzas.ingresos`, which references `facturacion.comprobantes`). Baseline invariant: each table is defined **once** in its `CREATE TABLE`; there are no `ALTER TABLE` fix-up scripts. New changes go in a **new** `YYYYMM_GYM-XXX/` story appended to `main-changelog.yml`, never by editing the baseline in place.
 
 ## CI/CD
 
