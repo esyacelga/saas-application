@@ -16,6 +16,14 @@ jwt:
 platform-service:
   url: ${PLATFORM_SERVICE_URL:http://localhost:8081}
 
+# REQ-SAAS-001 (Sub-fase 1.4): configuración inter-service para consultar cuotas
+# de plan en platform-service antes de crear recursos (por ejemplo, clientes).
+services:
+  platform:
+    url: ${PLATFORM_SERVICE_URL:http://localhost:8081}
+  internal:
+    secret: ${INTERNAL_SECRET:platform-secret-dev}
+
 client:
   status:
     job:

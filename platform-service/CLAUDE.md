@@ -105,6 +105,7 @@ Key route groups:
 - `NotifConfigController` → `/api/v1/companias/{id}/notif-config`
 - `ActividadPlataformaController` → `/api/v1/actividad` — list audit log
 - `ModuloCheckController` → `/api/v1/modulos/check` — public QR-based module access check
+- `BannerController` → `/api/v1/companias/{id}/banners-activos` (GET) + `/api/v1/companias/{id}/banners/{idBanner}/descartar` (POST) — REQ-SAAS-001 Sub-fase 1.5, banners in-app de vencimiento (owner/admin del tenant)
 
 ## Monorepo Context
 

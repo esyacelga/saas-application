@@ -159,3 +159,21 @@ databaseChangeLog:
             path: dml/03_migrate_tenants_a_legacy_grandfathered.sql
             relativeToChangelogFile: true
             splitStatements: false
+
+  # ── Sub-fase 1.5 — Notificaciones de vencimiento (cola de emails) ──────────
+
+  - changeSet:
+      id: GYM-003-11
+      author: gesyacelga
+      context: dev, test, prod
+      comment: 'REQ-SAAS-001 — Sub-fase 1.5: tenant.notificaciones_suscripcion + proximo_intento + índice parcial para claim FOR UPDATE SKIP LOCKED'
+      changes:
+        - sqlFile:
+            path: ddl/08_alter_tenant_notificaciones_suscripcion_retry.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+      rollback:
+        - sqlFile:
+            path: ddl/rollback/08_rollback_alter_tenant_notificaciones_suscripcion_retry.sql
+            relativeToChangelogFile: true
+            splitStatements: false

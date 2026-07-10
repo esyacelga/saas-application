@@ -41,13 +41,6 @@ public class PlanController {
         this.actividadUseCase = actividadUseCase;
     }
 
-    @Operation(summary = "Listar planes activos (público, sin auth)")
-    @ApiResponse(responseCode = "200", description = "Lista de planes activos")
-    @GetMapping("/publicos")
-    public Flux<PlanResponse> listarPlanesPublicos() {
-        return planUseCase.listarPlanesPublicos().map(this::toResponse);
-    }
-
     @Operation(summary = "Listar todos los planes (plataforma)", security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Lista de planes"),

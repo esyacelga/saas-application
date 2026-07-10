@@ -1,0 +1,9 @@
+Hola {owner_nombre},
+
+Tu plan {plan_actual} vence manana ({fecha_vencimiento}).
+
+Si no renuevas, tu cuenta pasara automaticamente a {plan_destino}.
+
+Renueva ahora: {url_comprar_premium}
+
+Gym Admin — {url_gym_admin}

@@ -49,6 +49,20 @@ public class PlanPersistenceAdapter implements PlanRepository {
     }
 
     @Override
+    public Flux<Plan> findByActivoTrueAndEsLegacyFalse() {
+        return planR2dbcRepository.findByActivoTrueAndEsLegacyFalse()
+                .flatMap(planEntity ->
+                        loadCaracteristicas(planEntity.getId())
+                                .collectList()
+                                .map(caracs -> {
+                                    Plan plan = toDomain(planEntity);
+                                    plan.setCaracteristicas(caracs);
+                                    return plan;
+                                })
+                );
+    }
+
+    @Override
     public Mono<Plan> save(Plan plan) {
         PlanEntity entity = toEntity(plan);
         entity.setActivo(true);

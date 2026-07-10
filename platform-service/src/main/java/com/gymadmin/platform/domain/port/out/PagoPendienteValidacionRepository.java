@@ -1,6 +1,7 @@
 package com.gymadmin.platform.domain.port.out;
 
 import com.gymadmin.platform.domain.model.PagoPendienteValidacion;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
@@ -19,6 +20,14 @@ public interface PagoPendienteValidacionRepository {
      * Emite {@code Mono.empty()} si no existe uno vigente.
      */
     Mono<PagoPendienteValidacion> findByHashIdempotencia(String hash);
+
+    /**
+     * Listado paginado para la bandeja de root/soporte (HU-05).
+     * Ordena por {@code fecha_reporte DESC}. Si {@code estado} es null, no filtra.
+     */
+    Flux<PagoPendienteValidacion> listar(String estado, int offset, int limit);
+
+    Mono<Long> contar(String estado);
 
     /**
      * UPDATE atómico: transiciona {@code estado} de PENDIENTE a APROBADO.

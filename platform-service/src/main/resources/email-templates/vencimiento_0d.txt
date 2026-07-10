@@ -1,0 +1,9 @@
+Hola {owner_nombre},
+
+Tu plan {plan_actual} vence hoy ({fecha_vencimiento}).
+
+Renueva ahora para no perder acceso a los modulos premium — sino, tu cuenta pasara a {plan_destino}.
+
+Renovar: {url_comprar_premium}
+
+Gym Admin — {url_gym_admin}

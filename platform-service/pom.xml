@@ -115,6 +115,12 @@
             <version>1.38.0</version>
         </dependency>
 
+        <!-- Spring Mail (SMTP) — REQ-SAAS-001 Sub-fase 1.5 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
         <!-- SpringDoc OpenAPI (Swagger UI) -->
         <dependency>
             <groupId>org.springdoc</groupId>

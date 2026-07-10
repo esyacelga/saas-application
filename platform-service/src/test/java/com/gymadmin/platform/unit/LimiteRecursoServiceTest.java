@@ -8,6 +8,7 @@ import com.gymadmin.platform.domain.model.RecursoLimitable;
 import com.gymadmin.platform.domain.port.in.ActividadPlataformaUseCase;
 import com.gymadmin.platform.domain.port.out.CompaniaPlanRepository;
 import com.gymadmin.platform.domain.port.out.PlanRepository;
+import com.gymadmin.platform.infrastructure.adapter.out.http.CoreServiceClient;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,6 +46,7 @@ class LimiteRecursoServiceTest {
     @Mock CompaniaPlanRepository companiaPlanRepository;
     @Mock PlanRepository planRepository;
     @Mock ActividadPlataformaUseCase actividadPlataformaUseCase;
+    @Mock CoreServiceClient coreServiceClient;
 
     @Mock DatabaseClient.GenericExecuteSpec advisorySpec;
     @Mock FetchSpec<Map<String, Object>> advisoryFetch;
@@ -85,7 +87,7 @@ class LimiteRecursoServiceTest {
         when(planRepository.findById(eq(plan.getId()))).thenReturn(Mono.just(plan));
 
         LimiteRecursoService service = new LimiteRecursoService(
-                databaseClient, companiaPlanRepository, planRepository, actividadPlataformaUseCase);
+                databaseClient, companiaPlanRepository, planRepository, actividadPlataformaUseCase, coreServiceClient);
 
         StepVerifier.create(service.validarPuedeCrear(idCompania, RecursoLimitable.SUCURSALES))
                 .verifyComplete();
@@ -100,7 +102,7 @@ class LimiteRecursoServiceTest {
                 .thenReturn(Mono.empty());
 
         LimiteRecursoService service = new LimiteRecursoService(
-                databaseClient, companiaPlanRepository, planRepository, actividadPlataformaUseCase);
+                databaseClient, companiaPlanRepository, planRepository, actividadPlataformaUseCase, coreServiceClient);
 
         StepVerifier.create(service.validarPuedeCrear(idCompania, RecursoLimitable.SUCURSALES))
                 .verifyComplete();
@@ -116,9 +118,10 @@ class LimiteRecursoServiceTest {
         when(companiaPlanRepository.findActivoByIdCompania(eq(idCompania)))
                 .thenReturn(Mono.just(buildCompaniaPlan(idCompania, planFree.getId())));
         when(planRepository.findById(eq(planFree.getId()))).thenReturn(Mono.just(planFree));
+        when(coreServiceClient.contarClientesActivos(eq(idCompania))).thenReturn(Mono.just(0L));
 
         LimiteRecursoService service = new LimiteRecursoService(
-                databaseClient, companiaPlanRepository, planRepository, actividadPlataformaUseCase);
+                databaseClient, companiaPlanRepository, planRepository, actividadPlataformaUseCase, coreServiceClient);
 
         // El stub cross-service retorna 0 → no supera el máximo, no lanza.
         StepVerifier.create(service.validarPuedeCrear(idCompania, RecursoLimitable.CLIENTES_ACTIVOS))

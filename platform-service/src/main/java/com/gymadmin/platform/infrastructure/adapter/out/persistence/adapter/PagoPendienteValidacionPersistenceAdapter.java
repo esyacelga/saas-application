@@ -6,6 +6,7 @@ import com.gymadmin.platform.infrastructure.adapter.out.persistence.entity.PagoP
 import com.gymadmin.platform.infrastructure.adapter.out.persistence.repository.PagoPendienteValidacionR2dbcRepository;
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
@@ -44,6 +45,74 @@ public class PagoPendienteValidacionPersistenceAdapter implements PagoPendienteV
     @Override
     public Mono<PagoPendienteValidacion> findByHashIdempotencia(String hash) {
         return repository.findByHashIdempotencia(hash).map(this::toDomain);
+    }
+
+    @Override
+    public Flux<PagoPendienteValidacion> listar(String estado, int offset, int limit) {
+        StringBuilder sql = new StringBuilder(
+                "SELECT * FROM tenant.pagos_pendientes_validacion ");
+        if (estado != null && !estado.isBlank()) {
+            sql.append("WHERE estado = :estado ");
+        }
+        sql.append("ORDER BY fecha_reporte DESC LIMIT :limit OFFSET :offset");
+        var spec = databaseClient.sql(sql.toString());
+        if (estado != null && !estado.isBlank()) {
+            spec = spec.bind("estado", estado.toLowerCase());
+        }
+        return spec
+                .bind("limit", limit)
+                .bind("offset", offset)
+                .map((row, meta) -> mapRow(row))
+                .all();
+    }
+
+    @Override
+    public Mono<Long> contar(String estado) {
+        StringBuilder sql = new StringBuilder(
+                "SELECT COUNT(*) AS cnt FROM tenant.pagos_pendientes_validacion ");
+        if (estado != null && !estado.isBlank()) {
+            sql.append("WHERE estado = :estado");
+        }
+        var spec = databaseClient.sql(sql.toString());
+        if (estado != null && !estado.isBlank()) {
+            spec = spec.bind("estado", estado.toLowerCase());
+        }
+        return spec
+                .map((row, meta) -> {
+                    Number n = row.get("cnt", Number.class);
+                    return n == null ? 0L : n.longValue();
+                })
+                .one()
+                .defaultIfEmpty(0L);
+    }
+
+    private PagoPendienteValidacion mapRow(io.r2dbc.spi.Row row) {
+        PagoPendienteValidacion p = new PagoPendienteValidacion();
+        p.setId(row.get("id", Long.class));
+        p.setIdCompania(row.get("id_compania", Long.class));
+        p.setIdPlanDestino(row.get("id_plan_destino", Long.class));
+        p.setMonto(row.get("monto", java.math.BigDecimal.class));
+        p.setMoneda(row.get("moneda", String.class));
+        OffsetDateTime fr = row.get("fecha_reporte", OffsetDateTime.class);
+        if (fr != null) p.setFechaReporte(fr.toInstant());
+        p.setFechaTransferencia(row.get("fecha_transferencia", java.time.LocalDate.class));
+        p.setComprobanteUrl(row.get("comprobante_url", String.class));
+        p.setComprobanteHash(row.get("comprobante_hash", String.class));
+        p.setBancoOrigen(row.get("banco_origen", String.class));
+        p.setReferencia(row.get("referencia", String.class));
+        p.setHashIdempotencia(row.get("hash_idempotencia", String.class));
+        String estado = row.get("estado", String.class);
+        if (estado != null) {
+            p.setEstado(PagoPendienteValidacion.Estado.valueOf(estado.toUpperCase()));
+        }
+        p.setMotivoRechazo(row.get("motivo_rechazo", String.class));
+        p.setAprobadoPor(row.get("aprobado_por", Long.class));
+        OffsetDateTime fa = row.get("fecha_aprobacion", OffsetDateTime.class);
+        if (fa != null) p.setFechaAprobacion(fa.toInstant());
+        Boolean ap = row.get("activacion_programada", Boolean.class);
+        p.setActivacionProgramada(Boolean.TRUE.equals(ap));
+        p.setFacturaEmitidaId(row.get("factura_emitida_id", Long.class));
+        return p;
     }
 
     @Override

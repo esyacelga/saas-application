@@ -8,8 +8,25 @@ spring:
     url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:gym_administrator}${DB_SSL_OPTIONS:}
     username: ${DB_USER:gym_user}
     password: ${DB_PASSWORD:gym_pass}
+  # REQ-SAAS-001 (Sub-fase 1.5): SMTP para notificaciones de vencimiento.
+  # Si SMTP_USER queda vacío el EmailAdapter loguea WARN y no falla.
+  mail:
+    host: ${SMTP_HOST:smtp.gmail.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
 jwt:
   secret: ${JWT_SECRET:Y2hhbmdlLW1lLWluLXByb2R1Y3Rpb24tdGhpcy1rZXktbXVzdC1iZS0yNTYtYml0cw==}
+
+# REQ-SAAS-001 (Sub-fase 1.4): configuración de llamadas inter-service.
+services:
+  core:
+    url: ${CORE_SERVICE_URL:http://localhost:8083}
+  internal:
+    secret: ${INTERNAL_SECRET:platform-secret-dev}
 
 qr-token:
   length: ${QR_TOKEN_LENGTH:32}
@@ -17,6 +34,18 @@ qr-token:
 subscription:
   job:
     cron: ${SUBSCRIPTION_JOB_CRON:0 5 0 * * *}
+
+# REQ-SAAS-001 (Sub-fase 1.5): notificaciones de vencimiento (email + banner).
+notificacion:
+  vencimiento:
+    cron: ${NOTIF_VENCIMIENTO_CRON:0 15 3 * * *}
+  email:
+    queue:
+      fixed-delay-ms: ${NOTIF_EMAIL_QUEUE_DELAY_MS:30000}
+      batch-size: ${NOTIF_EMAIL_QUEUE_BATCH:50}
+    urls:
+      comprar-premium: ${URL_COMPRAR_PREMIUM:https://gymadmin.app/planes}
+      gym-admin: ${URL_GYM_ADMIN:https://gymadmin.app}
 
 app:
   cors:

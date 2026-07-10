@@ -48,4 +48,38 @@ public class AccessControlService {
         }
         return Mono.error(new ForbiddenException("Access denied to company " + idCompania));
     }
+
+    /**
+     * REQ-SAAS-001 (Sub-fase 1.4): valida que el JWT pertenezca al owner o admin del
+     * tenant referenciado en la path {@code {id}} — si el {@code idCompania} del
+     * principal no coincide con el path, lanza 403.
+     * Super_admin y soporte pueden operar sobre cualquier tenant.
+     */
+    public Mono<Void> requireOwnerOrAdminOfCompania(JwtPrincipal principal, Long idCompania) {
+        if (principal == null) {
+            return Mono.error(new ForbiddenException("Authentication required"));
+        }
+        if (principal.isSuperAdmin() || principal.isSoporte()) {
+            return Mono.empty();
+        }
+        // Token staff real del auth-service: tipo=staff, sin rol_plataforma
+        if (principal.isStaff() && principal.getRolPlataforma() == null
+                && idCompania != null && idCompania.equals(principal.getIdCompania())) {
+            return Mono.empty();
+        }
+        String rol = principal.getRolPlataforma();
+        boolean esOwnerOrAdmin = "admin_compania".equals(rol) || "Dueño".equals(rol) || "owner".equals(rol);
+        if (esOwnerOrAdmin && idCompania != null && idCompania.equals(principal.getIdCompania())) {
+            return Mono.empty();
+        }
+        return Mono.error(new ForbiddenException("Access denied to company " + idCompania));
+    }
+
+    /**
+     * REQ-SAAS-001 (Sub-fase 1.4): guard para operaciones root/soporte de la
+     * plataforma sobre pagos pendientes. Alias claro para {@link #requireSuperAdminOrSoporte(JwtPrincipal)}.
+     */
+    public Mono<Void> requireRootOrSoporte(JwtPrincipal principal) {
+        return requireSuperAdminOrSoporte(principal);
+    }
 }

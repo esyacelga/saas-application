@@ -1,5 +1,6 @@
 package com.gymadmin.core.infrastructure.config;
 
+import com.gymadmin.core.domain.exception.LimiteAlcanzadoException;
 import com.gymadmin.core.infrastructure.exception.BusinessException;
 import com.gymadmin.core.infrastructure.exception.ConflictException;
 import com.gymadmin.core.infrastructure.exception.ForbiddenException;
@@ -16,6 +17,7 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Configuration
@@ -30,6 +32,17 @@ public class GlobalExceptionHandler implements ErrorWebExceptionHandler {
 
     @Override
     public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
+        // REQ-SAAS-001 (Sub-fase 1.4): cuota de plan alcanzada — 403 con detalle.
+        if (ex instanceof LimiteAlcanzadoException la) {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("codigo", "limite_plan_alcanzado");
+            body.put("recurso", la.getRecurso());
+            body.put("actual", la.getActual());
+            body.put("maximo", la.getMaximo());
+            body.put("planActual", la.getPlanCodigo());
+            return writeBody(exchange, HttpStatus.FORBIDDEN, body);
+        }
+
         HttpStatus status;
         String message;
 
@@ -59,9 +72,6 @@ public class GlobalExceptionHandler implements ErrorWebExceptionHandler {
             System.err.println("[GlobalExceptionHandler] " + ex.getClass().getName() + " - " + ex.getMessage());
         }
 
-        exchange.getResponse().setStatusCode(status);
-        exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
-
         Map<String, Object> body = Map.of(
                 "timestamp", LocalDateTime.now().toString(),
                 "status", status.value(),
@@ -70,6 +80,12 @@ public class GlobalExceptionHandler implements ErrorWebExceptionHandler {
                 "path", exchange.getRequest().getPath().value()
         );
 
+        return writeBody(exchange, status, body);
+    }
+
+    private Mono<Void> writeBody(ServerWebExchange exchange, HttpStatus status, Map<String, Object> body) {
+        exchange.getResponse().setStatusCode(status);
+        exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
         try {
             byte[] bytes = objectMapper.writeValueAsBytes(body);
             DataBuffer buffer = exchange.getResponse().bufferFactory().wrap(bytes);

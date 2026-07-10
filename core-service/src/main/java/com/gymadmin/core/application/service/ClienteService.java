@@ -11,6 +11,7 @@ import com.gymadmin.core.domain.port.out.CongelamientoRepository;
 import com.gymadmin.core.domain.port.out.MembresiaRepository;
 import com.gymadmin.core.domain.port.out.PersonaRepository;
 import com.gymadmin.core.domain.port.out.TipoMembresiaRepository;
+import com.gymadmin.core.infrastructure.adapter.out.http.PlatformServiceClient;
 import com.gymadmin.core.infrastructure.exception.ConflictException;
 import com.gymadmin.core.infrastructure.exception.NotFoundException;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,7 +20,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 public class ClienteService implements ClienteUseCase {
@@ -32,6 +32,7 @@ public class ClienteService implements ClienteUseCase {
     private final MembresiaRepository membresiaRepository;
     private final CongelamientoRepository congelamientoRepository;
     private final TipoMembresiaRepository tipoMembresiaRepository;
+    private final PlatformServiceClient platformServiceClient;
     private final String carnetPrefix;
 
     public ClienteService(ClienteRepository clienteRepository,
@@ -39,12 +40,14 @@ public class ClienteService implements ClienteUseCase {
                           MembresiaRepository membresiaRepository,
                           CongelamientoRepository congelamientoRepository,
                           TipoMembresiaRepository tipoMembresiaRepository,
+                          PlatformServiceClient platformServiceClient,
                           @Value("${carnet.prefix:GYM}") String carnetPrefix) {
         this.clienteRepository = clienteRepository;
         this.personaRepository = personaRepository;
         this.membresiaRepository = membresiaRepository;
         this.congelamientoRepository = congelamientoRepository;
         this.tipoMembresiaRepository = tipoMembresiaRepository;
+        this.platformServiceClient = platformServiceClient;
         this.carnetPrefix = carnetPrefix;
     }
 
@@ -94,7 +97,11 @@ public class ClienteService implements ClienteUseCase {
 
     @Override
     public Mono<Cliente> registrar(Long idCompania, RegistrarClienteCommand command) {
-        return personaRepository.findByCi(command.ci())
+        // REQ-SAAS-001 (RN-06): antes de crear el cliente, verificar cuota de
+        // clientes_activos contra platform-service. Si el tenant llegó al máximo,
+        // el cliente HTTP emite LimiteAlcanzadoException (403).
+        return platformServiceClient.requireLimite(idCompania, "clientes_activos")
+                .then(personaRepository.findByCi(command.ci())
                 .flatMap(persona -> clienteRepository.findByIdPersonaAndIdCompania(persona.id(), idCompania)
                         .flatMap(existing -> Mono.<PersonaRepository.PersonaResult>error(
                                 new ConflictException("La persona ya es cliente de este gym")))
@@ -123,7 +130,7 @@ public class ClienteService implements ClienteUseCase {
                                 saved.setCodigoCarnet(carnet);
                                 return clienteRepository.save(saved);
                             });
-                });
+                }));
     }
 
     @Override

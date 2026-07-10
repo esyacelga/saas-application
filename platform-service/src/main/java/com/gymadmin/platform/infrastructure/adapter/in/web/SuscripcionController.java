@@ -3,6 +3,8 @@ package com.gymadmin.platform.infrastructure.adapter.in.web;
 import com.gymadmin.platform.application.service.AccessControlService;
 import com.gymadmin.platform.domain.model.CompaniaPlan;
 import com.gymadmin.platform.domain.port.in.ActividadPlataformaUseCase;
+import com.gymadmin.platform.domain.port.in.ActivarTrialUseCase;
+import com.gymadmin.platform.domain.port.in.CancelarSuscripcionUseCase;
 import com.gymadmin.platform.domain.port.in.SuscripcionUseCase;
 import com.gymadmin.platform.infrastructure.adapter.in.web.dto.*;
 import com.gymadmin.platform.infrastructure.config.JwtPrincipal;
@@ -30,13 +32,19 @@ public class SuscripcionController {
     private final SuscripcionUseCase suscripcionUseCase;
     private final AccessControlService accessControl;
     private final ActividadPlataformaUseCase actividadUseCase;
+    private final ActivarTrialUseCase activarTrialUseCase;
+    private final CancelarSuscripcionUseCase cancelarSuscripcionUseCase;
 
     public SuscripcionController(SuscripcionUseCase suscripcionUseCase,
                                   AccessControlService accessControl,
-                                  ActividadPlataformaUseCase actividadUseCase) {
+                                  ActividadPlataformaUseCase actividadUseCase,
+                                  ActivarTrialUseCase activarTrialUseCase,
+                                  CancelarSuscripcionUseCase cancelarSuscripcionUseCase) {
         this.suscripcionUseCase = suscripcionUseCase;
         this.accessControl = accessControl;
         this.actividadUseCase = actividadUseCase;
+        this.activarTrialUseCase = activarTrialUseCase;
+        this.cancelarSuscripcionUseCase = cancelarSuscripcionUseCase;
     }
 
     @Operation(summary = "Obtener suscripción activa de una compañía", security = @SecurityRequirement(name = "bearerAuth"))
@@ -134,6 +142,51 @@ public class SuscripcionController {
                                 result.efectivoDe(),
                                 result.creditoGenerado()
                         ))));
+    }
+
+    @Operation(summary = "Activar Trial de una compañía (owner/admin del tenant)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Trial activado"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado"),
+        @ApiResponse(responseCode = "409", description = "Trial ya usado o suscripción activa")
+    })
+    @PostMapping("/api/v1/companias/{id}/suscripcion/trial")
+    public Mono<ResponseEntity<SuscripcionResponse>> activarTrial(@PathVariable Long id) {
+        return getJwtPrincipal()
+                .flatMap(principal -> accessControl.requireOwnerOrAdminOfCompania(principal, id)
+                        .then(activarTrialUseCase.activar(id, toLongOrNull(principal.getUserId())))
+                        .flatMap(cp -> actividadUseCase.registrar(new ActividadPlataformaUseCase.RegistrarCommand(
+                                "TRIAL_ACTIVADO", "suscripciones", id, null, null, principal.getName()
+                        )).onErrorResume(e -> Mono.empty()).thenReturn(cp))
+                        .map(cp -> ResponseEntity.ok(toResponse(cp))));
+    }
+
+    @Operation(summary = "Cancelar suscripción de una compañía (owner/admin del tenant)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "Suscripción cancelada"),
+        @ApiResponse(responseCode = "400", description = "No hay suscripción cancelable"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado")
+    })
+    @PostMapping("/api/v1/companias/{id}/suscripcion/cancelar")
+    public Mono<ResponseEntity<Void>> cancelarSuscripcion(@PathVariable Long id,
+                                                           @RequestBody(required = false) CancelarSuscripcionRequest request) {
+        String motivo = request != null ? request.motivo() : null;
+        return getJwtPrincipal()
+                .flatMap(principal -> accessControl.requireOwnerOrAdminOfCompania(principal, id)
+                        .then(cancelarSuscripcionUseCase.cancelar(id, toLongOrNull(principal.getUserId()), motivo))
+                        .then(actividadUseCase.registrar(new ActividadPlataformaUseCase.RegistrarCommand(
+                                "SUSCRIPCION_CANCELADA", "suscripciones", id, null, motivo, principal.getName()
+                        )).onErrorResume(e -> Mono.empty()))
+                        .thenReturn(ResponseEntity.<Void>noContent().build()));
+    }
+
+    private Long toLongOrNull(String userId) {
+        if (userId == null || userId.isBlank()) return null;
+        try {
+            return Long.parseLong(userId);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private Mono<JwtPrincipal> getJwtPrincipal() {

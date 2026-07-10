@@ -9,6 +9,7 @@ import com.gymadmin.platform.domain.port.in.ActividadPlataformaUseCase;
 import com.gymadmin.platform.domain.port.in.LimiteRecursoUseCase;
 import com.gymadmin.platform.domain.port.out.CompaniaPlanRepository;
 import com.gymadmin.platform.domain.port.out.PlanRepository;
+import com.gymadmin.platform.infrastructure.adapter.out.http.CoreServiceClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.r2dbc.core.DatabaseClient;
@@ -40,15 +41,18 @@ public class LimiteRecursoService implements LimiteRecursoUseCase {
     private final CompaniaPlanRepository companiaPlanRepository;
     private final PlanRepository planRepository;
     private final ActividadPlataformaUseCase actividadPlataformaUseCase;
+    private final CoreServiceClient coreServiceClient;
 
     public LimiteRecursoService(DatabaseClient databaseClient,
                                  CompaniaPlanRepository companiaPlanRepository,
                                  PlanRepository planRepository,
-                                 ActividadPlataformaUseCase actividadPlataformaUseCase) {
+                                 ActividadPlataformaUseCase actividadPlataformaUseCase,
+                                 CoreServiceClient coreServiceClient) {
         this.databaseClient = databaseClient;
         this.companiaPlanRepository = companiaPlanRepository;
         this.planRepository = planRepository;
         this.actividadPlataformaUseCase = actividadPlataformaUseCase;
+        this.coreServiceClient = coreServiceClient;
     }
 
     @Override
@@ -98,7 +102,11 @@ public class LimiteRecursoService implements LimiteRecursoUseCase {
         };
     }
 
-    private Mono<Long> contarUsoActual(Long idCompania, RecursoLimitable recurso) {
+    /**
+     * Expuesto para {@code ConsultarUsoLimitesService} — retorna el conteo actual
+     * del recurso sin evaluar cuotas ni advisory-lock.
+     */
+    public Mono<Long> contarUsoActual(Long idCompania, RecursoLimitable recurso) {
         return switch (recurso) {
             case SUCURSALES -> contarSucursales(idCompania);
             case CLIENTES_ACTIVOS -> contarClientesActivos(idCompania);
@@ -120,22 +128,20 @@ public class LimiteRecursoService implements LimiteRecursoUseCase {
     }
 
     /**
-     * TODO Sub-fase 1.4 wiring cross-service: llamar a core-service
-     * (ej. GET /internal/companias/{id}/clientes-activos/count) para obtener el
-     * conteo real. Por ahora devuelve 0 para no bloquear la iteración.
+     * REQ-SAAS-001 (Sub-fase 1.4): llamada HTTP a core-service para contar
+     * clientes activos del tenant. Fallback a 0 si core-service no responde.
      */
     private Mono<Long> contarClientesActivos(Long idCompania) {
-        log.debug("contarClientesActivos({}) — stub: retorna 0 (Sub-fase 1.4 wiring cross-service)", idCompania);
-        return Mono.just(0L);
+        return coreServiceClient.contarClientesActivos(idCompania);
     }
 
     /**
-     * TODO Sub-fase 1.4 wiring cross-service: llamar a auth-service
-     * (ej. GET /internal/companias/{id}/staff/count) para obtener el conteo real.
-     * Por ahora devuelve 0 para no bloquear la iteración.
+     * TODO Sub-fase 1.4 wiring cross-service (auth-service): pospuesto — el flujo
+     * de creación de staff en auth-service no fue implementado en esta sub-fase.
+     * Retorna 0 para no bloquear.
      */
     private Mono<Long> contarStaff(Long idCompania) {
-        log.debug("contarStaff({}) — stub: retorna 0 (Sub-fase 1.4 wiring cross-service)", idCompania);
+        log.debug("contarStaff({}) — stub: pendiente auth-service wiring", idCompania);
         return Mono.just(0L);
     }
 

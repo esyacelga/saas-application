@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"></head>
+<body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:auto;padding:24px">
+  <h2 style="color:#dc2626">Tu plan vence hoy</h2>
+  <p>Hola <strong>{owner_nombre}</strong>,</p>
+  <p>Tu plan <strong>{plan_actual}</strong> vence <strong>hoy ({fecha_vencimiento})</strong>.</p>
+  <p>Renueva ahora para no perder acceso a los módulos premium. En caso contrario, tu cuenta pasará a <strong>{plan_destino}</strong> al final del día.</p>
+  <p style="margin:32px 0">
+    <a href="{url_comprar_premium}"
+       style="background:#dc2626;color:#fff;padding:12px 24px;border-radius:4px;text-decoration:none;font-weight:bold">
+      Renovar hoy
+    </a>
+  </p>
+  <p style="color:#888;font-size:13px">
+    <a href="{url_gym_admin}">{url_gym_admin}</a>
+  </p>
+</body>
+</html>

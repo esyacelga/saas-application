@@ -1,0 +1,7 @@
+Hola {owner_nombre},
+
+Solo {dias_restantes} dias para el vencimiento de tu plan {plan_actual} ({fecha_vencimiento}).
+
+Renueva hoy para evitar la degradacion a {plan_destino}: {url_comprar_premium}
+
+Gym Admin — {url_gym_admin}

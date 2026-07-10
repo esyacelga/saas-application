@@ -17,6 +17,13 @@ public interface PlanRepository {
      */
     Mono<Plan> findByCodigo(String codigo);
 
+    /**
+     * REQ-SAAS-001 — planes publicables en la landing: {@code activo=true} y
+     * {@code es_legacy=false}. Incluye Free, Trial, Premium; excluye planes
+     * históricos y grandfathered.
+     */
+    Flux<Plan> findByActivoTrueAndEsLegacyFalse();
+
     Mono<Plan> save(Plan plan);
 
     Mono<Plan> update(Plan plan);

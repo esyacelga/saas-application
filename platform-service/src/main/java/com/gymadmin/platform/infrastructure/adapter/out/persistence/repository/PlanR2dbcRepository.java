@@ -12,4 +12,7 @@ public interface PlanR2dbcRepository extends ReactiveCrudRepository<PlanEntity, 
 
     @Query("SELECT * FROM saas.planes WHERE codigo = :codigo ORDER BY activo DESC, id ASC LIMIT 1")
     Mono<PlanEntity> findByCodigo(String codigo);
+
+    @Query("SELECT * FROM saas.planes WHERE activo = TRUE AND (es_legacy IS NULL OR es_legacy = FALSE) ORDER BY id ASC")
+    Flux<PlanEntity> findByActivoTrueAndEsLegacyFalse();
 }

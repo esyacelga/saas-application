@@ -1,0 +1,9 @@
+Hola {owner_nombre},
+
+Tu suscripcion al plan {plan_actual} vence en {dias_restantes} dias ({fecha_vencimiento}).
+
+Si no renuevas, tu cuenta se degradara automaticamente al plan {plan_destino}.
+
+Renueva ahora: {url_comprar_premium}
+
+Gym Admin — {url_gym_admin}
