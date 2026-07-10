@@ -29,6 +29,7 @@ mvn test                             # all unit tests
 mvn test -Dtest=ClassName            # single unit test class
 mvn verify -P integration-tests      # all integration tests (*IT.java) via Testcontainers
 mvn verify -P integration-tests -Dit.test=AuthIT  # single IT class
+mvn test -P fulltest                 # all repository integration tests against real PostgreSQL (Testcontainers)
 docker-compose up -d --build         # full stack (PostgreSQL + auth-service)
 ```
 
