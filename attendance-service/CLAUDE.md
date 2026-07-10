@@ -25,8 +25,14 @@ Fuente de verdad del enrutamiento: `AsistenciaController`, `MensajeLogController
 # Build
 mvn clean package
 
-# Run all tests
+# Run unit + endpoint integration tests (excludes *IT.java)
 mvn test
+
+# Run everything including repository IT tests (*IT.java)
+mvn test -P fulltest
+
+# Run only the repository IT tests
+mvn test -P fulltest -Dtest='*RepositoryIT'
 
 # Run a single test class
 mvn test -Dtest=AsistenciaManualIntegrationTest
@@ -38,7 +44,14 @@ mvn test -Dtest="AsistenciaManualIntegrationTest#duenoRegistraOverride"
 mvn spring-boot:run
 ```
 
-Tests require a `.env` file at the project root — the `DotEnvInitializer` loads it automatically before tests run.
+Tests require a `.env` file at the project root — the `DotEnvInitializer` loads it automatically before tests run. `application-test.yml` reads the same `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` variables as the dev runtime (no separate test DB).
+
+**Maven profiles:**
+
+| Comando | Qué corre |
+|---|---|
+| `mvn test` | Unit tests + endpoint `*IntegrationTest.java` — excluye `*IT.java` |
+| `mvn test -P fulltest` | Todo lo anterior + repository IT (`*RepositoryIT.java`) — requiere `.env` con `DB_*` válido |
 
 ## Architecture
 
@@ -134,7 +147,11 @@ Supported template variables: `{nombre}`, `{dias}`, `{fecha_vencimiento}`, `{acc
 
 ### Tests
 
-All tests are integration tests (`@SpringBootTest` + `WebTestClient`) under `src/test/java/.../integration/`. There are no unit tests.
+Three flavors coexist under `src/test/java/`:
+
+- `unit/*Test.java` — Mockito unit tests (no Spring context).
+- `integration/*IntegrationTest.java` — endpoint-level integration via `WebTestClient`, run by default with `mvn test`.
+- `integration/repository/*RepositoryIT.java` — R2DBC repository integration against the real local Postgres. Excluded by default; run with `mvn test -P fulltest`.
 
 `BaseIntegrationTest` provides:
 - A pre-wired `WebTestClient`

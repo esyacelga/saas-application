@@ -40,8 +40,10 @@ public abstract class BaseIntegrationTest {
         databaseClient.sql("DELETE FROM tenant.notificaciones_suscripcion").then().block();
         databaseClient.sql("DELETE FROM tenant.config_notif_suscripcion").then().block();
         databaseClient.sql("DELETE FROM tenant.pagos_suscripcion").then().block();
+        databaseClient.sql("DELETE FROM tenant.pagos_pendientes_validacion").then().block();
         databaseClient.sql("DELETE FROM tenant.compania_planes").then().block();
         databaseClient.sql("DELETE FROM tenant.sucursales").then().block();
+        databaseClient.sql("DELETE FROM saas.actividad_plataforma WHERE id_compania IS NOT NULL").then().block();
         databaseClient.sql("DELETE FROM tenant.companias").then().block();
         databaseClient.sql("DELETE FROM saas.plan_caracteristicas").then().block();
         databaseClient.sql("DELETE FROM saas.planes").then().block();

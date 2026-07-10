@@ -6,12 +6,15 @@ import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import reactor.util.retry.Retry;
 
 import javax.crypto.SecretKey;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
@@ -37,13 +40,30 @@ public abstract class BaseIntegrationTest {
     @BeforeEach
     void cleanDatabase() {
         // Orden inverso de FK
-        databaseClient.sql("DELETE FROM asistencia.mensajes_log").then().block();
-        databaseClient.sql("DELETE FROM asistencia.plantillas_mensajes").then().block();
-        databaseClient.sql("DELETE FROM asistencia.asistencias").then().block();
-        databaseClient.sql("DELETE FROM core.membresias WHERE creacion_usuario = 'test'").then().block();
-        databaseClient.sql("DELETE FROM core.tipos_membresia WHERE creacion_usuario = 'test'").then().block();
-        databaseClient.sql("DELETE FROM core.clientes WHERE creacion_usuario = 'test'").then().block();
-        databaseClient.sql("DELETE FROM identidad.personas WHERE ci LIKE 'IT%'").then().block();
+        executeWithRetry("DELETE FROM asistencia.mensajes_log");
+        executeWithRetry("DELETE FROM asistencia.plantillas_mensajes");
+        executeWithRetry("DELETE FROM asistencia.asistencias");
+        executeWithRetry("DELETE FROM core.membresias WHERE creacion_usuario = 'test'");
+        executeWithRetry("DELETE FROM core.tipos_membresia WHERE creacion_usuario = 'test'");
+        executeWithRetry("DELETE FROM core.clientes WHERE creacion_usuario = 'test'");
+        executeWithRetry("DELETE FROM identidad.personas WHERE ci LIKE 'IT%'");
+    }
+
+    /**
+     * Ejecuta un DELETE con reintentos ante fallos transitorios de conexión R2DBC.
+     * El driver r2dbc-postgresql 1.0.7 sufre de una race intermitente en la
+     * negociación SCRAM-SHA-256 cuando el pool abre conexiones nuevas contra
+     * PostgreSQL en Docker (fuera de las reglas trust locales), lo que produce
+     * {@link DataAccessResourceFailureException} con causa "password
+     * authentication failed". El retry con backoff cubre esos casos.
+     */
+    private void executeWithRetry(String sql) {
+        databaseClient.sql(sql)
+                .then()
+                .retryWhen(Retry.backoff(3, Duration.ofMillis(100))
+                        .filter(t -> t instanceof DataAccessResourceFailureException)
+                        .onRetryExhaustedThrow((spec, signal) -> signal.failure()))
+                .block();
     }
 
     // ── JWT helpers ──────────────────────────────────────────────────────────

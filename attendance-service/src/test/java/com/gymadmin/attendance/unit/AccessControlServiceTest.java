@@ -111,7 +111,6 @@ class AccessControlServiceTest {
         void pasaCuandoEsStaff() {
             JwtPrincipal principal = mock(JwtPrincipal.class);
             when(principal.isStaff()).thenReturn(true);
-            when(principal.isPlataforma()).thenReturn(false);
 
             StepVerifier.create(service.requireStaffOrPlataforma(principal))
                     .verifyComplete();
@@ -209,7 +208,6 @@ class AccessControlServiceTest {
         void pasaCuandoEsDueno() {
             JwtPrincipal principal = mock(JwtPrincipal.class);
             when(principal.isDueno()).thenReturn(true);
-            when(principal.isPlataforma()).thenReturn(false);
 
             StepVerifier.create(service.requireDuenoOrPlataforma(principal))
                     .verifyComplete();
