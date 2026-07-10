@@ -3,6 +3,16 @@
 > **ESTADO:** 🟡 Arquitectura y modelo de negocio. Mezcla lo implementado con lo planeado; para detalle de implementación verificar contra el código. Ver [../../STATUS.md](../../STATUS.md).
 ## Arquitectura Multicompañía / Multisucursal
 
+**Totales actuales (verificados 2026-07-10 contra `gym-administrator/db/scripts/202605_GYM-001/`):** **69 tablas** distribuidas en **12 schemas** (`saas`, `identidad`, `tenant`, `core`, `asistencia`, `finanzas`, `marketing`, `inventario`, `config`, `seguridad`, `sri`, `facturacion`).
+
+Todas las tablas están consolidadas en una única story Liquibase `202605_GYM-001/`, dividida en tres subcarpetas por dominio:
+
+- **`ddl/`** — 10 schemas base (saas, identidad, tenant, core, asistencia, finanzas, marketing, inventario, config, seguridad) y sus 46 tablas de plataforma / operación.
+- **`ddl-facturacion/`** — Schemas `sri` (6 catálogos oficiales) y `facturacion` (17 tablas de comprobantes electrónicos y flujo SRI Ecuador).
+- **`ddl-freemium/`** — Extras para REQ-SAAS-001: `tenant.pagos_pendientes_validacion`, `saas.config_plataforma` y seed inicial de datos bancarios.
+
+Cada tabla se define **una única vez** en su `CREATE TABLE` (sin scripts `ALTER` posteriores) — una base de datos vacía se construye en una sola pasada de Liquibase. Los cambios REQ-SAAS-001 (Sub-fase 1.1) previamente vivían en la story `202608_GYM-003` (retirada); hoy están incorporados directamente al CREATE de las tablas afectadas: `saas.planes`, `tenant.companias`, `tenant.compania_planes`, `tenant.notificaciones_suscripcion`, `saas.actividad_plataforma`.
+
 ---
 
 ## Convención Global de Multitenancy
@@ -70,34 +80,48 @@
  CATÁLOGO GLOBAL (sin id_compania / id_sucursal)
  ─────────────────────────────────────────────────────────────────────────
 
-╔══════════════════════╗          ╔═══════════════════════════╗
-║        planes        ║  N    N  ║    plan_caracteristicas   ║
-╠══════════════════════╣<─────────╠═══════════════════════════╣
-║ PK id                ║          ║ FK id_plan                ║
-║    nombre            ║          ║ FK id_caracteristica      ║
-║    descripcion       ║          ╚══════════════╤════════════╝
-║    precio_mensual    ║                         │ N
-║    activo            ║                         │
-╚══════════╤═══════════╝                         ▼ 1
-           │ 1                    ╔═══════════════════════════╗
-           │                      ║     caracteristicas       ║
-           ▼ N                    ╠═══════════════════════════╣
-╔══════════════════════════════════╗   ║ PK id                     ║
-║       compania_planes            ║   ║    codigo                 ║
-╠══════════════════════════════════╣   ║    nombre                 ║
-║ PK id                            ║   ║    modulo                 ║
-║ FK id_compania                   ║←FK║    activo                 ║
-║ FK id_plan                       ║   ╚═══════════════════════════╝
+╔══════════════════════════════════╗   ╔═══════════════════════════╗
+║             planes               ║   ║    plan_caracteristicas   ║
+╠══════════════════════════════════╣<──╠═══════════════════════════╣
+║ PK id                            ║   ║ FK id_plan                ║
+║    nombre                        ║   ║ FK id_caracteristica      ║
+║    descripcion                   ║   ╚══════════════╤════════════╝
+║    precio_mensual                ║                  │ N
+║    codigo                UNIQUE  ║  FREE/TRIAL/     ▼ 1
+║    duracion_dias                 ║  PREMIUM   ╔═══════════════════════════╗
+║    es_gratuito           BOOL    ║            ║     caracteristicas       ║
+║    plan_degradacion_id           ║  self-FK   ╠═══════════════════════════╣
+║    max_sucursales                ║            ║ PK id                     ║
+║    max_clientes_activos          ║            ║    codigo         UNIQUE  ║
+║    max_staff                     ║            ║    nombre                 ║
+║    moneda                        ║  ISO4217   ║    modulo                 ║
+║    es_legacy             BOOL    ║            ║    activo                 ║
+║    activo                        ║            ╚═══════════════════════════╝
+╚══════════╤═══════════════════════╝
+           │ 1
+           ▼ N
+╔══════════════════════════════════╗
+║       compania_planes            ║
+╠══════════════════════════════════╣
+║ PK id                            ║
+║ FK id_compania                   ║  ← FK real a tenant.companias
+║ FK id_plan                       ║  ← FK real a saas.planes
 ║    fecha_inicio                  ║
 ║    fecha_fin                     ║
 ║    dias_gracia                   ║  días extra tras vencimiento
 ║    fecha_ultimo_pago             ║
 ║    motivo_suspension             ║
 ║    estado                        ║  activo|en_gracia|vencido|
-║                                  ║  suspendido|cancelado|programado
-║    tipo_cambio        ← NUEVO    ║  nuevo|renovacion|upgrade|downgrade
-║    id_compania_plan_orig ← NUEVO ║  FK al registro que reemplaza
-║    credito_monto      ← NUEVO    ║  valor prorrateado acreditado
+║                                  ║  suspendido|cancelado|programado|
+║                                  ║  reemplazada
+║    tipo_cambio                   ║  nuevo|renovacion|upgrade|downgrade|
+║                                  ║  degradacion_auto|cancelacion|suspension
+║    sobre_limite          BOOL    ║  RN-06 modo tolerancia
+║    sobre_limite_hasta            ║  fecha límite de gracia (30 días)
+║    causa_degradacion             ║  vencimiento|pago_rechazado|
+║                                  ║  cancelacion_manual|suspension_root
+║    id_compania_plan_orig         ║  FK al registro que reemplaza
+║    credito_monto                 ║  valor prorrateado acreditado
 ╚═══════════════╤══════════════════╝
                 │ 1
                 ▼ N
@@ -180,10 +204,19 @@
 ╠══════════════════════════════════╣             ╠══════════════════════════════╣
 ║ PK id                            ║             ║ PK id                        ║
 ╚══════════════════════════════════╝             ║ FK id_compania_plan          ║
-                                                 ║    dias_antes                ║  ej: 5, 3, 1
-                                                 ║    canal                     ║  email|whatsapp
-                                                 ║    estado                    ║  enviado|fallido
+                                                 ║ FK id_compania               ║  filtrado multi-tenant
+                                                 ║    tipo                      ║  VENCIMIENTO_TRIAL|
+                                                 ║                              ║  VENCIMIENTO_PREMIUM|
+                                                 ║                              ║  PAGO_RECHAZADO|...
+                                                 ║    dias_antes                ║  ej: 15, 7, 3, 1, 0
+                                                 ║    canal                     ║  email|whatsapp|banner
+                                                 ║    estado                    ║  pendiente|enviado|
+                                                 ║                              ║  fallido|reintentar
                                                  ║    fecha_envio               ║
+                                                 ║    proximo_intento           ║  backoff exponencial
+                                                 ║    intentos                  ║  contador de retries
+                                                 ║    ultimo_error              ║  msg SMTP para debug
+                                                 ║    descartado_at             ║  solo canal=banner
                                                  ╚══════════════════════════════╝
 
 ╔══════════════════════════════════╗
@@ -228,6 +261,79 @@
    → plan_caracteristicas → caracteristicas.codigo == modulo_solicitado
    → permitir / denegar acceso
 ```
+
+---
+
+## D0.7 — Freemium & Auditoría SaaS (REQ-SAAS-001)
+
+Extras persistidos para el flujo Free / Trial / Premium. Se distribuyen entre `ddl/` (tablas base tocadas por Sub-fase 1.1) y `ddl-freemium/` (tablas 100 % nuevas).
+
+```
+╔══════════════════════════════════════════╗
+║   tenant.pagos_pendientes_validacion     ║  ← ddl-freemium/01
+╠══════════════════════════════════════════╣
+║ PK id                                    ║
+║ FK id_compania         → tenant.companias║
+║ FK id_plan_destino     → saas.planes     ║
+║    monto / moneda                        ║
+║    fecha_reporte / fecha_transferencia   ║
+║    comprobante_url     (Cloudinary raw)  ║
+║    comprobante_hash    SHA-256           ║
+║    banco_origen / referencia             ║
+║    hash_idempotencia   UNIQUE parcial    ║  previene reportes duplicados
+║    estado              pendiente|        ║
+║                        aprobado|rechazado║
+║    motivo_rechazo                        ║
+║ FK aprobado_por        → saas.usuarios_  ║
+║                          plataforma      ║
+║    fecha_aprobacion                      ║
+║    activacion_programada   BOOL          ║  RN-05: Trial → Premium diferido
+║    factura_emitida_id  (reservado fase 4)║
+╚══════════════════════════════════════════╝
+  Bandeja root/soporte: idx_pagos_pendientes_estado_fecha
+  Historial por tenant: idx_pagos_pendientes_compania
+
+╔══════════════════════════════════════════╗
+║   saas.config_plataforma                 ║  ← ddl-freemium/02 + seed en 03
+╠══════════════════════════════════════════╣
+║ PK clave        (dot-notation)           ║
+║    valor        (texto — parseado en app)║
+║    descripcion                           ║
+║ FK modificado_por → saas.usuarios_       ║
+║                     plataforma           ║
+║    modificado_at                         ║
+╚══════════════════════════════════════════╝
+  Uso: datos bancarios (pago.banco.nombre, .titular, ...),
+  precios, umbrales editables sin redeploy.
+
+╔══════════════════════════════════════════╗
+║   saas.actividad_plataforma              ║  ← ddl/67 (extendida por D3)
+╠══════════════════════════════════════════╣
+║ PK id           BIGINT                   ║
+║    tipo_evento  (TRIAL_ACTIVADO,         ║
+║                 PAGO_APROBADO,           ║
+║                 PLAN_DEGRADADO_AUTO, ...)║
+║    modulo / entidad_id / entidad_nombre  ║
+║    detalle      JSONB                    ║  payload estructurado
+║    usuario      (login string)           ║
+║ FK id_compania  → tenant.companias       ║  NULL = evento de plataforma
+║    id_usuario_actor                      ║  sin FK dura (dos tablas posibles)
+║    tipo_actor   OWNER|ROOT|STAFF|SISTEMA ║
+║    ip           INET                     ║
+║    fecha                                 ║
+╚══════════════════════════════════════════╝
+  Índices: fecha DESC, modulo, tipo_evento, usuario,
+           (id_compania, fecha DESC) WHERE id_compania IS NOT NULL.
+```
+
+**Notas sobre planes en `saas.planes`:**
+
+- `codigo` es el identificador estable usado por el backend (`FREE`, `TRIAL`, `PREMIUM`); `id` no es API-visible.
+- `duracion_dias = NULL` significa plan permanente (Free); `60` es Trial; `30` es Premium mensual.
+- `plan_degradacion_id` es un self-FK: al vencer un plan sin pago, se degrada automáticamente al plan referenciado (típicamente Free).
+- `max_sucursales / max_clientes_activos / max_staff` son los hard limits validados por `LimiteRecursoService` con `pg_advisory_xact_lock()`; `NULL = ilimitado`.
+- `es_legacy = TRUE` esconde el plan del catálogo público (`GET /planes/publicos`), preservando contratos migrados.
+- `tenant.companias` incluye ahora `trial_usado BOOLEAN` + `fecha_trial_usado TIMESTAMPTZ` (RN-01, flag irrevocable) y campos fiscales SRI (`nombre_comercial`, `dir_matriz`, `obligado_contabilidad`, `contribuyente_especial`).
 
 ---
 
@@ -534,116 +640,201 @@ UNIQUE(id_producto,                         ║    tipo               ║
 ## Vista Global de Relaciones
 
 ```
-  ┌──────────────────────────────────────────────────────────────────────┐
-  │ PLATAFORMA SAAS (tablas globales, sin tenant)                        │
-  │                                                                      │
-  │  caracteristicas ──< plan_caracteristicas >── planes                 │
-  │                                                    │                 │
-  └────────────────────────────────────────────────────┼─────────────────┘
-                                                        │ 1
-                                                        ▼ N
-  ┌──────────────────────────────────────────────────────────────────────┐
-  │ MULTITENANCY                                                         │
-  │                                                                      │
-  │  companias ══════> sucursales                                        │
-  │      │                                                               │
-  │      └── compania_planes ──> pagos_suscripcion                      │
-  │               │                                                      │
-  │               └──> notificaciones_suscripcion                       │
-  │               │                                                      │
-  │         config_notif_suscripcion  (umbrales por compañía)           │
-  │                                                                      │
-  │      id_compania · id_sucursal presentes en todas las tablas        │
-  └──────────────────────────────────────────────────────────────────────┘
+  ┌───────────────────────────────────────────────────────────────────────────┐
+  │ saas   — Plataforma SaaS global (Free / Trial / Premium)                  │
+  │                                                                           │
+  │  caracteristicas ──< plan_caracteristicas >── planes ──┐                  │
+  │                                                        │ self-FK          │
+  │                                                        └── plan_degradacion│
+  │  usuarios_plataforma (root/soporte)                                       │
+  │  actividad_plataforma (auditoría cross-servicio)                          │
+  │  config_plataforma    (clave-valor runtime: datos bancarios, umbrales)    │
+  │                                                        │                  │
+  └────────────────────────────────────────────────────────┼──────────────────┘
+                                                           │ 1
+                                                           ▼ N
+  ┌───────────────────────────────────────────────────────────────────────────┐
+  │ tenant — Multitenancy                                                     │
+  │                                                                           │
+  │  companias ═══════> sucursales                                            │
+  │      │  (trial_usado + datos SRI)                                         │
+  │      ├── compania_planes ──> pagos_suscripcion                           │
+  │      │       │  (sobre_limite, causa_degradacion, self-FK a orig)         │
+  │      │       └──> notificaciones_suscripcion  (email + banner + retries)  │
+  │      │                                                                    │
+  │      ├── pagos_pendientes_validacion   (RN-08 transferencias)             │
+  │      └── config_notif_suscripcion      (umbrales por compañía)            │
+  │                                                                           │
+  │  id_compania · id_sucursal presentes en todas las tablas operativas       │
+  └───────────────────────────────────────────────────────────────────────────┘
 
   ┌──────────────────────────────────────────────────────────────────┐
-  │ CONFIG                                                           │
-  │  gym_config        metodos_pago ──────────────────────┐         │
-  └──────────────────────────────────────────────────────┼─────────┘
-                                                          │
-  ┌──────────────────────────────────────────────────────▼─────────┐
-  │ CLIENTES & MEMBRESÍAS                  [Plan Básico]            │
-  │  tipos_membresia ──> membresias <── clientes                   │
-  │                          │                                      │
-  │                    congelamientos                               │
-  └──────────────────────────┼─────────────────────────────────────┘
+  │ identidad — Personas / credenciales globales                     │
+  │  personas ──> usuarios_app  (login por gym)                      │
+  │           └── biometria     (huella, facial — futuro)            │
+  └──────────────────────────────────────────────────────────────────┘
+
+  ┌──────────────────────────────────────────────────────────────────┐
+  │ config — Configuración por gym                                   │
+  │  gym_config (clave-valor)   metodos_pago                         │
+  └──────────────────────────────────────────────────────────────────┘
+
+  ┌──────────────────────────────────────────────────────────────────┐
+  │ core — Clientes & Membresías [Plan Free/Trial/Premium]           │
+  │  tipos_membresia ──> membresias <── clientes                    │
+  │                          │                                       │
+  │                    congelamientos                                │
+  └──────────────────────────┬───────────────────────────────────────┘
                              │
-          ┌──────────────────┼──────────────────┐
-          ▼                  ▼                  ▼
-  ┌────────────────┐  ┌──────────────────┐  ┌──────────────────────┐
-  │  ASISTENCIA &  │  │    FINANZAS      │  │  PROMOCIONES &       │
-  │  MENSAJERÍA    │  │  [Plan Premium]  │  │  BENEFICIOS          │
-  │  [Plan Básico] │  │                  │  │  [Plan Premium]      │
-  │  asistencias   │  │  ingresos ◄──┐  │  │  promociones         │
-  │  mensajes_log  │  │  egresos     │  │  │  cliente_promoc.     │
-  │  plantillas    │  │  categorias  │  │  │  reglas_benef.       │
-  └────────────────┘  └─────────────┼──┘  │  cliente_benef.     │
-                                    │      └──────────────────────┘
-  ┌─────────────────────────────────┼────────────────────────────┐
-  │ INVENTARIO          [Plan Premium]                           │
-  │  categorias_producto  productos  proveedores                 │
-  │  inventario  movimientos_inventario                          │
-  │  ventas ──> detalle_ventas ──────┘ (genera ingreso)         │
-  └──────────────────────────────────────────────────────────────┘
+       ┌─────────────────────┼─────────────────────┐
+       ▼                     ▼                     ▼
+  ┌───────────────┐  ┌───────────────────┐  ┌──────────────────────┐
+  │ asistencia    │  │ finanzas          │  │ marketing            │
+  │ [Free/Trial/  │  │ [Premium]         │  │ [Premium]            │
+  │  Premium]     │  │                   │  │                      │
+  │ asistencias   │  │ ingresos ◄──┐    │  │ promociones          │
+  │ mensajes_log  │  │ egresos     │    │  │ cliente_promoc.      │
+  │ plantillas    │  │ categorias  │    │  │ reglas_benef.        │
+  └───────────────┘  └─────────────┼────┘  │ cliente_benef.       │
+                                   │        └──────────────────────┘
+  ┌────────────────────────────────┼──────────────────────────────┐
+  │ inventario         [Premium]   │                              │
+  │  categorias_producto  productos  proveedores                  │
+  │  stock  movimientos_inventario                                │
+  │  ventas ──> detalle_ventas ────┘ (genera ingreso)             │
+  └───────────────────────────────────────────────────────────────┘
 
   ┌──────────────────────────────────────────────────────────────────┐
-  │ USUARIOS & PERMISOS                                              │
+  │ seguridad — Usuarios staff / permisos                            │
   │  roles ── rol_permisos ── permisos                              │
   │   └──> usuarios ──> bitacora_accesos                            │
+  │        └──> refresh_tokens                                       │
   └──────────────────────────────────────────────────────────────────┘
+
+  ┌───────────────────────────────────────────────────────────────────┐
+  │ sri — Catálogos oficiales (solo lectura, seeded)                  │
+  │ facturacion — Facturación electrónica SRI Ecuador  [billing]      │
+  │                                                                   │
+  │  config_sri ─┬─ certificados ─┬─ puntos_emision ─ secuenciales   │
+  │              │                 │                                  │
+  │              └── comprobantes ─┼── comprobante_detalles           │
+  │                    │           ├── comprobantes_detalle           │
+  │                    │           ├── comprobante_detalle_impuestos  │
+  │                    │           ├── comprobante_impuestos_totales  │
+  │                    │           ├── comprobante_pagos              │
+  │                    │           ├── comprobante_info_adicional     │
+  │                    │           └── notas_credito_referencias      │
+  │                    ├── envios_sri ── cola_envio                   │
+  │                    ├── notificaciones_receptor                    │
+  │                    ├── anulaciones                                │
+  │                    └── (reportes_ats mensuales)                   │
+  │                                                                   │
+  │  finanzas.ingresos.id_comprobante ──> facturacion.comprobantes    │
+  │  (por eso ddl-facturacion/ se ejecuta antes que ingresos)         │
+  └───────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Resumen de Tablas (41 tablas)
+## Resumen de Tablas (69 tablas en 12 schemas)
+
+Verificado 2026-07-10 contando los `CREATE TABLE` de `db/scripts/202605_GYM-001/{ddl,ddl-facturacion,ddl-freemium}/`. Distribución por schema:
+
+| Schema | Tablas | Propósito |
+|--------|:---:|-----------|
+| `saas` | 6 | Catálogos globales de plataforma (planes, características, usuarios root, actividad, config) |
+| `identidad` | 3 | Personas globales, credenciales de app móvil, biometría |
+| `tenant` | 7 | Compañías, sucursales, suscripciones, pagos, notificaciones, pagos pendientes |
+| `core` | 4 | Clientes, tipos de membresía, membresías, congelamientos |
+| `asistencia` | 3 | Asistencias, plantillas de mensajes, log de mensajes |
+| `config` | 2 | gym_config (clave-valor por tenant), métodos de pago |
+| `seguridad` | 6 | Roles, permisos, rol_permisos, usuarios staff, bitácora, refresh tokens |
+| `finanzas` | 4 | Categorías/ingresos y categorías/egresos |
+| `marketing` | 4 | Promociones, beneficios y sus asignaciones a clientes |
+| `inventario` | 7 | Categorías, proveedores, productos, stock, ventas, detalle, movimientos |
+| `sri` | 6 | Catálogos oficiales SRI Ecuador (comprobantes, identificación, formas de pago, impuestos, IVA, anulación NC) |
+| `facturacion` | 17 | Facturación electrónica: config, certificados, secuenciales, comprobantes + detalle + impuestos + pagos + info adicional + NC + envíos + cola + notificaciones + anulaciones + ATS |
+| **Total** | **69** | |
+
+**Detalle por dominio** (Tenant = ¿la tabla filtra por `id_compania`?):
 
 | # | Tabla | Dominio | PK | FK principales | Tenant |
 |---|---|---|---|---|---|
-| 1 | `planes` | SaaS Global | `id` | — | No |
-| 2 | `caracteristicas` | SaaS Global | `id` | — | No |
-| 3 | `plan_caracteristicas` | SaaS Global | `(id_plan, id_caract)` | `id_plan`, `id_caracteristica` | No |
-| 4 | `personas` | Identidad Global | `id` | — | No |
-| 5 | `usuarios_app` | Identidad Global | `id` | `id_persona` (**FK real**) | No |
-| 6 | `biometria` | Identidad Global | `id` | `id_persona` (**FK real**) | No |
-| 7 | `companias` | Multitenancy | `id` | — | No |
-| 8 | `sucursales` | Multitenancy | `id` | `id_compania` (**FK real**) | Parcial |
-| 9 | `compania_planes` | Multitenancy | `id` | `id_compania` (**FK real**), `id_plan` | No |
-| 10 | `pagos_suscripcion` | Multitenancy | `id` | `id_compania_plan` (**FK real**) | No |
-| 11 | `config_notif_suscripcion` | Multitenancy | `(id_compania, dias_antes)` | — | No |
-| 12 | `notificaciones_suscripcion` | Multitenancy | `id` | `id_compania_plan` (**FK real**) | No |
-| 13 | `clientes` | Clientes | `id` | `id_persona` (**FK real**) | Sí |
-| 14 | `tipos_membresia` | Membresías | `id` | — | Sí |
-| 15 | `membresias` | Membresías | `id` | `id_cliente`, `id_tipo_membresia`, `id_metodo_pago` | Sí |
-| 16 | `congelamientos` | Membresías | `id` | `id_membresia` | Sí |
-| 17 | `asistencias` | Asistencia | `id` | `id_cliente`, `id_membresia` | Sí |
-| 18 | `plantillas_mensajes` | Mensajería | `id` | — | Sí |
-| 19 | `mensajes_log` | Mensajería | `id` | `id_cliente`, `id_plantilla` | Sí |
-| 20 | `categorias_ingreso` | Finanzas | `id` | — | Sí |
-| 21 | `ingresos` | Finanzas | `id` | `id_categoria`, `id_membresia` | Sí |
-| 22 | `categorias_egreso` | Finanzas | `id` | — | Sí |
-| 23 | `egresos` | Finanzas | `id` | `id_categoria` | Sí |
-| 24 | `promociones` | Promociones | `id` | — | Sí |
-| 25 | `cliente_promociones` | Promociones | `id` | `id_promocion`, `id_cliente`, `id_membresia` | Sí |
-| 26 | `reglas_beneficios` | Beneficios | `id` | — | Sí |
-| 27 | `cliente_beneficios` | Beneficios | `id` | `id_regla`, `id_cliente` | Sí |
-| 28 | `roles` | Usuarios | `id` | — | Sí |
-| 29 | `permisos` | Usuarios | `id` | — | Sí |
-| 30 | `rol_permisos` | Usuarios | `(id_rol, id_permiso)` | `id_rol`, `id_permiso` | Sí |
-| 31 | `usuarios` | Usuarios | `id` | `id_rol` | Sí |
-| 32 | `bitacora_accesos` | Usuarios | `id` | `id_usuario` | Sí |
-| 33 | `gym_config` | Configuración | `(clave, id_compania, id_sucursal)` | — | Sí |
-| 34 | `metodos_pago` | Configuración | `id` | — | Sí |
-| 35 | `categorias_producto` | Inventario | `id` | — | Sí |
-| 36 | `proveedores` | Inventario | `id` | — | Sí |
-| 37 | `productos` | Inventario | `id` | `id_categoria`, `id_proveedor` | Sí |
-| 38 | `inventario` | Inventario | `id` | `id_producto` | Sí |
-| 39 | `movimientos_inventario` | Inventario | `id` | `id_producto`, `id_proveedor`, `id_venta` | Sí |
-| 40 | `ventas` | Inventario | `id` | `id_cliente`, `id_metodo_pago` | Sí |
-| 41 | `detalle_ventas` | Inventario | `id` | `id_venta`, `id_producto` | Sí |
+| 1 | `saas.planes` | SaaS Global | `id` | `plan_degradacion_id` (self-FK) | No |
+| 2 | `saas.caracteristicas` | SaaS Global | `id` | — | No |
+| 3 | `saas.plan_caracteristicas` | SaaS Global | `(id_plan, id_caract)` | `id_plan`, `id_caracteristica` | No |
+| 4 | `saas.usuarios_plataforma` | SaaS Global | `id` | — | No |
+| 5 | `saas.actividad_plataforma` | SaaS Global | `id` | `id_compania` (nullable) | Parcial |
+| 6 | `saas.config_plataforma` | SaaS Global | `clave` | `modificado_por` | No |
+| 7 | `identidad.personas` | Identidad Global | `id` | — | No |
+| 8 | `identidad.usuarios_app` | Identidad Global | `id` | `id_persona` (**FK real**) | No |
+| 9 | `identidad.biometria` | Identidad Global | `id` | `id_persona` (**FK real**) | No |
+| 10 | `tenant.companias` | Multitenancy | `id` | — | No |
+| 11 | `tenant.sucursales` | Multitenancy | `id` | `id_compania` (**FK real**) | Parcial |
+| 12 | `tenant.compania_planes` | Multitenancy | `id` | `id_compania`, `id_plan`, `id_compania_plan_orig` (self-FK) | No |
+| 13 | `tenant.pagos_suscripcion` | Multitenancy | `id` | `id_compania_plan` (**FK real**) | No |
+| 14 | `tenant.config_notif_suscripcion` | Multitenancy | `(id_compania, dias_antes)` | — | No |
+| 15 | `tenant.notificaciones_suscripcion` | Multitenancy | `id` | `id_compania_plan`, `id_compania` (**FK real**) | No |
+| 16 | `tenant.pagos_pendientes_validacion` | Multitenancy | `id` | `id_compania`, `id_plan_destino`, `aprobado_por` | No |
+| 17 | `core.clientes` | Clientes | `id` | `id_persona` (**FK real**) | Sí |
+| 18 | `core.tipos_membresia` | Membresías | `id` | — | Sí |
+| 19 | `core.membresias` | Membresías | `id` | `id_cliente`, `id_tipo_membresia`, `id_metodo_pago` | Sí |
+| 20 | `core.congelamientos` | Membresías | `id` | `id_membresia` | Sí |
+| 21 | `asistencia.asistencias` | Asistencia | `id` | `id_cliente`, `id_membresia` | Sí |
+| 22 | `asistencia.plantillas_mensajes` | Mensajería | `id` | — | Sí |
+| 23 | `asistencia.mensajes_log` | Mensajería | `id` | `id_cliente`, `id_plantilla` | Sí |
+| 24 | `finanzas.categorias_ingreso` | Finanzas | `id` | — | Sí |
+| 25 | `finanzas.ingresos` | Finanzas | `id` | `id_categoria`, `id_membresia`, `id_venta`, `id_comprobante` | Sí |
+| 26 | `finanzas.categorias_egreso` | Finanzas | `id` | — | Sí |
+| 27 | `finanzas.egresos` | Finanzas | `id` | `id_categoria` | Sí |
+| 28 | `marketing.promociones` | Promociones | `id` | — | Sí |
+| 29 | `marketing.cliente_promociones` | Promociones | `id` | `id_promocion`, `id_cliente`, `id_membresia` | Sí |
+| 30 | `marketing.reglas_beneficios` | Beneficios | `id` | — | Sí |
+| 31 | `marketing.cliente_beneficios` | Beneficios | `id` | `id_regla`, `id_cliente` | Sí |
+| 32 | `seguridad.roles` | Usuarios | `id` | — | Sí |
+| 33 | `seguridad.permisos` | Usuarios | `id` | — | Sí |
+| 34 | `seguridad.rol_permisos` | Usuarios | `(id_rol, id_permiso)` | `id_rol`, `id_permiso` | Sí |
+| 35 | `seguridad.usuarios` | Usuarios | `id` | `id_rol`, `id_persona` | Sí |
+| 36 | `seguridad.bitacora_accesos` | Usuarios | `id` | `id_usuario` | Sí |
+| 37 | `seguridad.refresh_tokens` | Usuarios | `id` | `id_usuario` | Sí |
+| 38 | `config.gym_config` | Configuración | `(clave, id_compania, id_sucursal)` | — | Sí |
+| 39 | `config.metodos_pago` | Configuración | `id` | — | Sí |
+| 40 | `inventario.categorias_producto` | Inventario | `id` | — | Sí |
+| 41 | `inventario.proveedores` | Inventario | `id` | — | Sí |
+| 42 | `inventario.productos` | Inventario | `id` | `id_categoria`, `id_proveedor` | Sí |
+| 43 | `inventario.stock` | Inventario | `id` | `id_producto` | Sí |
+| 44 | `inventario.movimientos_inventario` | Inventario | `id` | `id_producto`, `id_proveedor`, `id_venta` | Sí |
+| 45 | `inventario.ventas` | Inventario | `id` | `id_cliente`, `id_metodo_pago` | Sí |
+| 46 | `inventario.detalle_ventas` | Inventario | `id` | `id_venta`, `id_producto` | Sí |
+| 47 | `sri.tipos_comprobante` | SRI Catálogo | `codigo` | — | No |
+| 48 | `sri.tipos_identificacion_comprador` | SRI Catálogo | `codigo` | — | No |
+| 49 | `sri.formas_pago` | SRI Catálogo | `codigo` | — | No |
+| 50 | `sri.tipos_impuesto` | SRI Catálogo | `codigo` | — | No |
+| 51 | `sri.tarifas_iva` | SRI Catálogo | `codigo` | — | No |
+| 52 | `sri.motivos_anulacion_nc` | SRI Catálogo | `codigo` | — | No |
+| 53 | `facturacion.config_sri` | Facturación | `id_compania` | — | Sí |
+| 54 | `facturacion.certificados` | Facturación | `id` | `id_compania` | Sí |
+| 55 | `facturacion.puntos_emision` | Facturación | `id` | `id_compania`, `id_sucursal` | Sí |
+| 56 | `facturacion.secuenciales` | Facturación | `id` | `id_punto_emision` | Sí |
+| 57 | `facturacion.comprobantes` | Facturación | `id` | `id_compania`, `id_sucursal`, `id_punto_emision`, `id_cliente` | Sí |
+| 58 | `facturacion.comprobante_detalles` | Facturación | `id` | `id_comprobante`, `id_producto` | Sí |
+| 59 | `facturacion.comprobantes_detalle` | Facturación | `id` | `id_comprobante` | Sí |
+| 60 | `facturacion.comprobante_detalle_impuestos` | Facturación | `id` | `id_detalle` | Sí |
+| 61 | `facturacion.comprobante_impuestos_totales` | Facturación | `id` | `id_comprobante` | Sí |
+| 62 | `facturacion.comprobante_pagos` | Facturación | `id` | `id_comprobante` | Sí |
+| 63 | `facturacion.comprobante_info_adicional` | Facturación | `id` | `id_comprobante` | Sí |
+| 64 | `facturacion.notas_credito_referencias` | Facturación | `id` | `id_nota_credito`, `id_comprobante_referenciado` | Sí |
+| 65 | `facturacion.envios_sri` | Facturación | `id` | `id_comprobante` | Sí |
+| 66 | `facturacion.cola_envio` | Facturación | `id` | `id_comprobante` | Sí |
+| 67 | `facturacion.notificaciones_receptor` | Facturación | `id` | `id_comprobante` | Sí |
+| 68 | `facturacion.anulaciones` | Facturación | `id` | `id_comprobante` | Sí |
+| 69 | `facturacion.reportes_ats` | Facturación | `id` | `id_compania` | Sí |
 
 > **Tenant = Sí** → tabla incluye `id_compania INT` e `id_sucursal INT` sin restricción FK.
-> **Tenant = No** → tabla de plataforma global, gestionada por el operador del SaaS.
-> **Tenant = Parcial** → `sucursales` solo tiene `id_compania` (con FK real).
+> **Tenant = No** → tabla de plataforma / catálogo global, sin filtrado por compañía.
+> **Tenant = Parcial** → tiene FK real a `tenant.companias` pero puede tener `id_compania` NULL (eventos de sistema en `saas.actividad_plataforma`) o solo `id_compania` sin `id_sucursal` (`tenant.sucursales`).
+
+> **Nota sobre `facturacion.comprobante_detalles` y `facturacion.comprobantes_detalle`:** actualmente coexisten ambas tablas (scripts 15 y 30 en `ddl-facturacion/`). La convergencia a un solo modelo queda como TODO cuando se implemente el `billing-service`.
 
 ---
 
@@ -656,27 +847,70 @@ UNIQUE(id_producto,                         ║    tipo               ║
 ### SaaS Global
 
 ```sql
-CREATE TABLE planes (
-  id               SERIAL        PRIMARY KEY,
-  nombre           VARCHAR(100)  NOT NULL,
-  descripcion      TEXT,
-  precio_mensual   DECIMAL(10,2) NOT NULL,
-  activo           BOOLEAN       NOT NULL DEFAULT TRUE,
-  created_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+CREATE TABLE saas.planes (
+  id                   INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  nombre               VARCHAR(100)  NOT NULL,
+  descripcion          TEXT,
+  precio_mensual       DECIMAL(10,2) NOT NULL,
+  -- REQ-SAAS-001 (esquema Free / Trial / Premium)
+  codigo               VARCHAR(20)   UNIQUE,        -- FREE | TRIAL | PREMIUM
+  duracion_dias        INTEGER,                     -- NULL = permanente
+  es_gratuito          BOOLEAN       NOT NULL DEFAULT FALSE,
+  plan_degradacion_id  INT           REFERENCES saas.planes(id),  -- self-FK
+  max_sucursales       INTEGER,                     -- NULL = ilimitado
+  max_clientes_activos INTEGER,
+  max_staff            INTEGER,
+  moneda               VARCHAR(3)    NOT NULL DEFAULT 'USD',
+  es_legacy            BOOLEAN       NOT NULL DEFAULT FALSE,
+  activo               BOOLEAN       NOT NULL DEFAULT TRUE,
+  eliminado            BOOLEAN       NOT NULL DEFAULT FALSE,
+  creacion_fecha       TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+  creacion_usuario     VARCHAR(150)  NOT NULL DEFAULT 'sistema',
+  modifica_fecha       TIMESTAMPTZ,
+  modifica_usuario     VARCHAR(150)
 );
 
-CREATE TABLE caracteristicas (
-  id      SERIAL       PRIMARY KEY,
+CREATE TABLE saas.caracteristicas (
+  id      INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   codigo  VARCHAR(50)  NOT NULL UNIQUE,  -- usado por el middleware
   nombre  VARCHAR(100) NOT NULL,
   modulo  VARCHAR(50)  NOT NULL,
   activo  BOOLEAN      NOT NULL DEFAULT TRUE
 );
 
-CREATE TABLE plan_caracteristicas (
-  id_plan           INT NOT NULL REFERENCES planes(id),
-  id_caracteristica INT NOT NULL REFERENCES caracteristicas(id),
+CREATE TABLE saas.plan_caracteristicas (
+  id_plan           INT NOT NULL REFERENCES saas.planes(id),
+  id_caracteristica INT NOT NULL REFERENCES saas.caracteristicas(id),
   PRIMARY KEY (id_plan, id_caracteristica)
+);
+
+-- Auditoría cross-servicio de la plataforma SaaS
+CREATE TABLE saas.actividad_plataforma (
+  id               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  tipo_evento      VARCHAR(50)  NOT NULL,          -- TRIAL_ACTIVADO, PAGO_APROBADO, ...
+  modulo           VARCHAR(50)  NOT NULL,
+  entidad_id       BIGINT,
+  entidad_nombre   VARCHAR(200),
+  detalle          JSONB,                          -- payload estructurado por evento
+  usuario          VARCHAR(200) NOT NULL,
+  -- REQ-SAAS-001 (D3): actor + tenant del evento
+  id_compania      INT          REFERENCES tenant.companias(id),
+  id_usuario_actor INT,                            -- FK lógica (saas.usuarios_plataforma o seguridad.usuarios)
+  tipo_actor       VARCHAR(20)  NOT NULL DEFAULT 'SISTEMA'
+                     CHECK (tipo_actor IN ('OWNER','ROOT','STAFF','SISTEMA')),
+  ip               INET,
+  fecha            TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+-- Config runtime editable por root (datos bancarios, umbrales, ...)
+CREATE TABLE saas.config_plataforma (
+  clave            VARCHAR(100) PRIMARY KEY,
+  valor            TEXT         NOT NULL,
+  descripcion      TEXT,
+  modificado_por   INT          REFERENCES saas.usuarios_plataforma(id),
+  modificado_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  creacion_fecha   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  creacion_usuario VARCHAR(150) NOT NULL DEFAULT 'sistema'
 );
 ```
 
@@ -685,21 +919,33 @@ CREATE TABLE plan_caracteristicas (
 ### Multitenancy
 
 ```sql
-CREATE TABLE companias (
-  id         SERIAL       PRIMARY KEY,
-  nombre     VARCHAR(150) NOT NULL,
-  ruc        VARCHAR(20)  NOT NULL UNIQUE,
-  logo_url   VARCHAR(255),
-  telefono   VARCHAR(20),
-  whatsapp   VARCHAR(20),
-  correo     VARCHAR(150),
-  activo     BOOLEAN      NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+CREATE TABLE tenant.companias (
+  id                     INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  nombre                 VARCHAR(150) NOT NULL,
+  ruc                    VARCHAR(20)  NOT NULL UNIQUE,
+  logo_url               VARCHAR(255),
+  telefono               VARCHAR(20),
+  whatsapp               VARCHAR(20),
+  correo                 VARCHAR(150),
+  -- Datos fiscales SRI (para facturación electrónica)
+  nombre_comercial       VARCHAR(300),
+  dir_matriz             VARCHAR(300),
+  obligado_contabilidad  BOOLEAN      NOT NULL DEFAULT FALSE,
+  contribuyente_especial VARCHAR(10),
+  -- REQ-SAAS-001 RN-01: Trial único por tenant
+  trial_usado            BOOLEAN      NOT NULL DEFAULT FALSE,
+  fecha_trial_usado      TIMESTAMPTZ,
+  activo                 BOOLEAN      NOT NULL DEFAULT TRUE,
+  eliminado              BOOLEAN      NOT NULL DEFAULT FALSE,
+  creacion_fecha         TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  creacion_usuario       VARCHAR(150) NOT NULL DEFAULT 'sistema',
+  modifica_fecha         TIMESTAMPTZ,
+  modifica_usuario       VARCHAR(150)
 );
 
-CREATE TABLE sucursales (
-  id           SERIAL       PRIMARY KEY,
-  id_compania  INT          NOT NULL REFERENCES companias(id),
+CREATE TABLE tenant.sucursales (
+  id           INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id_compania  INT          NOT NULL REFERENCES tenant.companias(id),
   nombre       VARCHAR(150) NOT NULL,
   direccion    VARCHAR(255),
   es_principal BOOLEAN      NOT NULL DEFAULT FALSE,
@@ -707,10 +953,10 @@ CREATE TABLE sucursales (
   created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE compania_planes (
-  id                    SERIAL       PRIMARY KEY,
-  id_compania           INT          NOT NULL REFERENCES companias(id),
-  id_plan               INT          NOT NULL REFERENCES planes(id),
+CREATE TABLE tenant.compania_planes (
+  id                    INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id_compania           INT          NOT NULL REFERENCES tenant.companias(id),
+  id_plan               INT          NOT NULL REFERENCES saas.planes(id),
   fecha_inicio          DATE         NOT NULL,
   fecha_fin             DATE         NOT NULL,
   dias_gracia           INT          NOT NULL DEFAULT 5,
@@ -719,20 +965,37 @@ CREATE TABLE compania_planes (
   estado                VARCHAR(20)  NOT NULL
                           CHECK (estado IN (
                             'activo','en_gracia','vencido',
-                            'suspendido','cancelado','programado'
+                            'suspendido','cancelado','programado',
+                            'reemplazada'
                           )),
   tipo_cambio           VARCHAR(20)  NOT NULL
                           CHECK (tipo_cambio IN (
-                            'nuevo','renovacion','upgrade','downgrade'
+                            'nuevo','renovacion','upgrade','downgrade',
+                            'degradacion_auto','cancelacion','suspension'
                           )),
-  id_compania_plan_orig INT          REFERENCES compania_planes(id),
+  -- REQ-SAAS-001 RN-06: modo SOBRE_LIMITE y trazabilidad de degradación
+  sobre_limite          BOOLEAN      NOT NULL DEFAULT FALSE,
+  sobre_limite_hasta    DATE,                    -- fecha límite de gracia (30 días)
+  causa_degradacion     VARCHAR(30)
+                          CHECK (
+                            causa_degradacion IS NULL OR
+                            causa_degradacion IN (
+                              'vencimiento','pago_rechazado',
+                              'cancelacion_manual','suspension_root'
+                            )
+                          ),
+  id_compania_plan_orig INT          REFERENCES tenant.compania_planes(id),
   credito_monto         DECIMAL(10,2) NOT NULL DEFAULT 0,
-  created_at            TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  eliminado             BOOLEAN      NOT NULL DEFAULT FALSE,
+  creacion_fecha        TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  creacion_usuario      VARCHAR(150) NOT NULL DEFAULT 'sistema',
+  modifica_fecha        TIMESTAMPTZ,
+  modifica_usuario      VARCHAR(150)
 );
 
-CREATE TABLE pagos_suscripcion (
+CREATE TABLE tenant.pagos_suscripcion (
   id                INT          PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  id_compania_plan  INT          NOT NULL REFERENCES compania_planes(id),
+  id_compania_plan  INT          NOT NULL REFERENCES tenant.compania_planes(id),
   monto             DECIMAL(10,2) NOT NULL,
   fecha_pago        DATE         NOT NULL,
   periodo_desde     DATE,
@@ -750,8 +1013,8 @@ CREATE TABLE pagos_suscripcion (
   created_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE config_notif_suscripcion (
-  id_compania  INT         NOT NULL,  -- referencia lógica a companias.id
+CREATE TABLE tenant.config_notif_suscripcion (
+  id_compania  INT         NOT NULL,  -- referencia lógica a tenant.companias.id
   dias_antes   INT         NOT NULL,
   canal        VARCHAR(20) NOT NULL
                  CHECK (canal IN ('email','whatsapp','ambos')),
@@ -759,16 +1022,67 @@ CREATE TABLE config_notif_suscripcion (
   PRIMARY KEY (id_compania, dias_antes)
 );
 
-CREATE TABLE notificaciones_suscripcion (
+-- Extendida por REQ-SAAS-001 D1: buzón de emails + banners in-app + retries
+CREATE TABLE tenant.notificaciones_suscripcion (
   id                INT         PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  id_compania_plan  INT         NOT NULL REFERENCES compania_planes(id),
+  id_compania_plan  INT         NOT NULL REFERENCES tenant.compania_planes(id),
+  id_compania       INT         REFERENCES tenant.companias(id),  -- filtrado multi-tenant sin JOIN
   dias_antes        INT         NOT NULL,
+  tipo              VARCHAR(40),                                  -- VENCIMIENTO_TRIAL, PAGO_RECHAZADO, ...
   canal             VARCHAR(20) NOT NULL
-                      CHECK (canal IN ('email','whatsapp')),
+                      CHECK (canal IN ('email','whatsapp','banner')),
   estado            VARCHAR(20) NOT NULL DEFAULT 'pendiente'
-                      CHECK (estado IN ('enviado','fallido')),
-  fecha_envio       TIMESTAMPTZ
+                      CHECK (estado IN ('pendiente','enviado','fallido','reintentar')),
+  fecha_envio       TIMESTAMPTZ,
+  proximo_intento   TIMESTAMPTZ,                                  -- backoff exponencial
+  intentos          INTEGER      NOT NULL DEFAULT 1,
+  ultimo_error      TEXT,                                          -- msg SMTP para debug
+  descartado_at     TIMESTAMPTZ,                                   -- solo canal='banner'
+  eliminado         BOOLEAN      NOT NULL DEFAULT FALSE,
+  creacion_fecha    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  creacion_usuario  VARCHAR(150) NOT NULL DEFAULT 'sistema',
+  modifica_fecha    TIMESTAMPTZ,
+  modifica_usuario  VARCHAR(150)
 );
+
+-- REQ-SAAS-001 D2: buzón de pagos por transferencia (RN-08)
+CREATE TABLE tenant.pagos_pendientes_validacion (
+  id                    INT           PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  id_compania           INT           NOT NULL REFERENCES tenant.companias(id),
+  id_plan_destino       INT           NOT NULL REFERENCES saas.planes(id),
+  monto                 DECIMAL(10,2) NOT NULL,
+  moneda                VARCHAR(3)    NOT NULL DEFAULT 'USD',
+  fecha_reporte         TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+  fecha_transferencia   DATE          NOT NULL,
+  comprobante_url       TEXT          NOT NULL,                    -- Cloudinary raw, authenticated
+  comprobante_hash      VARCHAR(64),                                -- SHA-256 del archivo
+  banco_origen          VARCHAR(80),
+  referencia            VARCHAR(80),
+  hash_idempotencia     VARCHAR(64)   NOT NULL,                    -- SHA-256(compania|monto|fecha|ref)
+  estado                VARCHAR(20)   NOT NULL DEFAULT 'pendiente'
+                          CHECK (estado IN ('pendiente','aprobado','rechazado')),
+  motivo_rechazo        TEXT,
+  aprobado_por          INT           REFERENCES saas.usuarios_plataforma(id),
+  fecha_aprobacion      TIMESTAMPTZ,
+  activacion_programada BOOLEAN       NOT NULL DEFAULT FALSE,       -- RN-05 upgrade agendado
+  factura_emitida_id    INT,                                        -- reservado fase 4
+  eliminado             BOOLEAN       NOT NULL DEFAULT FALSE,
+  creacion_fecha        TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+  creacion_usuario      VARCHAR(150)  NOT NULL DEFAULT 'sistema',
+  modifica_fecha        TIMESTAMPTZ,
+  modifica_usuario      VARCHAR(150)
+);
+
+-- Idempotencia + bandeja + histórico por tenant
+CREATE UNIQUE INDEX ux_pagos_pendientes_hash
+  ON tenant.pagos_pendientes_validacion(hash_idempotencia)
+  WHERE estado IN ('pendiente','aprobado');
+
+CREATE INDEX idx_pagos_pendientes_estado_fecha
+  ON tenant.pagos_pendientes_validacion(estado, fecha_reporte DESC);
+
+CREATE INDEX idx_pagos_pendientes_compania
+  ON tenant.pagos_pendientes_validacion(id_compania, fecha_reporte DESC);
 ```
 
 ---
@@ -1239,6 +1553,89 @@ INSERT INTO gym_config (id_compania, id_sucursal, clave, valor, tipo, descripcio
   (1, 1, 'requiere_doc_retroactivo',    'true', 'booleano', 'Exige documento de respaldo para congelamientos retroactivos'),
   (1, 1, 'acceso_solo_sucursal_propia','false','booleano', 'Si true, el cliente solo puede entrar en la sucursal donde se registró');
 ```
+
+---
+
+### SRI (catálogos oficiales Ecuador)
+
+Schema `sri` guarda catálogos publicados por el Servicio de Rentas Internas. Son datos globales (sin `id_compania`), solo lectura desde la app y precargados por el seed `ddl-facturacion/09_insert_seed_sri.sql`.
+
+| Tabla | Contenido |
+|-------|-----------|
+| `sri.tipos_comprobante` | 01 factura, 04 nota crédito, 05 nota débito, 06 guía remisión, 07 retención, ... |
+| `sri.tipos_identificacion_comprador` | 04 RUC, 05 cédula, 06 pasaporte, 07 consumidor final, 08 identificación exterior |
+| `sri.formas_pago` | 01 efectivo, 15 compensación deudas, 16 tarjeta débito, 19 tarjeta crédito, 20 otros con SFP, ... |
+| `sri.tipos_impuesto` | 2 IVA, 3 ICE, 5 IRBPNR |
+| `sri.tarifas_iva` | 0 %, 5 %, 12 %, 13 %, 14 %, 15 %, no objeto, exento |
+| `sri.motivos_anulacion_nc` | Motivos oficiales para anular una nota de crédito |
+
+Todas usan `codigo VARCHAR(...)` como PK — el string publicado por el SRI (nunca reemplazar por ID interno).
+
+---
+
+### Facturación electrónica (schema `facturacion`)
+
+17 tablas para el ciclo completo de emisión SRI: configuración por compañía, certificados, secuenciales por punto de emisión, comprobantes (factura, NC, retención), sus detalles, impuestos y pagos, envío al SRI y notificación al receptor.
+
+```sql
+-- Configuración fiscal por compañía (1:1)
+CREATE TABLE facturacion.config_sri (
+  id_compania             INT PRIMARY KEY REFERENCES tenant.companias(id),
+  ambiente                VARCHAR(20) NOT NULL,   -- pruebas | produccion
+  tipo_emision            VARCHAR(20) NOT NULL,   -- normal | contingencia
+  email_facturacion       VARCHAR(150),
+  ...
+);
+
+-- Certificados P12 encriptados
+CREATE TABLE facturacion.certificados (
+  id             INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  id_compania    INT NOT NULL REFERENCES tenant.companias(id),
+  archivo_url    VARCHAR(255) NOT NULL,           -- Cloudinary raw
+  password_enc   BYTEA        NOT NULL,           -- pgcrypto AES-256
+  valido_desde   DATE,
+  valido_hasta   DATE,
+  activo         BOOLEAN      NOT NULL DEFAULT TRUE
+);
+
+-- Un punto de emisión + secuencial por (compañía, sucursal, tipo de comprobante)
+CREATE TABLE facturacion.puntos_emision (
+  id            INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  id_compania   INT NOT NULL REFERENCES tenant.companias(id),
+  id_sucursal   INT NOT NULL,                    -- ref lógica
+  cod_establecimiento VARCHAR(3) NOT NULL,       -- "001", "002" ...
+  cod_punto_emision   VARCHAR(3) NOT NULL,
+  UNIQUE (id_compania, cod_establecimiento, cod_punto_emision)
+);
+
+CREATE TABLE facturacion.secuenciales (
+  id                 INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  id_punto_emision   INT NOT NULL REFERENCES facturacion.puntos_emision(id),
+  cod_documento      VARCHAR(2) NOT NULL,        -- 01, 04, 07 ...
+  ultimo_secuencial  INT        NOT NULL DEFAULT 0,
+  UNIQUE (id_punto_emision, cod_documento)
+);
+
+-- Comprobante generado (cabecera)
+CREATE TABLE facturacion.comprobantes (
+  id                INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  id_compania       INT  NOT NULL REFERENCES tenant.companias(id),
+  id_sucursal       INT  NOT NULL,
+  clave_acceso      VARCHAR(49) NOT NULL UNIQUE, -- 49 dígitos SRI
+  tipo_comprobante  VARCHAR(2)  NOT NULL,        -- FK lógica a sri.tipos_comprobante.codigo
+  numero_secuencial VARCHAR(9)  NOT NULL,
+  fecha_emision     DATE        NOT NULL,
+  estado            VARCHAR(20) NOT NULL,        -- borrador | firmado | recibido |
+                                                  -- autorizado | rechazado | anulado
+  ...
+);
+```
+
+**Función SQL relevante:** `facturacion.next_secuencial(...)` (script 26) atomiza el increment del secuencial para evitar duplicados en concurrencia.
+
+**Tabla `finanzas.ingresos` toca `facturacion.comprobantes`:** cada ingreso puede referenciar un comprobante electrónico (`id_comprobante BIGINT REFERENCES facturacion.comprobantes(id)`). Por eso `ddl-facturacion/` se ejecuta **antes** que la tabla de ingresos en la story consolidada.
+
+**Nota:** Los schemas `sri` y `facturacion` están **implementados en BD** pero no consumidos aún por ningún servicio. El futuro `billing-service` (spec en `specs/billing-service.md`) los consumirá.
 
 ---
 

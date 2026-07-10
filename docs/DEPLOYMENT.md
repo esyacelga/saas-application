@@ -93,7 +93,7 @@ url: r2dbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}${DB_SSL_OPTIONS:}
 cd gym-administrator
 # gradle.properties actualizado con credenciales Neon
 ./gradlew update
-# Resultado: 42 tablas en 10 schemas creadas en Neon
+# Resultado: 69 tablas en 12 schemas creadas en Neon
 ```
 
 ---

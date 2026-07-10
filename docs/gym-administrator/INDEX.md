@@ -9,7 +9,7 @@ Documentación técnica y de negocio del proyecto base: modelo de datos, migraci
 | Documento | Contenido |
 |-----------|-----------|
 | [overview.md](architecture/overview.md) | Qué es el proyecto, modelo de negocio SaaS multi-tenant, módulos funcionales por plan, reglas de negocio, flujos end-to-end, pipeline CI/CD |
-| [database-schema.md](architecture/database-schema.md) | Esquema completo de PostgreSQL: 42 tablas en 10 schemas, diagramas ASCII |
+| [database-schema.md](architecture/database-schema.md) | Esquema completo de PostgreSQL: 69 tablas en 12 schemas (saas, identidad, tenant, core, asistencia, config, seguridad, finanzas, marketing, inventario, sri, facturacion), diagramas ASCII |
 | [roadmap.md](architecture/roadmap.md) | Orden de construcción de los 7 microservicios y dependencias entre ellos |
 
 ## specs/ — Especificaciones por microservicio

@@ -6,7 +6,17 @@
 
 ---
 
-## ✅ Actualización 2026-07-10: REQ-SAAS-001 Sub-fases 1.1–1.5 documentadas
+## ✅ Actualización 2026-07-10 (tarde): consolidación de migraciones
+
+Commits `e5ff46f`, `5d9fc88`, `78579bf`: las tres stories de migración (`202605_GYM-001` core, `202607_GYM-002` facturación, `202608_GYM-003` freemium) se **fusionaron en una única story `202605_GYM-001`** con tres subcarpetas por dominio:
+
+- `ddl/` — 10 schemas base + 46 tablas (saas, identidad, tenant, core, asistencia, finanzas, marketing, inventario, config, seguridad).
+- `ddl-facturacion/` — schemas `sri` + `facturacion` y sus 23 tablas.
+- `ddl-freemium/` — extras REQ-SAAS-001 (`tenant.pagos_pendientes_validacion`, `saas.config_plataforma`, seed).
+
+Ya no existen scripts `ALTER`: cada tabla se define una sola vez en su `CREATE TABLE`. Totales actuales: **69 tablas / 12 schemas**. IDs de changeset unificados como `GYM-001-XX` (rango extendido a 141 para dar espacio a los inserts de `ddl-freemium/`).
+
+## ✅ Actualización 2026-07-10 (mañana): REQ-SAAS-001 Sub-fases 1.1–1.5 documentadas
 
 Se completó la **auditoría técnica** de los commits 6bd7f0b–c1a5b75 (nuevo esquema de planes Freemium). Documentación creada:
 
@@ -60,9 +70,9 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 
 | Componente | Estado |
 |------------|--------|
-| Migraciones Liquibase (`gym-administrator/db/`) | ✅ Implementadas — 42 tablas, 10 schemas |
+| Migraciones Liquibase (`gym-administrator/db/`) | ✅ Implementadas — **69 tablas, 12 schemas** (consolidadas en `202605_GYM-001/` desde 2026-07-10, commit `e5ff46f`) |
 | Schemas `finanzas`, `marketing`, `inventario` | ✅ Tablas creadas en BD, pero 📋 sin servicio que las use aún |
-| Schemas `sri`, `facturacion` (billing) | 📋 Planeados — no existen en BD todavía |
+| Schemas `sri`, `facturacion` (billing) | ✅ Tablas creadas en BD (6 + 17 tablas), 📋 sin servicio `billing-service` que las use aún |
 
 ---
 
@@ -72,7 +82,7 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 
 | Sub-fase | Descripción | Estado | Archivos |
 |----------|---|---|---|
-| 1.1 | DDL Liquibase (tablas, índices, constraints) | ✅ Implementada (commit 6bd7f0b) | `gym-administrator/db/scripts/202608_GYM-003/` |
+| 1.1 | DDL Liquibase (tablas, índices, constraints) | ✅ Implementada (commit 6bd7f0b, consolidada en `e5ff46f`) | `gym-administrator/db/scripts/202605_GYM-001/` (subcarpetas `ddl/` + `ddl-freemium/`) |
 | 1.2 | Modelo de dominio + adapters R2DBC + máquina de estados | ✅ Implementada (commit 3c91d7e) | `platform-service/domain/model/`, adapters |
 | 1.3 | Servicios de negocio, use cases, guards, auditoría | ✅ Implementada (commit e4bf796) | `ActivarTrialService`, `CancelarSuscripcionService`, etc. |
 | 1.4 | 10 endpoints REST (owner + root), rate limiting, cross-service | ✅ Implementada (commit e4bf796) | `PlanPublicoController`, `SuscripcionController`, `PagoOwnerController`, `PagoPlataformaController`, `UsoLimitesController` |

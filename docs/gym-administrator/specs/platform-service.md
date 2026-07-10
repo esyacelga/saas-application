@@ -1232,7 +1232,7 @@ SUBSCRIPTION_JOB_CRON=0 5 0 * * *      # 00:05 UTC cada día
 
 - **RN-02** (Registro con Trial por defecto): se cumple a nivel de flujo de registro, no requirió regla de implementación separada.
 - **RN-04** (Preservación de datos al degradar): garantía a nivel de DDL — degradar cambia `compania_planes` pero no borra datos operativos.
-- **RN-10** (Prevención de suscripciones solapadas): implementada por constraint parcial `UNIQUE(id_compania) WHERE estado IN ('activo','en_gracia')` en `tenant.compania_planes` (Sub-fase 1.1, changeset GYM-003-3).
+- **RN-10** (Prevención de suscripciones solapadas): implementada por índice único parcial `ux_compania_plan_vigente ON tenant.compania_planes(id_compania) WHERE estado IN ('activo','en_gracia')` (definido en `ddl/55_create_indexes_tenant.sql`, changeset consolidado `GYM-001-55`).
 
 ---
 

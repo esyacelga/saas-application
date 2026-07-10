@@ -3,7 +3,7 @@
 > **ESTADO:** 🟡 Arquitectura y modelo de negocio. Mezcla lo implementado con lo planeado; para detalle de implementación verificar contra el código. Ver [../../STATUS.md](../../STATUS.md).
 
 > **Proyecto:** Gym Administrator — Plataforma SaaS de gestión de gimnasios  
-> **Base de datos:** Completada (42 tablas, 10 esquemas PostgreSQL, 59 scripts Liquibase)  
+> **Base de datos:** Completada (69 tablas, 12 esquemas PostgreSQL, story consolidada `202605_GYM-001` con 96 changesets)  
 > **Total de servicios:** 7 microservicios  
 > **Mayo 2026**
 
@@ -186,7 +186,7 @@ Punto de venta y control de stock: desde el catálogo de productos hasta la traz
 | [overview.md](overview.md) | Visión general del producto, arquitectura y módulos |
 | [database-schema.md](database-schema.md) | Diagramas de entidades y casos de negocio |
 | [../infra/liquibase-azure-template.md](../infra/liquibase-azure-template.md) | Guía de Liquibase + Azure DevOps |
-| [../../../gym-administrator/db/scripts/202605_GYM-001/](../../../gym-administrator/db/scripts/202605_GYM-001/) | 59 scripts DDL versionados con Liquibase |
+| [../../../gym-administrator/db/scripts/202605_GYM-001/](../../../gym-administrator/db/scripts/202605_GYM-001/) | Story consolidada — 96 changesets Liquibase distribuidos en `ddl/` (46 tablas base), `ddl-facturacion/` (23 tablas SRI/facturación) y `ddl-freemium/` (2 tablas + seed REQ-SAAS-001) |
 
 ---
 

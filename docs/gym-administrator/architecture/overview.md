@@ -61,8 +61,8 @@ Cada gimnasio contratante es un **tenant** independiente. Sus datos nunca se mez
 
 El proyecto tiene completamente diseñada e implementada la capa de persistencia:
 
-- **42 tablas** organizadas en **10 esquemas PostgreSQL**
-- **Migraciones Liquibase** versionadas y ejecutables en múltiples ambientes
+- **69 tablas** organizadas en **12 esquemas PostgreSQL** (saas, identidad, tenant, core, asistencia, config, seguridad, finanzas, marketing, inventario, sri, facturacion)
+- **Migraciones Liquibase** versionadas, consolidadas en una única story `202605_GYM-001` (subcarpetas `ddl/`, `ddl-facturacion/`, `ddl-freemium/`) y ejecutables en múltiples ambientes
 - **Pipeline CI/CD** en Azure DevOps para despliegue automático
 - **Validaciones a nivel de motor** (constraints, checks, unique) que garantizan integridad sin depender de la capa de aplicación
 
@@ -162,21 +162,15 @@ gym-administrator/
 ├── PROYECTO-TEMPLATE.md                 # Plantilla técnica del proyecto DB
 ├── OVERVIEW.md                          # Este documento
 └── db/
-    ├── changelog/                       # Changelogs alternativos (v1.0)
-    │   └── migrations/v1.0/
-    │       ├── 001-create-schemas.sql
-    │       ├── 002-saas-tables.sql
-    │       └── ... (11 archivos)
     └── scripts/
-        ├── main-changelog.yml           # Changelog maestro
-        └── 202605_GYM-001/              # Historia de usuario inicial
-            ├── partial-changelog.yml
+        ├── main-changelog.yml           # Changelog maestro (solo incluye la story)
+        └── 202605_GYM-001/              # Story consolidada (única baseline)
+            ├── partial-changelog.yml    # 96 changesets ordenados por dependencia
             ├── logical_diagram/
             │   └── schema.dbml
-            └── ddl/                     # 59 scripts DDL numerados
-                ├── 01_create_schema_saas.sql
-                ├── 02_create_schema_identidad.sql
-                └── ... (hasta 59_create_table_saas_usuarios_plataforma.sql)
+            ├── ddl/                     # 65 scripts (10 schemas base + 46 tablas + índices + seeds)
+            ├── ddl-facturacion/         # 28 scripts (schemas sri + facturacion, 23 tablas)
+            └── ddl-freemium/            # 3 scripts (REQ-SAAS-001: 2 tablas + seed)
 ```
 
 ### Principios de arquitectura
@@ -298,22 +292,23 @@ Bitácora de todas las acciones: quién hizo qué, cuándo y en qué módulo.
 
 ## 6. Base de datos — Organización por esquemas
 
-### Los 10 esquemas PostgreSQL
+### Los 12 esquemas PostgreSQL
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  saas (4 tablas)                                                     │
+│  saas (6 tablas)                                                     │
 │  planes · caracteristicas · plan_caracteristicas ·                  │
-│  usuarios_plataforma                                                 │
+│  usuarios_plataforma · actividad_plataforma · config_plataforma     │
 │  → Catálogo global. Sin id_compania. Gestionado por el operador.    │
 ├─────────────────────────────────────────────────────────────────────┤
 │  identidad (3 tablas)                                                │
 │  personas · usuarios_app · biometria                                 │
 │  → Identidad global. CI único por persona. Una credencial por gym.  │
 ├─────────────────────────────────────────────────────────────────────┤
-│  tenant (6 tablas)                                                   │
+│  tenant (7 tablas)                                                   │
 │  companias · sucursales · compania_planes · pagos_suscripcion ·     │
-│  config_notif_suscripcion · notificaciones_suscripcion              │
+│  config_notif_suscripcion · notificaciones_suscripcion ·            │
+│  pagos_pendientes_validacion                                         │
 │  → Ciclo de vida SaaS. Quién contrata, qué plan, cuánto debe.       │
 ├─────────────────────────────────────────────────────────────────────┤
 │  core (4 tablas)                                                     │
@@ -333,8 +328,9 @@ Bitácora de todas las acciones: quién hizo qué, cuándo y en qué módulo.
 │  cliente_beneficios                                                  │
 │  → Fidelización y retención de clientes.                            │
 ├─────────────────────────────────────────────────────────────────────┤
-│  seguridad (5 tablas)                                                │
-│  roles · permisos · rol_permisos · usuarios · bitacora_accesos      │
+│  seguridad (6 tablas)                                                │
+│  roles · permisos · rol_permisos · usuarios · bitacora_accesos ·    │
+│  refresh_tokens                                                      │
 │  → Control de acceso y trazabilidad completa.                       │
 ├─────────────────────────────────────────────────────────────────────┤
 │  config (2 tablas)                                                   │
@@ -345,8 +341,21 @@ Bitácora de todas las acciones: quién hizo qué, cuándo y en qué módulo.
 │  categorias_producto · proveedores · productos · stock ·            │
 │  ventas · detalle_ventas · movimientos_inventario                   │
 │  → Stock, punto de venta y trazabilidad de movimientos.             │
+├─────────────────────────────────────────────────────────────────────┤
+│  sri (6 tablas)                             [billing — sin servicio] │
+│  tipos_comprobante · tipos_identificacion_comprador · formas_pago · │
+│  tipos_impuesto · tarifas_iva · motivos_anulacion_nc                │
+│  → Catálogos oficiales SRI Ecuador. Solo lectura, precargados.      │
+├─────────────────────────────────────────────────────────────────────┤
+│  facturacion (17 tablas)                    [billing — sin servicio] │
+│  config_sri · certificados · puntos_emision · secuenciales ·        │
+│  comprobantes (+ detalle · detalle_impuestos · impuestos_totales ·  │
+│  pagos · info_adicional · nc_referencias) ·                          │
+│  envios_sri · cola_envio · notificaciones_receptor ·                │
+│  anulaciones · reportes_ats                                          │
+│  → Facturación electrónica SRI completa: emisión, envío, anulación. │
 └─────────────────────────────────────────────────────────────────────┘
-                              Total: 42 tablas
+                              Total: 69 tablas
 ```
 
 ### Cómo se controla el acceso a módulos

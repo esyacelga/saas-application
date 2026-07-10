@@ -15,9 +15,9 @@
 ## 1. Decisiones arquitectónicas (D1–D6)
 
 ### D1: Extender `tenant.notificaciones_suscripcion` en lugar de crear tabla nueva
-- Se reutiliza la tabla existente con nuevas columnas: `proximo_intento`, `id_compania`, `tipo`.
-- Changeset Liquibase: `GYM-003-11`.
-- Beneficio: evita fragmentación; una única tabla para auditoría de notificaciones.
+- Se reutiliza la tabla existente con nuevas columnas: `proximo_intento`, `id_compania`, `tipo`, `intentos`, `ultimo_error`, `descartado_at`; el `canal` acepta ahora `email|whatsapp|banner` y `estado` acepta `pendiente|enviado|fallido|reintentar`.
+- Definido en el CREATE consolidado: `db/scripts/202605_GYM-001/ddl/21_create_table_tenant_notificaciones_suscripcion.sql` (changeset `GYM-001-21`).
+- Beneficio: evita fragmentación; una única tabla para auditoría de notificaciones (emails y banners in-app).
 
 ### D2: Coexistencia con `tenant.pagos_suscripcion`
 - **Nueva tabla `tenant.pagos_pendientes_validacion`**: buzón de pagos reportados por owner antes de aprobación.
@@ -50,29 +50,34 @@
 
 ## 2. Cambios de base de datos (Sub-fase 1.1)
 
-### Changeset: GYM-003-01 a GYM-003-11
+> **Nota de consolidación (2026-07-10).** Los cambios de Sub-fase 1.1 vivían originalmente como scripts `ALTER` en la story `202608_GYM-003` (changesets `GYM-003-01..11`). Esa story fue **retirada** al consolidar todas las migraciones en la story única `202605_GYM-001/`. Hoy los campos nuevos están directamente en el `CREATE TABLE` de cada tabla afectada (no hay `ALTER`), y las tablas nuevas viven en `ddl-freemium/`. Los IDs de changeset ahora son `GYM-001-XX`.
 
-#### Tablas modificadas
+### Tablas modificadas (definidas ya consolidadas en `ddl/`)
 
-| Tabla | Cambio | Columnas nuevas |
-|-------|--------|---|
-| `saas.planes` | Extender con campos Freemium | `codigo`, `duracion_dias`, `es_gratuito`, `plan_degradacion_id`, `max_sucursales`, `max_clientes_activos`, `max_staff`, `moneda`, `es_legacy` |
-| `tenant.companias` | Trial flag irreversible | `trial_usado`, `fecha_trial_usado` |
-| `tenant.compania_planes` | Sobre-límite + causa | `sobre_limite`, `sobre_limite_hasta`, `causa_degradacion` |
-| `tenant.notificaciones_suscripcion` | Extensión para auditoría | `proximo_intento`, `id_compania`, `tipo`, `canal` (ahora EMAIL, BANNER, WHATSAPP) |
+| Tabla | Archivo (baseline) | Changeset | Columnas relevantes |
+|-------|--------------------|-----------|---------------------|
+| `saas.planes` | `ddl/11_create_table_saas_planes.sql` | `GYM-001-11` | `codigo`, `duracion_dias`, `es_gratuito`, `plan_degradacion_id`, `max_sucursales`, `max_clientes_activos`, `max_staff`, `moneda`, `es_legacy` |
+| `tenant.companias` | `ddl/16_create_table_tenant_companias.sql` | `GYM-001-16` | `trial_usado`, `fecha_trial_usado` (+ campos SRI: `nombre_comercial`, `dir_matriz`, `obligado_contabilidad`, `contribuyente_especial`) |
+| `tenant.compania_planes` | `ddl/18_create_table_tenant_compania_planes.sql` | `GYM-001-18` | `sobre_limite`, `sobre_limite_hasta`, `causa_degradacion` (+ estados `reemplazada` y transiciones `degradacion_auto`, `cancelacion`, `suspension`) |
+| `tenant.notificaciones_suscripcion` | `ddl/21_create_table_tenant_notificaciones_suscripcion.sql` | `GYM-001-21` | `id_compania`, `tipo`, `proximo_intento`, `intentos`, `ultimo_error`, `descartado_at`; `canal` ahora acepta `email|whatsapp|banner`; `estado` incluye `pendiente|reintentar` |
+| `saas.actividad_plataforma` | `ddl/67_create_table_saas_actividad_plataforma.sql` | `GYM-001-67` | `id_compania`, `id_usuario_actor`, `tipo_actor`, `ip` (INET); `detalle` es `JSONB` |
 
-#### Tablas nuevas
+### Tablas nuevas (en `ddl-freemium/`)
 
-| Tabla | Propósito | Índices |
-|-------|-----------|---------|
-| `tenant.pagos_pendientes_validacion` | Buzón de pagos reportados por owner | `ux_pagos_pendientes_hash` (idempotencia), `idx_pagos_pendientes_estado_fecha`, `idx_pagos_pendientes_compania` |
-| `saas.config_plataforma` (opcional) | Configuración runtime (datos bancarios, precios, etc.) | PRIMARY KEY `clave` |
+| Tabla | Archivo | Changeset | Propósito | Índices |
+|-------|---------|-----------|-----------|---------|
+| `tenant.pagos_pendientes_validacion` | `ddl-freemium/01_create_table_tenant_pagos_pendientes_validacion.sql` | `GYM-001-140` | Buzón de pagos reportados por owner (RN-08) | `ux_pagos_pendientes_hash` (idempotencia parcial), `idx_pagos_pendientes_estado_fecha`, `idx_pagos_pendientes_compania` |
+| `saas.config_plataforma` | `ddl-freemium/02_create_table_saas_config_plataforma.sql` | `GYM-001-141` | Configuración runtime (datos bancarios, precios, etc.) | PRIMARY KEY `clave` |
 
-#### Constraints nuevos
+Seed asociado: `ddl-freemium/03_seed_saas_config_plataforma.sql` inserta 7 claves `pago.banco.*` con valores de ejemplo (reemplazar en prod).
 
-- `UNIQUE(id_compania) WHERE estado IN ('ACTIVO', 'EN_GRACIA')` en `tenant.compania_planes` (previene suscripciones solapadas).
-- FK: `tenant.pagos_pendientes_validacion → saas.planes(plan_destino_id)`.
-- FK: `tenant.companias.trial_usado` → bloquea reutilización de Trial.
+### Constraints y garantías
+
+- Idempotencia de reportes: `UNIQUE(hash_idempotencia) WHERE estado IN ('pendiente','aprobado')` en `tenant.pagos_pendientes_validacion` (índice parcial, no viola cuando estados terminales).
+- Self-FK de degradación: `saas.planes.plan_degradacion_id → saas.planes(id)`.
+- FK: `tenant.pagos_pendientes_validacion.id_plan_destino → saas.planes(id)`.
+- FK: `tenant.pagos_pendientes_validacion.aprobado_por → saas.usuarios_plataforma(id)`.
+- Trial irrevocable: la app bloquea `INSERT` de suscripción Trial si `tenant.companias.trial_usado = TRUE` (validación en `ActivarTrialService`, no en constraint DB).
 
 ---
 
@@ -837,7 +842,12 @@ Middleware que valida que `idCompania` del path coerces con `principal.getIdComp
 
 ### Database (Liquibase changesets)
 
-- `GYM-003-01` a `GYM-003-11`: alteraciones a `saas.planes`, `tenant.companias`, `tenant.compania_planes`, `tenant.notificaciones_suscripcion`, nuevas tablas `pagos_pendientes_validacion`, índices.
+Todos los cambios de Sub-fase 1.1 viven en la story consolidada `db/scripts/202605_GYM-001/`:
+
+- **`ddl/`** — CREATE consolidados (sin ALTER) para `saas.planes` (`GYM-001-11`), `tenant.companias` (`GYM-001-16`), `tenant.compania_planes` (`GYM-001-18`), `tenant.notificaciones_suscripcion` (`GYM-001-21`), `saas.actividad_plataforma` (`GYM-001-67`).
+- **`ddl-freemium/`** — Tablas 100 % nuevas: `tenant.pagos_pendientes_validacion` (`GYM-001-140`), `saas.config_plataforma` (`GYM-001-141`), y seed `03_seed_saas_config_plataforma.sql`.
+
+> La story antigua `202608_GYM-003` (que contenía los `ALTER` originales) fue retirada del changelog al hacer la consolidación (commit `e5ff46f`).
 
 ### platform-service (Java)
 
