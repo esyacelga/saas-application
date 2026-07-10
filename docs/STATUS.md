@@ -2,7 +2,22 @@
 
 > **Propósito:** Fuente única de verdad sobre **qué está construido hoy** vs. **qué es solo diseño**. Antes de implementar o de confiar en un documento como referencia, consulta aquí su estado.
 >
-> Última verificación contra el código: **2026-07-08**
+> Última verificación contra el código: **2026-07-10**
+
+---
+
+## ✅ Actualización 2026-07-10: REQ-SAAS-001 Sub-fases 1.1–1.5 documentadas
+
+Se completó la **auditoría técnica** de los commits 6bd7f0b–c1a5b75 (nuevo esquema de planes Freemium). Documentación creada:
+
+- **`planes-saas-freemium-implementacion.md`** — Bitácora completa: DDL, modelos, 10 endpoints REST, jobs de notificación, decisiones D1–D6.
+- **`planes-saas-limitaciones.md`** — 7 limitaciones conocidas + checklist Sub-fase 1.6.
+- **`platform-service.md`** (sección 6.9 nueva) — 11 nuevos endpoints documentados con DTOs y ejemplos.
+- **`STATUS.md`** (aquí) — Tabla de estado de Sub-fases.
+
+**Próximo paso:** Sub-fase 1.6 (frontend React + tests de integración + code review).
+
+---
 
 ---
 
@@ -51,9 +66,26 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 
 ---
 
+## REQ-SAAS-001 — Nuevo esquema de planes SaaS (Free / Trial / Premium)
+
+**Estado:** Fase 1 implementada al ~85% (Sub-fases 1.1, 1.2, 1.3, 1.4, 1.5 completadas).
+
+| Sub-fase | Descripción | Estado | Archivos |
+|----------|---|---|---|
+| 1.1 | DDL Liquibase (tablas, índices, constraints) | ✅ Implementada (commit 6bd7f0b) | `gym-administrator/db/scripts/202608_GYM-003/` |
+| 1.2 | Modelo de dominio + adapters R2DBC + máquina de estados | ✅ Implementada (commit 3c91d7e) | `platform-service/domain/model/`, adapters |
+| 1.3 | Servicios de negocio, use cases, guards, auditoría | ✅ Implementada (commit e4bf796) | `ActivarTrialService`, `CancelarSuscripcionService`, etc. |
+| 1.4 | 10 endpoints REST (owner + root), rate limiting, cross-service | ✅ Implementada (commit e4bf796) | `PlanPublicoController`, `SuscripcionController`, `PagoOwnerController`, `PagoPlataformaController`, `UsoLimitesController` |
+| 1.5 | Notificaciones email (cola Postgres + retry), banners in-app | ✅ Implementada (commit c1a5b75) | `NotificacionVencimientoJob`, `EmailQueueProcessorJob`, `BannerController`, `EmailTemplateEngine` |
+| 1.6 | Frontend (React), tests de integración, code review | 📋 Pendiente | Será próxima tarea |
+
+**Bitácora completa:** `docs/gym-administrator/requirements/planes-saas-freemium-implementacion.md` (recién creado).
+
+---
+
 ## Estado por documento
 
-> Los veredictos de precisión (✅/🟡) provienen de verificar cada doc contra el código el 2026-07-08.
+> Los veredictos de precisión (✅/🟡) provienen de verificar cada doc contra el código el 2026-07-10.
 
 ### docs/auth-service/api/
 | Documento | Estado |

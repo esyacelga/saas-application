@@ -1,6 +1,6 @@
 # Core Service — Especificación de Desarrollo
 
-> **ESTADO:** 🟡 Spec de diseño de un servicio YA implementado. El **código es la fuente de verdad**; esta spec puede haber divergido. Para la API real ver `docs/<servicio>/` y el CLAUDE.md del servicio. Ver [../../STATUS.md](../../STATUS.md).
+> **ESTADO:** 🟡 **Actualizado 2026-07-10** — Spec de diseño de un servicio YA implementado. El **código es la fuente de verdad**; esta spec puede haber divergido. **Integración pendiente (Sub-fase 1.4b):** core-service aún no valida límites vía platform-service al crear cliente. Para la API real ver `docs/<servicio>/` y el CLAUDE.md del servicio. Ver [../../STATUS.md](../../STATUS.md) y `../requirements/planes-saas-freemium-implementacion.md`.
 
 > **Servicio:** core-service  
 > **Esquemas BD:** `core`  

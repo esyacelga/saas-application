@@ -1,6 +1,6 @@
 # Platform Service — Especificación de Desarrollo
 
-> **ESTADO:** 🟡 Spec de diseño de un servicio YA implementado. El **código es la fuente de verdad**; esta spec puede haber divergido. Para la API real ver `docs/<servicio>/` y el CLAUDE.md del servicio. Ver [../../STATUS.md](../../STATUS.md).
+> **ESTADO:** ✅ **Actualizado 2026-07-10** — Spec de diseño de un servicio YA implementado. El **código es la fuente de verdad**; se verifica aquí contra commits 6bd7f0b–c1a5b75 (REQ-SAAS-001 Sub-fases 1.1–1.5). Para la API real ver `docs/<servicio>/` y el CLAUDE.md del servicio. Ver [../../STATUS.md](../../STATUS.md).
 
 > **Servicio:** platform-service  
 > **Esquemas BD:** `saas` · `tenant`  
@@ -710,6 +710,276 @@ LIMIT 1;
 
 ---
 
+### 6.9 Nuevos endpoints REQ-SAAS-001 (Sub-fases 1.3–1.5)
+
+#### `GET /api/v1/planes/publicos` — Catálogo público (sin auth)
+
+```json
+// Retorna solo FREE, TRIAL, PREMIUM con toda la información Freemium
+
+// Response 200
+[
+  {
+    "id": 1,
+    "codigo": "FREE",
+    "nombre": "Plan Free",
+    "descripcion": "Acceso básico permanente",
+    "precio_mensual": 0.00,
+    "duracion_dias": null,
+    "es_gratuito": true,
+    "max_sucursales": 1,
+    "max_clientes_activos": 50,
+    "max_staff": 2,
+    "moneda": "USD"
+  },
+  {
+    "id": 2,
+    "codigo": "TRIAL",
+    "nombre": "Plan Trial",
+    "precio_mensual": 0.00,
+    "duracion_dias": 60,
+    "es_gratuito": true,
+    "max_sucursales": null,
+    "max_clientes_activos": null,
+    "max_staff": null,
+    "moneda": "USD"
+  },
+  {
+    "id": 3,
+    "codigo": "PREMIUM",
+    "nombre": "Plan Premium",
+    "precio_mensual": 29.99,
+    "duracion_dias": 30,
+    "es_gratuito": false,
+    "max_sucursales": null,
+    "max_clientes_activos": null,
+    "max_staff": null,
+    "moneda": "USD"
+  }
+]
+```
+
+#### `POST /api/v1/companias/{id}/suscripcion/trial` — Activar Trial (RN-01)
+
+```json
+// Requiere: JWT staff (owner o admin del tenant)
+// Valida: trial_usado = false
+
+// Request (body vacío o no requerido)
+
+// Response 201
+{
+  "id": 15,
+  "id_plan": 2,
+  "estado": "ACTIVO",
+  "fecha_inicio": "2026-07-10",
+  "fecha_fin": "2026-09-08",
+  "dias_restantes": 60,
+  "dias_gracia": 5,
+  "tipo_cambio": "NUEVO"
+}
+
+// Errors:
+// 403 — acceso denegado (no es owner/admin del tenant)
+// 409 — trial_usado = true o ya hay suscripción activa
+```
+
+#### `POST /api/v1/companias/{id}/suscripcion/cancelar` — Cancelar suscripción
+
+```json
+// Requiere: JWT staff (owner o admin del tenant)
+
+// Request
+{
+  "motivo": "No lo estoy usando" // optional
+}
+
+// Response 204 No Content
+
+// Errors:
+// 403 — acceso denegado
+// 400 — no hay suscripción cancelable (Free o ya vencida)
+```
+
+#### `GET /api/v1/companias/{id}/uso-limites` — Consultar límites (HU-04)
+
+```json
+// Requiere: JWT staff (owner o admin del tenant)
+
+// Response 200
+{
+  "plan_codigo": "FREE",
+  "sucursales": {
+    "actual": 1,
+    "maximo": 1
+  },
+  "clientes_activos": {
+    "actual": 48,
+    "maximo": 50
+  },
+  "staff": {
+    "actual": 2,
+    "maximo": 2
+  },
+  "sobre_limite": false,
+  "sobre_limite_hasta": null
+}
+
+// Errors:
+// 403 — acceso denegado
+// 404 — sin suscripción activa
+```
+
+#### `POST /api/v1/companias/{id}/pagos/reportar` — Reportar pago (RN-08, multipart)
+
+```
+// Requiere: JWT staff (owner o admin del tenant)
+// Rate limit: 3 reportes/hora/tenant
+
+// Request: multipart/form-data
+POST /api/v1/companias/{id}/pagos/reportar
+  comprobante: file (JPEG/PNG/PDF, max 5MB)
+  id_plan_destino: long
+  monto: decimal
+  fecha_transferencia: date (YYYY-MM-DD)
+  banco_origen: string (optional)
+  referencia: string (optional)
+
+// Response 201
+{
+  "id": 42,
+  "id_compania": 5,
+  "id_plan_destino": 3,
+  "monto": "29.99",
+  "moneda": "USD",
+  "fecha_reporte": "2026-07-10T14:30:00Z",
+  "comprobante_url": "https://res.cloudinary.com/...pago-42.pdf",
+  "banco_origen": "Banco Pichincha",
+  "referencia": "TXN-001",
+  "estado": "PENDIENTE",
+  "hash_idempotencia": "sha256(...)"
+}
+
+// Errors:
+// 400 — MIME inválido, tamaño > 5MB, validación fallida
+// 403 — acceso denegado
+// 409 — hash_idempotencia duplicado (ya existe pago pendiente/aprobado con esos datos)
+// 429 — rate limit excedido (máx 3/hora)
+```
+
+#### `GET /api/v1/plataforma/pagos-pendientes` — Bandeja (root/soporte, HU-05)
+
+```json
+// Requiere: JWT plataforma (root o soporte)
+// Query params: ?estado=PENDIENTE&pagina=1&limit=20
+
+// Response 200
+{
+  "total": 5,
+  "pagina": 1,
+  "limit": 20,
+  "datos": [
+    {
+      "id": 42,
+      "id_compania": 5,
+      "id_compania_nombre": "Gym Power",
+      "id_plan_destino": 3,
+      "monto": "29.99",
+      "moneda": "USD",
+      "fecha_reporte": "2026-07-10T14:30:00Z",
+      "fecha_transferencia": "2026-07-10",
+      "comprobante_url": "https://res.cloudinary.com/...pago-42.pdf",
+      "banco_origen": "Banco Pichincha",
+      "referencia": "TXN-001",
+      "estado": "PENDIENTE",
+      "motivo_rechazo": null,
+      "aprobado_por": null,
+      "fecha_aprobacion": null,
+      "activacion_programada": false
+    }
+  ]
+}
+
+// Errors:
+// 403 — acceso denegado (no es root/soporte)
+```
+
+#### `POST /api/v1/plataforma/pagos-pendientes/{id}/aprobar` — Aprobar pago
+
+```json
+// Requiere: JWT plataforma (root o soporte)
+
+// Request (body vacío o no requerido)
+
+// Response 200
+{
+  "id_pago": 42,
+  "id_compania_plan": 16,
+  "estado": "ACTIVO"
+}
+
+// Errors:
+// 403 — acceso denegado
+// 404 — pago no encontrado
+// 409 — pago ya fue procesado (idempotencia: affectedRows == 0)
+```
+
+#### `POST /api/v1/plataforma/pagos-pendientes/{id}/rechazar` — Rechazar pago
+
+```json
+// Requiere: JWT plataforma (root o soporte)
+
+// Request
+{
+  "motivo_rechazo": "Comprobante no corresponde al monto"
+}
+
+// Response 204 No Content
+
+// Errors:
+// 403 — acceso denegado
+// 404 — pago no encontrado
+// 409 — pago ya procesado
+```
+
+#### `GET /api/v1/companias/{id}/banners-activos` — Listar banners (Sub-fase 1.5)
+
+```json
+// Requiere: JWT staff (owner o admin del tenant)
+
+// Response 200 (array puede estar vacío)
+[
+  {
+    "id": 101,
+    "id_compania_plan": 15,
+    "tipo": "VENCIMIENTO_TRIAL",
+    "dias_antes": 7,
+    "mensaje": "Tu plan Trial vence en 7 días",
+    "fecha_envio": "2026-07-03T03:15:00Z",
+    "descartado_at": null
+  }
+]
+
+// Errors:
+// 403 — acceso denegado
+```
+
+#### `POST /api/v1/companias/{id}/banners/{idBanner}/descartar` — Descartar banner (Sub-fase 1.5)
+
+```
+// Requiere: JWT staff (owner o admin del tenant)
+
+// Request (body vacío)
+
+// Response 204 No Content
+
+// Errors:
+// 403 — acceso denegado
+// 404 — banner no encontrado para este tenant
+```
+
+---
+
 ## 7. Flujos principales
 
 ### Flujo: Registrar gym nuevo
@@ -939,6 +1209,46 @@ SUBSCRIPTION_JOB_CRON=0 5 0 * * *      # 00:05 UTC cada día
 | RN-09 | `admin_compania` solo puede leer y modificar recursos de su propio `id_compania` | Todos los endpoints tenant |
 | RN-10 | El endpoint `/modulos/check` debe usar caché — nunca golpear la BD en cada request | GET /modulos/check |
 
+### Nuevas reglas REQ-SAAS-001 (Sub-fases 1.3–1.5)
+
+> **Namespace separado:** las reglas del esquema freemium usan el prefijo `RN-SAAS-` para evitar colisión con RN-01…RN-10 preexistentes en este spec (que cubren reglas generales del platform-service). La columna **Origen** referencia la regla del requerimiento fuente [`planes-saas-freemium.md`](../requirements/planes-saas-freemium.md#reglas-de-negocio-canónicas).
+
+| # | Regla | Origen | Dónde se aplica |
+|---|---|---|---|
+| RN-SAAS-001 | Trial único por tenant — `trial_usado` es irreversible | RN-01 | `ActivarTrialService.activar()` valida `trial_usado=false` |
+| RN-SAAS-002 | Degradación automática sin período de gracia cuando destino=Free | RN-03 | `SubscriptionJobService.procesar()` orden de operaciones |
+| RN-SAAS-003 | Upgrade Trial→Premium agendado: `PROGRAMADO` se activa antes de degradar Trial vencido | RN-03 + RN-05 | Job: activar PROGRAMADO (paso 1) → degradar (paso 2) |
+| RN-SAAS-004 | Hard limits por plan (Free: 1 sucursal, 50 clientes, 2 staff) | RN-06 | `LimiteRecursoService.validarPuedeCrear()` con `pg_advisory_xact_lock()` |
+| RN-SAAS-005 | Reporte de pago: validación MIME por magic bytes, máx 5MB | RN-08 (impl) | `ReportarPagoService.reportar()` valida antes de cargar a Cloudinary |
+| RN-SAAS-006 | Idempotencia de reportes: `hash_idempotencia = SHA-256(idCompania + monto + fechaTransferencia + referencia)` | RN-08 | `PagoPendienteValidacionPersistenceAdapter` constraint `UNIQUE(hash_idempotencia) WHERE estado IN ('PENDIENTE','APROBADO')` |
+| RN-SAAS-007 | Idempotencia de aprobación: `UPDATE WHERE estado='PENDIENTE'` y verificar `affectedRows==1` | RN-08 | `AprobarPagoService.aprobar()` |
+| RN-SAAS-008 | Rate limit de reportes: máx 3 por tenant por hora | RN-08 (impl) | `PostgresRateLimiter` contra tabla `rate_limit_buckets` |
+| RN-SAAS-009 | Notificaciones idempotentes: un bucket (15, 7, 3, 1, 0 días) por (compania_plan, tipo, canal) | RN-07 | `NotificacionRepository.existsIdempotente()` predicado |
+| RN-SAAS-010 | Retry exponencial de emails: 30s → 2m → 10m → 1h, `fallido` tras 4 intentos (DLQ implícita) | RN-07 (impl) | `EmailQueueProcessorJob.procesarLote()` actualiza `proximo_intento` |
+| RN-SAAS-011 | Planes públicos: omitir `es_legacy=true` y `activo=false` | (nueva impl) | `PlanPublicoController.listarPublicos()` |
+| RN-SAAS-012 | Cancelación de suscripción: si es Trial, degrada inmediato a Free; Premium completa el mes | RN-09 | `CancelarSuscripcionService.cancelar()` lógica condicional por plan |
+
+**Reglas del requerimiento no cubiertas por RN-SAAS-XXX:**
+
+- **RN-02** (Registro con Trial por defecto): se cumple a nivel de flujo de registro, no requirió regla de implementación separada.
+- **RN-04** (Preservación de datos al degradar): garantía a nivel de DDL — degradar cambia `compania_planes` pero no borra datos operativos.
+- **RN-10** (Prevención de suscripciones solapadas): implementada por constraint parcial `UNIQUE(id_compania) WHERE estado IN ('activo','en_gracia')` en `tenant.compania_planes` (Sub-fase 1.1, changeset GYM-003-3).
+
 ---
 
-*Platform Service Spec v1.0 · Gym Administrator · Mayo 2026*
+## 12. Decisiones arquitectónicas REQ-SAAS-001
+
+Ver sección completa en `docs/gym-administrator/requirements/planes-saas-freemium-implementacion.md#decisiones-arquitectónicas-d1–d6`.
+
+| Decisión | Rationale |
+|----------|-----------|
+| **D1** — Extender `notificaciones_suscripcion` | Evita fragmentación; una única tabla para auditoría. |
+| **D2** — Nueva tabla `pagos_pendientes_validacion` (separada de `pagos_suscripcion`) | Separar "buzón de pendiente validación" de "históricamente pagado". |
+| **D3** — Migración de `saas.actividad_plataforma` | Auditoría con actor, IP, JSONB detalle. |
+| **D4** — Enums en DB (minúsculas), Java (UPPERCASE), mapping manual | Coherencia SQL + idiomatismo Java. |
+| **D5** — EmailAdapter duplicado en cada servicio, no compartido | Independencia de deployments. |
+| **D6** — Cola de emails en Postgres + `FOR UPDATE SKIP LOCKED`, sin Redis | Disponibilidad en entornos sin Redis remoto. |
+
+---
+
+*Platform Service Spec v1.0–1.4 · Gym Administrator · Mayo 2026 · Actualizado 2026-07-10 (REQ-SAAS-001 Sub-fases 1.3–1.5)*

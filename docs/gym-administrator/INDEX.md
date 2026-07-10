@@ -35,6 +35,14 @@ Una spec de desarrollo por servicio: modelo de datos, endpoints, reglas de negoc
 | [auth-frontend-impl.md](frontend/auth-frontend-impl.md) | Documento de implementación técnica del mismo módulo (React + Vite) |
 | [platform-frontend-prompt.md](frontend/platform-frontend-prompt.md) | Especificación del módulo Platform dentro de `auth-service-frond-end/` |
 
+## requirements/ — Requerimientos SaaS y bitácora de implementación
+
+| Documento | Contenido |
+|-----------|-----------|
+| [planes-saas-freemium.md](requirements/planes-saas-freemium.md) | REQ-SAAS-001 original: especificación de negocio (Free / Trial / Premium), 8 reglas de negocio, 6 historias de usuario, 4 fases sugeridas |
+| [planes-saas-freemium-implementacion.md](requirements/planes-saas-freemium-implementacion.md) | **Bitácora de Sub-fases 1.1–1.5** (implementadas): cambios de BD, modelos de dominio, servicios de negocio, 10 endpoints REST nuevos, notificaciones por email, decisiones arquitectónicas D1–D6, verificación contra código |
+| [planes-saas-limitaciones.md](requirements/planes-saas-limitaciones.md) | Limitaciones conocidas en Sub-fases 1.4–1.5: destinatario hardcodeado, fechaFin mal formateada, config_notif no consultada, integración core-service pendiente (Sub-fase 1.4b), checklist para Sub-fase 1.6 |
+
 ## infra/ — Infraestructura y plantillas
 
 | Documento | Contenido |
