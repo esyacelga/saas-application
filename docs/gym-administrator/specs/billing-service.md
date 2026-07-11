@@ -764,71 +764,23 @@ ddmmaaaa | TC | RRRRRRRRRRRRR | A | EEEPPP | SSSSSSSSS | CCCCCCCC | V
 
 ## 9. API REST del Billing Service
 
-```
-POST   /facturacion/facturas                    Emitir factura
-POST   /facturacion/notas-credito               Emitir nota de crédito
-POST   /facturacion/comprobantes/{id}/anular    Anular comprobante autorizado
+Ver documentación de endpoints en `docs/billing-service/api/`:
 
-GET    /facturacion/comprobantes                Listar (filtros: desde,hasta,tipo,estado,receptor)
-GET    /facturacion/comprobantes/{clave}        Detalle por clave de acceso
-GET    /facturacion/comprobantes/{clave}/ride   Descargar PDF RIDE
-GET    /facturacion/comprobantes/{clave}/xml    Descargar XML autorizado
-POST   /facturacion/comprobantes/{clave}/reenviar   Forzar reintento
-POST   /facturacion/comprobantes/{clave}/notificar  Reenviar email al receptor
+| Endpoint | Verbo | Base URL | Doc |
+|----------|-------|----------|-----|
+| Emisión de facturas | `POST` | `/api/v1/comprobantes/facturas` | [comprobantes.md](../../billing-service/api/comprobantes.md#post-apiv1comprobantesfacturas) |
+| Consultar comprobante | `GET` | `/api/v1/comprobantes/{id}` | [comprobantes.md](../../billing-service/api/comprobantes.md#get-apiv1comprobantesx) |
+| Listar comprobantes | `GET` | `/api/v1/comprobantes` | [comprobantes.md](../../billing-service/api/comprobantes.md#get-apiv1comprobantes) |
+| Descargar RIDE PDF | `GET` | `/api/v1/comprobantes/{id}/ride` | [comprobantes.md](../../billing-service/api/comprobantes.md#get-apiv1comprobantesx-ride) |
+| Descargar XML firmado | `GET` | `/api/v1/comprobantes/{id}/xml-firmado` | [comprobantes.md](../../billing-service/api/comprobantes.md#get-apiv1comprobantesx-xml-firmado) |
+| Anular comprobante | `POST` | `/api/v1/comprobantes/{id}/anular` | [comprobantes.md](../../billing-service/api/comprobantes.md#post-apiv1comprobantesx-anular) |
+| Reenviar email | `POST` | `/api/v1/comprobantes/{id}/reenviar-email` | [comprobantes.md](../../billing-service/api/comprobantes.md#post-apiv1comprobantesx-reenviar-email) |
+| Admin: diagnóstico | `GET` | `/api/v1/admin/ping` | [admin.md](../../billing-service/api/admin.md) |
+| Admin: certificados | `GET\|POST\|DELETE` | `/api/v1/admin/certificados` | [admin.md](../../billing-service/api/admin.md) |
+| Reportes: ATS | `GET` | `/api/v1/reportes/ats` | [reportes.md](../../billing-service/api/reportes.md) |
+| Reportes: resumen | `GET` | `/api/v1/reportes/resumen` | [reportes.md](../../billing-service/api/reportes.md) |
 
-GET    /facturacion/config                      Obtener config SRI de la sucursal
-PUT    /facturacion/config                      Actualizar config SRI
-POST   /facturacion/certificados                Subir certificado P12 (multipart)
-GET    /facturacion/certificados                Listar certificados
-DELETE /facturacion/certificados/{id}           Revocar certificado
-
-POST   /facturacion/puntos-emision              Crear punto de emisión
-GET    /facturacion/puntos-emision              Listar puntos de emisión
-
-GET    /facturacion/reportes/ats?anio=X&mes=Y   Generar/descargar ATS
-GET    /facturacion/reportes/resumen            Totales por período
-```
-
-### 9.1 Payload de emisión de factura
-
-```json
-POST /facturacion/facturas
-{
-  "id_sucursal": 1,
-  "cod_establecimiento": "001",
-  "cod_punto_emision": "001",
-  "origen": {
-    "id_membresia": 123,
-    "id_venta": null
-  },
-  "receptor": {
-    "tipo_identificacion": "05",
-    "identificacion": "1712345678",
-    "razon_social": "Juan Carlos Pérez",
-    "email": "juan@email.com",
-    "direccion": "Av. Los Shyris N32-14",
-    "telefono": "0991234567"
-  },
-  "detalles": [
-    {
-      "codigo_principal": "MEM-MENSUAL",
-      "descripcion": "Membresía Mensual — Agosto 2026",
-      "cantidad": 1,
-      "precio_unitario": 33.04,
-      "descuento": 0,
-      "impuestos": [
-        { "codigo": "2", "codigo_porcentaje": "4", "tarifa": 15.00 }
-      ]
-    }
-  ],
-  "pagos": [
-    { "forma_pago": "19", "total": 38.00 }
-  ],
-  "info_adicional": [
-    { "nombre": "email", "valor": "juan@email.com" }
-  ]
-}
-```
+**Nota:** Estos paths reflejan la implementación actual (véase `billing-service/src/main/java/.../ComprobanteController`). La especificación anterior usaba `/facturacion/*`, que fue reemplazado por `/api/v1/comprobantes/*` y `/api/v1/admin/*` + `/api/v1/reportes/*` en el código implementado.
 
 ---
 
@@ -891,11 +843,11 @@ billing-service/
     ├── Registrar membresía en core.membresias
     ├── Registrar ingreso en finanzas.ingresos (llamada existente)
     └── SI (config_sri.facturacion_activa = true)
-         └── Llamada asíncrona → POST /facturacion/facturas
-              └── Al autorizar: UPDATE finanzas.ingresos SET id_comprobante = X
+         └── Llamada asíncrona → POST /api/v1/comprobantes/facturas
+              └── Al autorizar SRI: UPDATE finanzas.ingresos SET id_comprobante = X
 ```
 
-Patrón: **fire-and-forget** con cola de mensajes. Si el Billing Service falla, la membresía ya está registrada; la factura queda pendiente para reintento automático.
+Patrón: **fire-and-forget** con cola de mensajes. Si el Billing Service falla, la membresía ya está registrada; la factura queda pendiente para reintento automático. Ver [contrato de integración propuesto](../../billing-service/api/integracion.md).
 
 ### 11.2 Inventory Service — al vender producto
 

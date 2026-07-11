@@ -54,7 +54,7 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 | platform-service | 8081 | ✅ presente (148 archivos Java) | **Implementado** |
 | core-service | 8083 | ✅ presente (66 archivos Java) | **Implementado** |
 | attendance-service | 8084 | ✅ presente (51 archivos Java) | **Implementado** |
-| billing-service | 8082 | ✅ presente (~85% implementado) | **Implementado** (3 controllers, 13 endpoints documentados) |
+| billing-service | 8086 | ✅ presente (~85% implementado) | **Implementado** (3 controllers, 13 endpoints documentados) |
 | finance-service | — | ❌ no existe | 📋 Solo especificación |
 | marketing-service | — | ❌ no existe | 📋 Solo especificación |
 | inventory-service | — | ❌ no existe | 📋 Solo especificación |
@@ -110,7 +110,8 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 ### docs/billing-service/api/
 | Documento | Estado |
 |-----------|--------|
-| comprobantes.md, admin.md, reportes.md | ✅ Refleja el código actual (verificado 2026-07-11 contra `ComprobanteController`, `AdminController`, `ReporteController`). Total: 13 endpoints documentados (8+3+2). Nota: especificación `billing-service.md` tiene divergencia en paths (spec: `/facturacion/*`, código: `/api/v1/{comprobantes,admin,reportes}`) y estructura de request (spec: nested, código: plano). |
+| comprobantes.md, admin.md, reportes.md | ✅ Refleja el código actual (verificado 2026-07-11 contra `ComprobanteController`, `AdminController`, `ReporteController`). Total: 13 endpoints documentados (8+3+2). |
+| integracion.md | 📋 Propuesto 2026-07-11 — Contrato de integración para que `core-service` consuma `billing-service` al vender membresías. Describe flujo asíncrono, JWT multi-tenancy, manejo de errores, idempotencia, y checklist de implementación. |
 
 ### docs/platform-service/ y platform-service/CLAUDE.md
 | Documento | Estado |
@@ -130,7 +131,7 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 | Documento | Estado |
 |-----------|--------|
 | auth-service.md, platform-service.md, core-service.md, attendance-service.md | 🟡 Spec de diseño de un servicio ya implementado — el código es la verdad, la spec puede haber divergido |
-| billing-service.md | 🟡 Planeado vs. código: spec tiene paths `/facturacion/*` pero código real usa `/api/v1/{comprobantes,admin,reportes}`; EmitirFacturaRequest es plano, no nested |
+| billing-service.md | ✅ Corregida 2026-07-11 — Sección 9 actualizada con tabla de endpoints reales (`/api/v1/{comprobantes,admin,reportes}`) enlazados a la doc de API. Removed payload nested (spec antigua); ver [docs/billing-service/api/integracion.md](../../billing-service/api/integracion.md) para el contrato real de integración propuesto. |
 | finance-service.md, marketing-service.md, inventory-service.md | 📋 Planeado — sin implementar |
 
 ### docs/gym-administrator/architecture/

@@ -57,6 +57,9 @@ management:
     web:
       exposure:
         include: health
+  health:
+    mail:
+      enabled: false
 
 cloudinary:
   cloud-name: ${CLOUDINARY_CLOUD_NAME:}
