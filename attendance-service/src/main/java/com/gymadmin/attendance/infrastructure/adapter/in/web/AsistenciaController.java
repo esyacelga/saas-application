@@ -310,6 +310,7 @@ public class AsistenciaController {
                 .flatMap(principal -> accessControl.requireStaffOrPlataforma(principal)
                         .then(asistenciaUseCase.estadisticas(
                                 principal.getIdCompania().intValue(),
+                                periodo,
                                 anio != null ? anio : LocalDate.now().getYear(),
                                 mes != null ? mes : LocalDate.now().getMonthValue()))
                         .map(ResponseEntity::ok));

@@ -1,0 +1,33 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: finance-service-test
+  r2dbc:
+    url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:gym-app-saas}
+    username: ${DB_USER:administrador}
+    password: ${DB_PASSWORD:seya1922}
+
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    time-zone: America/Guayaquil
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+jwt:
+  secret: ${JWT_SECRET:Y2hhbmdlLW1lLWluLXByb2R1Y3Rpb24tdGhpcy1rZXktbXVzdC1iZS0yNTYtYml0cw==}
+
+app:
+  cors:
+    allow-all: true
+
+finance:
+  proyeccion-meses-base: 3
+
+logging:
+  level:
+    com.gymadmin.finance: DEBUG
+    io.r2dbc: INFO

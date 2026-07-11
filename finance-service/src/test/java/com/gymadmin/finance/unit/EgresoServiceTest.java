@@ -141,14 +141,16 @@ class EgresoServiceTest {
         }
 
         @Test
-        @DisplayName("retorna totalPeriodo=ZERO cuando sumByFilters retorna null")
+        @DisplayName("retorna totalPeriodo=ZERO cuando no hay egresos (suma cero)")
         void usaCeroWhenSumNull() {
             LocalDate desde = LocalDate.now().minusMonths(1);
             LocalDate hasta = LocalDate.now();
             ListarCommand cmd = new ListarCommand(1, desde, hasta, null, 1, 10);
 
+            // El query real usa COALESCE(SUM(monto), 0): nunca emite null, sino ZERO.
+            // Reactor prohíbe Mono.just(null), por eso se modela con Mono.just(ZERO).
             when(egresoRepository.countByFilters(1, desde, hasta, null)).thenReturn(Mono.just(0L));
-            when(egresoRepository.sumByFilters(1, desde, hasta, null)).thenReturn(Mono.just(null));
+            when(egresoRepository.sumByFilters(1, desde, hasta, null)).thenReturn(Mono.just(BigDecimal.ZERO));
             when(egresoRepository.findByFilters(eq(1), eq(desde), eq(hasta), eq(null), anyInt(), anyLong()))
                     .thenReturn(Flux.empty());
 

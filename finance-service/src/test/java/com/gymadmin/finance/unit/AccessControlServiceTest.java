@@ -49,13 +49,12 @@ class AccessControlServiceTest {
     }
 
     private JwtPrincipal principalSinPermisos() {
+        // Solo se usa en requireFinanzasLeer: hasPermiso("finanzas:leer") || isDueno() || isPlataforma().
+        // Stubbear otros predicados dispara UnnecessaryStubbingException (Mockito strict).
         JwtPrincipal p = mock(JwtPrincipal.class);
         when(p.isDueno()).thenReturn(false);
         when(p.isPlataforma()).thenReturn(false);
         when(p.hasPermiso("finanzas:leer")).thenReturn(false);
-        when(p.hasPermiso("finanzas:crear")).thenReturn(false);
-        when(p.hasPermiso("finanzas:exportar")).thenReturn(false);
-        when(p.isRecepcion()).thenReturn(false);
         return p;
     }
 
@@ -179,11 +178,11 @@ class AccessControlServiceTest {
         @Test
         @DisplayName("permite acceso cuando el principal tiene rol recepcion sin permiso explícito")
         void permiteCuandoEsRecepcion() {
+            // isRecepcion()=true corta el || antes de isPlataforma(): no se stubbea (sería innecesario).
             JwtPrincipal principal = mock(JwtPrincipal.class);
             when(principal.hasPermiso("finanzas:crear")).thenReturn(false);
             when(principal.isDueno()).thenReturn(false);
             when(principal.isRecepcion()).thenReturn(true);
-            when(principal.isPlataforma()).thenReturn(false);
 
             StepVerifier.create(service.requireFinanzasCrearORecepcion(principal))
                     .verifyComplete();

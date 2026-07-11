@@ -66,9 +66,9 @@ class AsistenciaManualIntegrationTest extends BaseIntegrationTest {
     @DisplayName("POST /asistencias/manual con JWT entrenador retorna 403")
     void entrenadorNoPuedeRegistrarManual() {
         Map<String, Object> body = Map.of(
-                "idCliente", 5,
+                "id_cliente", 5,
                 "fecha", LocalDate.now().toString(),
-                "horaEntrada", "09:00:00"
+                "hora_entrada", "09:00:00"
         );
 
         webTestClient.post()
@@ -85,7 +85,7 @@ class AsistenciaManualIntegrationTest extends BaseIntegrationTest {
     @Test
     @DisplayName("POST /asistencias/manual con JWT cliente retorna 403")
     void clienteNoPuedeRegistrarManual() {
-        Map<String, Object> body = Map.of("idCliente", 5);
+        Map<String, Object> body = Map.of("id_cliente", 5);
 
         webTestClient.post()
                 .uri("/api/v1/asistencias/manual")
@@ -102,10 +102,10 @@ class AsistenciaManualIntegrationTest extends BaseIntegrationTest {
     @DisplayName("POST /asistencias/manual/override con JWT recepción retorna 403")
     void recepcionNoPuedeOverride() {
         Map<String, Object> body = Map.of(
-                "idCliente", 5,
+                "id_cliente", 5,
                 "fecha", LocalDate.now().toString(),
-                "horaEntrada", "09:00:00",
-                "motivoOverride", "Prueba"
+                "hora_entrada", "09:00:00",
+                "motivo_override", "Prueba"
         );
 
         webTestClient.post()
@@ -125,7 +125,7 @@ class AsistenciaManualIntegrationTest extends BaseIntegrationTest {
         webTestClient.post()
                 .uri("/api/v1/asistencias/manual")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(Map.of("idCliente", 5))
+                .bodyValue(Map.of("id_cliente", 5))
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
@@ -139,7 +139,7 @@ class AsistenciaManualIntegrationTest extends BaseIntegrationTest {
                 .uri("/api/v1/asistencias/qr")
                 .header(HttpHeaders.AUTHORIZATION, bearerHeader(jwtRecepcion(COMPANIA)))
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(Map.of("qrToken", "gym-1-abc123"))
+                .bodyValue(Map.of("qr_token", "gym-1-abc123"))
                 .exchange()
                 .expectStatus().isForbidden();
     }
@@ -222,8 +222,8 @@ class AsistenciaManualIntegrationTest extends BaseIntegrationTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.clienteId").isEqualTo(idCliente)
-                .jsonPath("$.diasAsistidos").isEqualTo(2)
+                .jsonPath("$.cliente_id").isEqualTo(idCliente)
+                .jsonPath("$.dias_asistidos").isEqualTo(2)
                 .jsonPath("$.detalle.length()").isEqualTo(30);
     }
 
@@ -252,9 +252,9 @@ class AsistenciaManualIntegrationTest extends BaseIntegrationTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.totalEntradas").isEqualTo(3)
-                .jsonPath("$.porMetodo.qr_cliente").isEqualTo(2)
-                .jsonPath("$.porMetodo.manual").isEqualTo(1);
+                .jsonPath("$.total_entradas").isEqualTo(3)
+                .jsonPath("$.por_metodo.qr_cliente").isEqualTo(2)
+                .jsonPath("$.por_metodo.manual").isEqualTo(1);
     }
 
     // ── TC-ASI-HOY-002 — Dashboard hoy filtrado por sucursal ──────────────────
@@ -281,7 +281,7 @@ class AsistenciaManualIntegrationTest extends BaseIntegrationTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.totalEntradas").isEqualTo(1);
+                .jsonPath("$.total_entradas").isEqualTo(1);
     }
 
     // ── TC-ASI-RACHA-001 — Racha perfecta ─────────────────────────────────────
@@ -300,9 +300,9 @@ class AsistenciaManualIntegrationTest extends BaseIntegrationTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.rachaPerfecta").exists()
-                .jsonPath("$.diasAsistidos").isEqualTo(0)
-                .jsonPath("$.diasConMembresia").isNumber();
+                .jsonPath("$.racha_perfecta").exists()
+                .jsonPath("$.dias_asistidos").isEqualTo(0)
+                .jsonPath("$.dias_con_membresia").isNumber();
     }
 
     // ── TC-ASI-VALID-001 — Validación request QR ──────────────────────────────
@@ -339,13 +339,15 @@ class AsistenciaManualIntegrationTest extends BaseIntegrationTest {
     @DisplayName("POST /asistencias/manual/override con JWT dueño retorna 201 y persiste asistencia sin membresía")
     void duenoRegistraOverride() {
         Integer idCliente = insertarClienteCore(COMPANIA, SUCURSAL);
+        // id_membresia es NOT NULL: el override asocia la membresía del cliente.
+        insertarMembresia(idCliente, COMPANIA);
 
         Map<String, Object> body = Map.of(
-                "idCliente", idCliente,
-                "idSucursal", SUCURSAL,
+                "id_cliente", idCliente,
+                "id_sucursal", SUCURSAL,
                 "fecha", LocalDate.now().toString(),
-                "horaEntrada", "10:30:00",
-                "motivoOverride", "Pago en efectivo pendiente de registro"
+                "hora_entrada", "10:30:00",
+                "motivo_override", "Pago en efectivo pendiente de registro"
         );
 
         webTestClient.post()
@@ -357,9 +359,9 @@ class AsistenciaManualIntegrationTest extends BaseIntegrationTest {
                 .expectStatus().isCreated()
                 .expectBody()
                 .jsonPath("$.id").exists()
-                .jsonPath("$.idCliente").isEqualTo(idCliente)
-                .jsonPath("$.idCompania").isEqualTo(COMPANIA)
-                .jsonPath("$.metodoRegistro").isEqualTo("manual");
+                .jsonPath("$.id_cliente").isEqualTo(idCliente)
+                .jsonPath("$.id_compania").isEqualTo(COMPANIA)
+                .jsonPath("$.metodo_registro").isEqualTo("manual");
     }
 
     // ── TC-ASI-STATS-001 — Estadísticas happy path ────────────────────────────
@@ -384,7 +386,7 @@ class AsistenciaManualIntegrationTest extends BaseIntegrationTest {
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.periodo").isNotEmpty()
-                .jsonPath("$.totalEntradas").isEqualTo(2)
-                .jsonPath("$.promedioDiario").isNumber();
+                .jsonPath("$.total_entradas").isEqualTo(2)
+                .jsonPath("$.promedio_diario").isNumber();
     }
 }

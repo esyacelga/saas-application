@@ -1,0 +1,61 @@
+spring:
+  config:
+    import: optional:file:./.env[.properties]
+  r2dbc:
+    url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:gym-app-saas}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    pool:
+      initial-size: 2
+      max-size: 10
+
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    serialization:
+      write-dates-as-timestamps: false
+
+  mail:
+    host: localhost
+    port: 25
+    username: ""
+    password: ""
+
+  webflux:
+    base-path: /
+
+server:
+  port: 0
+
+jwt:
+  secret: Y2hhbmdlLW1lLWluLXByb2R1Y3Rpb24tdGhpcy1rZXktbXVzdC1iZS0yNTYtYml0cw==
+
+app:
+  cors:
+    allowed-origins: http://localhost:5173
+    allow-all: false
+  email:
+    from: noreply@test.local
+    enabled: false
+
+sri:
+  ambiente: 1
+  wsdl:
+    recepcion: http://localhost/recepcion?wsdl
+    autorizacion: http://localhost/autorizacion?wsdl
+  storage:
+    base-path: ./target/test-storage/sri
+
+facturacion:
+  cert:
+    # 32 bytes Base64-encoded — solo para arranque del contexto en tests
+    encryption-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+logging:
+  level:
+    com.gymadmin.billing: INFO

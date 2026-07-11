@@ -17,6 +17,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -186,23 +187,31 @@ public class AsistenciaService implements AsistenciaUseCase {
 
     @Override
     public Mono<Asistencia> registrarOverride(RegistrarOverrideCommand command) {
-        // Override: no valida membresía, registra directamente con motivo
-        Asistencia asistencia = new Asistencia();
-        asistencia.setIdCompania(command.idCompania());
-        asistencia.setIdSucursal(command.idSucursal());
-        asistencia.setIdCliente(command.idCliente());
-        asistencia.setIdMembresia(null); // sin membresía activa en override
-        asistencia.setFecha(command.fecha() != null ? command.fecha() : LocalDate.now());
-        asistencia.setHoraEntrada(command.horaEntrada() != null ? command.horaEntrada() : LocalTime.now().withNano(0));
-        asistencia.setMetodoRegistro("manual");
+        // Override: NO valida acceso/membresía activa, pero id_membresia es NOT NULL
+        // en la BD, así que se asocia la membresía más relevante del cliente (activa
+        // primero, luego la de vencimiento más reciente). Si el cliente no tiene
+        // ninguna membresía, el override no puede registrarse.
+        return asistenciaRepository.findMembresiaParaOverride(command.idCliente(), command.idCompania())
+                .switchIfEmpty(Mono.error(new NotFoundException(
+                        "El cliente no tiene ninguna membresía registrada; no se puede aplicar override")))
+                .flatMap(idMembresia -> {
+                    Asistencia asistencia = new Asistencia();
+                    asistencia.setIdCompania(command.idCompania());
+                    asistencia.setIdSucursal(command.idSucursal());
+                    asistencia.setIdCliente(command.idCliente());
+                    asistencia.setIdMembresia(idMembresia);
+                    asistencia.setFecha(command.fecha() != null ? command.fecha() : LocalDate.now());
+                    asistencia.setHoraEntrada(command.horaEntrada() != null ? command.horaEntrada() : LocalTime.now().withNano(0));
+                    asistencia.setMetodoRegistro("manual");
 
-        return asistenciaRepository.save(asistencia)
-                .onErrorMap(e -> {
-                    if (e.getMessage() != null && e.getMessage().contains("unique")) {
-                        return new ConflictException("ya_registrado_hoy",
-                                "Ya existe una entrada registrada para este cliente hoy");
-                    }
-                    return e;
+                    return asistenciaRepository.save(asistencia)
+                            .onErrorMap(e -> {
+                                if (e.getMessage() != null && e.getMessage().contains("unique")) {
+                                    return new ConflictException("ya_registrado_hoy",
+                                            "Ya existe una entrada registrada para este cliente hoy");
+                                }
+                                return e;
+                            });
                 });
     }
 
@@ -327,16 +336,29 @@ public class AsistenciaService implements AsistenciaUseCase {
     }
 
     @Override
-    public Mono<EstadisticasResult> estadisticas(Integer idCompania, Integer anio, Integer mes) {
-        LocalDate desde = LocalDate.of(anio, mes, 1);
-        LocalDate hasta = desde.withDayOfMonth(desde.lengthOfMonth());
+    public Mono<EstadisticasResult> estadisticas(Integer idCompania, String periodo, Integer anio, Integer mes) {
+        boolean anual = "anio".equalsIgnoreCase(periodo);
+
+        LocalDate desde;
+        LocalDate hasta;
+        String periodoLabel;
+        if (anual) {
+            desde = LocalDate.of(anio, 1, 1);
+            hasta = LocalDate.of(anio, 12, 31);
+            periodoLabel = String.valueOf(anio);
+        } else {
+            desde = LocalDate.of(anio, mes, 1);
+            hasta = desde.withDayOfMonth(desde.lengthOfMonth());
+            periodoLabel = anio + "-" + String.format("%02d", mes);
+        }
+
+        long diasPeriodo = ChronoUnit.DAYS.between(desde, hasta) + 1;
 
         return asistenciaRepository.countByCompaniaAndPeriodo(idCompania, desde, hasta)
                 .map(total -> {
-                    int dias = desde.lengthOfMonth();
-                    double promedio = dias > 0 ? (double) total / dias : 0;
+                    double promedio = diasPeriodo > 0 ? (double) total / diasPeriodo : 0;
                     return new EstadisticasResult(
-                            anio + "-" + String.format("%02d", mes),
+                            periodoLabel,
                             total.intValue(),
                             Math.round(promedio * 10.0) / 10.0,
                             0, 0, 0,

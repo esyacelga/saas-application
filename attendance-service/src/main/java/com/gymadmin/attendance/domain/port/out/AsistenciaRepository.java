@@ -31,6 +31,9 @@ public interface AsistenciaRepository {
 
     Mono<LocalDate> findUltimaAsistencia(Integer idCliente, Integer idCompania);
 
+    /** Membresía a asociar en un registro override (id_membresia es NOT NULL). */
+    Mono<Integer> findMembresiaParaOverride(Integer idCliente, Integer idCompania);
+
     Flux<Asistencia> findClientesConMembresia(Integer idCompania, LocalDate desde, LocalDate hasta);
 
     Flux<EntradaEnriquecida> findUltimasEntradas(Integer idCompania, Integer idSucursal, LocalDate fecha);

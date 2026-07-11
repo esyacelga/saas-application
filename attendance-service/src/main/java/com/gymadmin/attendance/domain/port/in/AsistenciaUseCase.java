@@ -29,7 +29,7 @@ public interface AsistenciaUseCase {
 
     Mono<AsistenciasHoyResult> asistenciasHoy(Integer idCompania, Integer idSucursal);
 
-    Mono<EstadisticasResult> estadisticas(Integer idCompania, Integer anio, Integer mes);
+    Mono<EstadisticasResult> estadisticas(Integer idCompania, String periodo, Integer anio, Integer mes);
 
     Mono<RachaPerfectaResult> rachaPerfecta(Integer idCliente, Integer idCompania, Integer meses);
 

@@ -171,14 +171,16 @@ class IngresoServiceTest {
         }
 
         @Test
-        @DisplayName("usa totalPeriodo=ZERO cuando sumByFilters retorna null")
+        @DisplayName("usa totalPeriodo=ZERO cuando no hay ingresos (suma cero)")
         void usaCeroWhenSumNull() {
             LocalDate desde = LocalDate.now().minusMonths(1);
             LocalDate hasta = LocalDate.now();
             ListarCommand cmd = new ListarCommand(1, desde, hasta, null, 1, 10);
 
+            // El query real usa COALESCE(SUM(monto), 0): nunca emite null, sino ZERO.
+            // Reactor prohíbe Mono.just(null), por eso se modela con Mono.just(ZERO).
             when(ingresoRepository.countByFilters(1, desde, hasta, null)).thenReturn(Mono.just(0L));
-            when(ingresoRepository.sumByFilters(1, desde, hasta, null)).thenReturn(Mono.just(null));
+            when(ingresoRepository.sumByFilters(1, desde, hasta, null)).thenReturn(Mono.just(BigDecimal.ZERO));
             when(ingresoRepository.findByFilters(eq(1), eq(desde), eq(hasta), eq(null), anyInt(), anyLong()))
                     .thenReturn(Flux.empty());
 

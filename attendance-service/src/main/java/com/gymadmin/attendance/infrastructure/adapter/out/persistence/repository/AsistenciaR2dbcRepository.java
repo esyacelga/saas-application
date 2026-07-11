@@ -50,6 +50,21 @@ public interface AsistenciaR2dbcRepository extends ReactiveCrudRepository<Asiste
             """)
     Mono<LocalDate> findUltimaAsistencia(Integer idCliente, Integer idCompania);
 
+    /**
+     * Membresía más relevante del cliente para un override: prioriza las activas
+     * y, dentro de ellas, la de fecha_fin más lejana. Usada cuando el registro
+     * override necesita un id_membresia (la columna es NOT NULL) sin validar acceso.
+     */
+    @Query("""
+            SELECT m.id FROM core.membresias m
+            WHERE m.id_cliente = :idCliente
+              AND m.id_compania = :idCompania
+              AND m.eliminado = false
+            ORDER BY (m.estado = 'activa') DESC, m.fecha_fin DESC
+            LIMIT 1
+            """)
+    Mono<Integer> findMembresiaParaOverride(Integer idCliente, Integer idCompania);
+
     @Query("""
             SELECT COUNT(*) FROM asistencia.asistencias
             WHERE id_compania = :idCompania

@@ -48,11 +48,11 @@ class DashboardIntegrationTest extends BaseIntegrationTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.totalEntradas").isEqualTo(3)
-                .jsonPath("$.porMetodo.qr_cliente").isEqualTo(2)
-                .jsonPath("$.porMetodo.manual").isEqualTo(1)
+                .jsonPath("$.total_entradas").isEqualTo(3)
+                .jsonPath("$.por_metodo.qr_cliente").isEqualTo(2)
+                .jsonPath("$.por_metodo.manual").isEqualTo(1)
                 .jsonPath("$.fecha").isNotEmpty()
-                .jsonPath("$.ultimasEntradas").isArray();
+                .jsonPath("$.ultimas_entradas").isArray();
     }
 
     // ── TC-DASH-HOY-002 — Día vacío retorna 0 entradas ───────────────────────
@@ -66,8 +66,8 @@ class DashboardIntegrationTest extends BaseIntegrationTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.totalEntradas").isEqualTo(0)
-                .jsonPath("$.ultimasEntradas").isArray();
+                .jsonPath("$.total_entradas").isEqualTo(0)
+                .jsonPath("$.ultimas_entradas").isArray();
     }
 
     // ── TC-DASH-HOY-003 — Filtro por sucursal aísla correctamente ────────────
@@ -93,7 +93,7 @@ class DashboardIntegrationTest extends BaseIntegrationTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.totalEntradas").isEqualTo(1);
+                .jsonPath("$.total_entradas").isEqualTo(1);
     }
 
     // ── TC-DASH-HOY-004 — ultimasEntradas tiene máximo 10 entradas ───────────
@@ -116,8 +116,8 @@ class DashboardIntegrationTest extends BaseIntegrationTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.totalEntradas").isEqualTo(12)
-                .jsonPath("$.ultimasEntradas.length()").isEqualTo(10);
+                .jsonPath("$.total_entradas").isEqualTo(12)
+                .jsonPath("$.ultimas_entradas.length()").isEqualTo(10);
     }
 
     // ── TC-DASH-HOY-005 — recepcionista también puede ver ────────────────────
@@ -181,11 +181,11 @@ class DashboardIntegrationTest extends BaseIntegrationTest {
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.periodo").isNotEmpty()
-                .jsonPath("$.totalEntradas").isEqualTo(2)
-                .jsonPath("$.promedioDiario").isNumber()
-                .jsonPath("$.clientesActivos").exists()
-                .jsonPath("$.clientesSinAsistir7d").exists()
-                .jsonPath("$.horaPico").exists();
+                .jsonPath("$.total_entradas").isEqualTo(2)
+                .jsonPath("$.promedio_diario").isNumber()
+                .jsonPath("$.clientes_activos").exists()
+                .jsonPath("$.clientes_sin_asistir7d").exists()
+                .jsonPath("$.hora_pico").exists();
     }
 
     // ── TC-DASH-STATS-002 — Mes vacío retorna 0 entradas ────────────────────
@@ -203,8 +203,8 @@ class DashboardIntegrationTest extends BaseIntegrationTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.totalEntradas").isEqualTo(0)
-                .jsonPath("$.promedioDiario").isEqualTo(0.0);
+                .jsonPath("$.total_entradas").isEqualTo(0)
+                .jsonPath("$.promedio_diario").isEqualTo(0.0);
     }
 
     // ── TC-DASH-STATS-003 — periodo=anio agrega el año completo ─────────────
@@ -224,7 +224,7 @@ class DashboardIntegrationTest extends BaseIntegrationTest {
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.periodo").isEqualTo(String.valueOf(anioActual))
-                .jsonPath("$.totalEntradas").isNumber();
+                .jsonPath("$.total_entradas").isNumber();
     }
 
     // ── TC-DASH-STATS-004 — promedioDiario refleja la cantidad real ──────────
@@ -252,8 +252,8 @@ class DashboardIntegrationTest extends BaseIntegrationTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.totalEntradas").isEqualTo(4)
-                .jsonPath("$.promedioDiario").isNumber();
+                .jsonPath("$.total_entradas").isEqualTo(4)
+                .jsonPath("$.promedio_diario").isNumber();
     }
 
     // ── TC-DASH-STATS-005 — cliente no puede ver estadísticas ────────────────

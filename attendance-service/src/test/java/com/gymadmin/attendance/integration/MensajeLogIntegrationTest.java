@@ -64,9 +64,9 @@ class MensajeLogIntegrationTest extends BaseIntegrationTest {
                 "motivacional", "Motivacional", "Hola {nombre} te esperamos.");
 
         Map<String, Object> body = Map.of(
-                "idCliente", idCliente,
+                "id_cliente", idCliente,
                 "canal", "whatsapp",
-                "idPlantilla", idPlantilla
+                "id_plantilla", idPlantilla
         );
 
         webTestClient.post()
@@ -96,7 +96,7 @@ class MensajeLogIntegrationTest extends BaseIntegrationTest {
                 .uri("/api/v1/mensajes/enviar")
                 .header(HttpHeaders.AUTHORIZATION, bearerHeader(jwtRecepcion(COMPANIA)))
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(Map.of("idCliente", 5, "canal", "whatsapp", "idPlantilla", 99999))
+                .bodyValue(Map.of("id_cliente", 5, "canal", "whatsapp", "id_plantilla", 99999))
                 .exchange()
                 .expectStatus().isNotFound();
     }

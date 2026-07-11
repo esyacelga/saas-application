@@ -47,15 +47,11 @@ class AsistenciaServiceTest {
     private AsistenciaService service;
 
     private ValidarAccesoResponse mockAccesoPermitido(Integer idCliente, Integer idMembresia) {
+        // registrarManual solo consume isPermitido() e getIdMembresia(); stubbear el
+        // resto dispara UnnecessaryStubbingException con la estrictez de Mockito.
         ValidarAccesoResponse r = mock(ValidarAccesoResponse.class);
         when(r.isPermitido()).thenReturn(true);
-        when(r.getIdCliente()).thenReturn(idCliente);
         when(r.getIdMembresia()).thenReturn(idMembresia);
-        when(r.getTipoMembresia()).thenReturn("Mensual");
-        when(r.getModoControl()).thenReturn("calendario");
-        when(r.getFechaFin()).thenReturn(null);
-        when(r.getAccesosUsados()).thenReturn(null);
-        when(r.getDiasAccesoRestantes()).thenReturn(null);
         return r;
     }
 
@@ -92,8 +88,9 @@ class AsistenciaServiceTest {
                     10, LocalDate.now(), LocalTime.of(9, 0), 1, 1, "recepcion-user"
             );
             Asistencia saved = buildAsistencia(1L, 10, 5);
+            ValidarAccesoResponse acceso = mockAccesoPermitido(10, 5);
 
-            when(coreServiceClient.validarAcceso(10, 1, "")).thenReturn(Mono.just(mockAccesoPermitido(10, 5)));
+            when(coreServiceClient.validarAcceso(10, 1, "")).thenReturn(Mono.just(acceso));
             when(asistenciaRepository.save(any())).thenReturn(Mono.just(saved));
 
             StepVerifier.create(service.registrarManual(cmd))
@@ -111,8 +108,9 @@ class AsistenciaServiceTest {
                     10, LocalDate.now(), null, 1, 1, "recepcion-user"
             );
             Asistencia saved = buildAsistencia(2L, 10, 5);
+            ValidarAccesoResponse acceso = mockAccesoPermitido(10, 5);
 
-            when(coreServiceClient.validarAcceso(10, 1, "")).thenReturn(Mono.just(mockAccesoPermitido(10, 5)));
+            when(coreServiceClient.validarAcceso(10, 1, "")).thenReturn(Mono.just(acceso));
             when(asistenciaRepository.save(any())).thenReturn(Mono.just(saved));
 
             StepVerifier.create(service.registrarManual(cmd))
@@ -126,8 +124,9 @@ class AsistenciaServiceTest {
             RegistrarManualCommand cmd = new RegistrarManualCommand(
                     10, LocalDate.now(), null, 1, 1, "recepcion-user"
             );
+            ValidarAccesoResponse accesoDenegado = mockAccesoDenegado("membresia_vencida");
             when(coreServiceClient.validarAcceso(10, 1, ""))
-                    .thenReturn(Mono.just(mockAccesoDenegado("membresia_vencida")));
+                    .thenReturn(Mono.just(accesoDenegado));
 
             StepVerifier.create(service.registrarManual(cmd))
                     .expectErrorSatisfies(e -> {
@@ -143,7 +142,8 @@ class AsistenciaServiceTest {
             RegistrarManualCommand cmd = new RegistrarManualCommand(
                     10, LocalDate.now(), null, 1, 1, "recepcion-user"
             );
-            when(coreServiceClient.validarAcceso(10, 1, "")).thenReturn(Mono.just(mockAccesoPermitido(10, 5)));
+            ValidarAccesoResponse acceso = mockAccesoPermitido(10, 5);
+            when(coreServiceClient.validarAcceso(10, 1, "")).thenReturn(Mono.just(acceso));
             when(asistenciaRepository.save(any())).thenReturn(
                     Mono.error(new RuntimeException("unique constraint violation"))
             );
@@ -160,21 +160,22 @@ class AsistenciaServiceTest {
     class RegistrarOverride {
 
         @Test
-        @DisplayName("registra override sin validar membresía; idMembresia queda null")
+        @DisplayName("registra override sin validar acceso, asociando la membresía del cliente")
         void registraOverrideSinValidarMembresia() {
             // RegistrarOverrideCommand(idCliente, fecha, horaEntrada, idCompania, idSucursal, motivoOverride, idUsuarioRegistro)
             RegistrarOverrideCommand cmd = new RegistrarOverrideCommand(
                     10, LocalDate.now(), LocalTime.of(10, 0), 1, 1, "Autorización especial", "dueno"
             );
-            Asistencia saved = buildAsistencia(5L, 10, null);
-            saved.setIdMembresia(null);
+            Asistencia saved = buildAsistencia(5L, 10, 7);
 
+            // id_membresia es NOT NULL en BD: el override resuelve la membresía del cliente.
+            when(asistenciaRepository.findMembresiaParaOverride(10, 1)).thenReturn(Mono.just(7));
             when(asistenciaRepository.save(any())).thenReturn(Mono.just(saved));
 
             StepVerifier.create(service.registrarOverride(cmd))
                     .assertNext(a -> {
                         assertThat(a.getId()).isEqualTo(5L);
-                        assertThat(a.getIdMembresia()).isNull();
+                        assertThat(a.getIdMembresia()).isEqualTo(7);
                     })
                     .verifyComplete();
         }
@@ -185,6 +186,7 @@ class AsistenciaServiceTest {
             RegistrarOverrideCommand cmd = new RegistrarOverrideCommand(
                     10, LocalDate.now(), null, 1, 1, "Override", "dueno"
             );
+            when(asistenciaRepository.findMembresiaParaOverride(10, 1)).thenReturn(Mono.just(7));
             when(asistenciaRepository.save(any())).thenReturn(
                     Mono.error(new RuntimeException("unique constraint"))
             );
@@ -242,7 +244,7 @@ class AsistenciaServiceTest {
             when(asistenciaRepository.countByCompaniaAndPeriodo(anyInt(), any(), any()))
                     .thenReturn(Mono.just(31L));
 
-            StepVerifier.create(service.estadisticas(1, 2026, 1))
+            StepVerifier.create(service.estadisticas(1, "mes", 2026, 1))
                     .assertNext(r -> {
                         assertThat(r.totalEntradas()).isEqualTo(31);
                         assertThat(r.periodo()).isEqualTo("2026-01");

@@ -58,6 +58,11 @@ public class AsistenciaPersistenceAdapter implements AsistenciaRepository {
     }
 
     @Override
+    public Mono<Integer> findMembresiaParaOverride(Integer idCliente, Integer idCompania) {
+        return repository.findMembresiaParaOverride(idCliente, idCompania);
+    }
+
+    @Override
     public Flux<Asistencia> findByPersonaUltimos30Dias(Long idPersona, Integer idCompania, LocalDate desde) {
         return repository.findByPersonaUltimos30Dias(idPersona, idCompania, desde).map(this::toDomain);
     }
