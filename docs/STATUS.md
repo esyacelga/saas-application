@@ -54,7 +54,7 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 | platform-service | 8081 | ✅ presente (148 archivos Java) | **Implementado** |
 | core-service | 8083 | ✅ presente (66 archivos Java) | **Implementado** |
 | attendance-service | 8084 | ✅ presente (51 archivos Java) | **Implementado** |
-| billing-service | — | ❌ no existe | 📋 Solo especificación |
+| billing-service | 8082 | ✅ presente (~85% implementado) | **Implementado** (3 controllers, 13 endpoints documentados) |
 | finance-service | — | ❌ no existe | 📋 Solo especificación |
 | marketing-service | — | ❌ no existe | 📋 Solo especificación |
 | inventory-service | — | ❌ no existe | 📋 Solo especificación |
@@ -72,7 +72,7 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 |------------|--------|
 | Migraciones Liquibase (`gym-administrator/db/`) | ✅ Implementadas — **69 tablas, 12 schemas** (consolidadas en `202605_GYM-001/` desde 2026-07-10, commit `e5ff46f`) |
 | Schemas `finanzas`, `marketing`, `inventario` | ✅ Tablas creadas en BD, pero 📋 sin servicio que las use aún |
-| Schemas `sri`, `facturacion` (billing) | ✅ Tablas creadas en BD (6 + 17 tablas), 📋 sin servicio `billing-service` que las use aún |
+| Schemas `sri`, `facturacion` (billing) | ✅ Tablas creadas en BD (6 + 17 tablas) y consumidas por `billing-service` (~85% implementado) |
 
 ---
 
@@ -107,6 +107,11 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 |-----------|--------|
 | clientes.md | ✅ Refleja el código actual — verificado contra `ClienteController` (se añadió el endpoint `/clientes/plataforma` que faltaba). El README del servicio omite varios endpoints que sí existen; usar este doc como referencia de API. |
 
+### docs/billing-service/api/
+| Documento | Estado |
+|-----------|--------|
+| comprobantes.md, admin.md, reportes.md | ✅ Refleja el código actual (verificado 2026-07-11 contra `ComprobanteController`, `AdminController`, `ReporteController`). Total: 13 endpoints documentados (8+3+2). Nota: especificación `billing-service.md` tiene divergencia en paths (spec: `/facturacion/*`, código: `/api/v1/{comprobantes,admin,reportes}`) y estructura de request (spec: nested, código: plano). |
+
 ### docs/platform-service/ y platform-service/CLAUDE.md
 | Documento | Estado |
 |-----------|--------|
@@ -125,7 +130,8 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 | Documento | Estado |
 |-----------|--------|
 | auth-service.md, platform-service.md, core-service.md, attendance-service.md | 🟡 Spec de diseño de un servicio ya implementado — el código es la verdad, la spec puede haber divergido |
-| billing-service.md, finance-service.md, marketing-service.md, inventory-service.md | 📋 Planeado — sin implementar |
+| billing-service.md | 🟡 Planeado vs. código: spec tiene paths `/facturacion/*` pero código real usa `/api/v1/{comprobantes,admin,reportes}`; EmitirFacturaRequest es plano, no nested |
+| finance-service.md, marketing-service.md, inventory-service.md | 📋 Planeado — sin implementar |
 
 ### docs/gym-administrator/architecture/
 | Documento | Estado |

@@ -13,7 +13,10 @@ CREATE TABLE facturacion.comprobantes_detalle (
   descuento                   DECIMAL(18,2)  NOT NULL DEFAULT 0,
   precio_total_sin_impuesto   DECIMAL(18,2)  NOT NULL,
   orden                       SMALLINT       NOT NULL DEFAULT 1,
-  creado_en                   TIMESTAMPTZ    NOT NULL DEFAULT NOW()
+  creado_en                   TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
+  CONSTRAINT uq_comprobantes_detalle_orden UNIQUE (id_comprobante, orden),
+  CONSTRAINT chk_comprobantes_detalle_cantidad_positiva CHECK (cantidad > 0),
+  CONSTRAINT chk_comprobantes_detalle_precio_no_negativo CHECK (precio_unitario >= 0)
 );
 
 -- Permite cargar todos los ítems de un comprobante en una sola consulta (JOIN principal desde comprobantes)

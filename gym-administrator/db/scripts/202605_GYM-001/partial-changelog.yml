@@ -516,7 +516,7 @@ databaseChangeLog:
       context: dev, test, prod
       changes:
         - sqlFile:
-            path: ddl-facturacion/15_create_table_facturacion_comprobante_detalles.sql
+            path: ddl-facturacion/15_create_table_facturacion_comprobantes_detalle.sql
             relativeToChangelogFile: true
             splitStatements: false
 
@@ -637,16 +637,6 @@ databaseChangeLog:
       changes:
         - sqlFile:
             path: ddl-facturacion/27_create_indexes_facturacion.sql
-            relativeToChangelogFile: true
-            splitStatements: false
-
-  - changeSet:
-      id: GYM-001-130
-      author: gesyacelga
-      context: dev, test, prod
-      changes:
-        - sqlFile:
-            path: ddl-facturacion/30_create_table_facturacion_comprobantes_detalle.sql
             relativeToChangelogFile: true
             splitStatements: false
 

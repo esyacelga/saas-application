@@ -1,0 +1,171 @@
+package com.gymadmin.billing.infrastructure.adapter.in.web;
+
+import com.gymadmin.billing.IntegrationTestBase;
+import com.gymadmin.billing.infrastructure.adapter.out.persistence.entity.ConfigSriEntity;
+import com.gymadmin.billing.infrastructure.adapter.out.persistence.repository.ComprobanteR2dbcRepository;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.r2dbc.core.DatabaseClient;
+import org.springframework.test.web.reactive.server.WebTestClient;
+import reactor.test.StepVerifier;
+
+import javax.crypto.SecretKey;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.util.Date;
+import java.util.List;
+import java.util.Random;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@DisplayName("POST /api/v1/comprobantes/facturas — emitir factura electrónica")
+class EmitirFacturaIT extends IntegrationTestBase {
+
+    @Autowired
+    private WebTestClient webTestClient;
+
+    @Autowired
+    private R2dbcEntityTemplate r2dbcEntityTemplate;
+
+    @Autowired
+    private DatabaseClient databaseClient;
+
+    @Autowired
+    private ComprobanteR2dbcRepository comprobanteRepository;
+
+    @Value("${jwt.secret}")
+    private String jwtSecret;
+
+    private static final String RUC_TEST = "1790012345001";
+    private static final int ID_PERSONA_TEST = 999;
+    private static final Random RANDOM = new Random();
+
+    @BeforeEach
+    void seedConfigSri() {
+        databaseClient.sql("DELETE FROM facturacion.config_sri WHERE id_compania = :idCompania AND id_sucursal = :idSucursal")
+                .bind("idCompania", ID_COMPANIA)
+                .bind("idSucursal", ID_SUCURSAL)
+                .then()
+                .block();
+
+        ConfigSriEntity config = ConfigSriEntity.builder()
+                .idCompania(ID_COMPANIA)
+                .idSucursal(ID_SUCURSAL)
+                .razonSocial("Gimnasio Test")
+                .ruc(RUC_TEST)
+                .obligadoContabilidad(false)
+                .ambiente("1")
+                .tipoEmision("1")
+                .facturacionActiva(true)
+                .updatedAt(OffsetDateTime.now())
+                .updatedBy("test")
+                .build();
+
+        r2dbcEntityTemplate.insert(ConfigSriEntity.class)
+                .using(config)
+                .block();
+    }
+
+    @Test
+    @DisplayName("emite una factura correctamente y persiste el comprobante en estado GENERADO")
+    void emitirFactura_happyPath_creaComprobante() {
+        String bearer = staffBearer();
+        String codigoNumerico = randomDigits(9);
+        String secuencial = randomDigits(9);
+
+        String requestJson = """
+                {
+                  "tipo_id_receptor": "05",
+                  "id_receptor": "1712345678",
+                  "razon_social_receptor": "Cliente de Prueba",
+                  "email_receptor": "cliente@test.local",
+                  "direccion_receptor": "Av. Test 123",
+                  "telefono_receptor": "0999999999",
+                  "cod_establecimiento": "001",
+                  "cod_punto_emision": "001",
+                  "codigo_numerico": "%s",
+                  "secuencial": "%s",
+                  "id_sucursal": %d,
+                  "detalles": [
+                    {
+                      "codigo_principal": "PROD001",
+                      "descripcion": "Membresía mensual",
+                      "cantidad": 1.0,
+                      "precio_unitario": 50.00,
+                      "descuento": 0.00
+                    }
+                  ],
+                  "pagos": [
+                    { "forma_pago": "01", "total": 50.00 }
+                  ]
+                }
+                """.formatted(codigoNumerico, secuencial, ID_SUCURSAL);
+
+        webTestClient.post()
+                .uri("/api/v1/comprobantes/facturas")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + bearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestJson)
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.CREATED)
+                .expectBody()
+                .jsonPath("$.id").isNotEmpty()
+                .jsonPath("$.clave_acceso").value(v -> assertThat(v.toString()).hasSize(49))
+                .jsonPath("$.estado").isEqualTo("GENERADO")
+                .jsonPath("$.tipo_comprobante").isEqualTo("01")
+                .jsonPath("$.ambiente").isEqualTo("1")
+                .jsonPath("$.id_compania").isEqualTo(ID_COMPANIA)
+                .jsonPath("$.id_sucursal").isEqualTo(ID_SUCURSAL)
+                .jsonPath("$.cod_establecimiento").isEqualTo("001")
+                .jsonPath("$.cod_punto_emision").isEqualTo("001")
+                .jsonPath("$.secuencial").isEqualTo(secuencial)
+                .jsonPath("$.tipo_id_receptor").isEqualTo("05")
+                .jsonPath("$.id_receptor").isEqualTo("1712345678")
+                .jsonPath("$.razon_social_receptor").isEqualTo("Cliente de Prueba")
+                .jsonPath("$.total").isEqualTo(50.00)
+                .jsonPath("$.subtotal_sin_impuesto").isEqualTo(50.00)
+                .jsonPath("$.moneda").isEqualTo("DOLAR");
+
+        StepVerifier.create(comprobanteRepository.findByEmpresa(ID_COMPANIA, ID_SUCURSAL, "GENERADO", 50, 0))
+                .recordWith(java.util.ArrayList::new)
+                .thenConsumeWhile(c -> true)
+                .consumeRecordedWith(items -> assertThat(items)
+                        .as("Debe existir al menos un comprobante GENERADO para la empresa de test")
+                        .anyMatch(c -> secuencial.equals(c.getSecuencial())
+                                && "GENERADO".equals(c.getEstado())
+                                && ID_COMPANIA == c.getIdCompania()))
+                .verifyComplete();
+    }
+
+    private String staffBearer() {
+        SecretKey key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
+        return Jwts.builder()
+                .subject("test-staff")
+                .claim("tipo", "staff")
+                .claim("id_compania", ID_COMPANIA)
+                .claim("id_persona", ID_PERSONA_TEST)
+                .claim("permisos", List.of("facturacion:emitir"))
+                .expiration(Date.from(Instant.now().plus(Duration.ofHours(1))))
+                .signWith(key)
+                .compact();
+    }
+
+    private static String randomDigits(int n) {
+        StringBuilder sb = new StringBuilder(n);
+        for (int i = 0; i < n; i++) {
+            sb.append(RANDOM.nextInt(10));
+        }
+        return sb.toString();
+    }
+}

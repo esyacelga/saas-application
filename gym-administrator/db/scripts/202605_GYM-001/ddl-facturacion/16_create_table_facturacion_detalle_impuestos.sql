@@ -2,7 +2,7 @@ CREATE TABLE facturacion.comprobante_detalle_impuestos (
   id                 BIGINT        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   id_compania        INT           NOT NULL,
   id_sucursal        INT           NOT NULL,
-  id_detalle         BIGINT        NOT NULL REFERENCES facturacion.comprobante_detalles(id),
+  id_detalle         BIGINT        NOT NULL REFERENCES facturacion.comprobantes_detalle(id),
   codigo_impuesto    CHAR(1)       NOT NULL REFERENCES sri.tipos_impuesto(codigo),
   codigo_porcentaje  CHAR(1)       NOT NULL,
   tarifa             DECIMAL(5,2)  NOT NULL,

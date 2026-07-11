@@ -717,8 +717,7 @@ UNIQUE(id_producto,                         ║    tipo               ║
   │                                                                   │
   │  config_sri ─┬─ certificados ─┬─ puntos_emision ─ secuenciales   │
   │              │                 │                                  │
-  │              └── comprobantes ─┼── comprobante_detalles           │
-  │                    │           ├── comprobantes_detalle           │
+  │              └── comprobantes ─┼── comprobantes_detalle           │
   │                    │           ├── comprobante_detalle_impuestos  │
   │                    │           ├── comprobante_impuestos_totales  │
   │                    │           ├── comprobante_pagos              │
@@ -817,24 +816,21 @@ Verificado 2026-07-10 contando los `CREATE TABLE` de `db/scripts/202605_GYM-001/
 | 55 | `facturacion.puntos_emision` | Facturación | `id` | `id_compania`, `id_sucursal` | Sí |
 | 56 | `facturacion.secuenciales` | Facturación | `id` | `id_punto_emision` | Sí |
 | 57 | `facturacion.comprobantes` | Facturación | `id` | `id_compania`, `id_sucursal`, `id_punto_emision`, `id_cliente` | Sí |
-| 58 | `facturacion.comprobante_detalles` | Facturación | `id` | `id_comprobante`, `id_producto` | Sí |
-| 59 | `facturacion.comprobantes_detalle` | Facturación | `id` | `id_comprobante` | Sí |
-| 60 | `facturacion.comprobante_detalle_impuestos` | Facturación | `id` | `id_detalle` | Sí |
-| 61 | `facturacion.comprobante_impuestos_totales` | Facturación | `id` | `id_comprobante` | Sí |
-| 62 | `facturacion.comprobante_pagos` | Facturación | `id` | `id_comprobante` | Sí |
-| 63 | `facturacion.comprobante_info_adicional` | Facturación | `id` | `id_comprobante` | Sí |
-| 64 | `facturacion.notas_credito_referencias` | Facturación | `id` | `id_nota_credito`, `id_comprobante_referenciado` | Sí |
-| 65 | `facturacion.envios_sri` | Facturación | `id` | `id_comprobante` | Sí |
-| 66 | `facturacion.cola_envio` | Facturación | `id` | `id_comprobante` | Sí |
-| 67 | `facturacion.notificaciones_receptor` | Facturación | `id` | `id_comprobante` | Sí |
-| 68 | `facturacion.anulaciones` | Facturación | `id` | `id_comprobante` | Sí |
-| 69 | `facturacion.reportes_ats` | Facturación | `id` | `id_compania` | Sí |
+| 58 | `facturacion.comprobantes_detalle` | Facturación | `id` | `id_comprobante` | Sí |
+| 59 | `facturacion.comprobante_detalle_impuestos` | Facturación | `id` | `id_detalle` | Sí |
+| 60 | `facturacion.comprobante_impuestos_totales` | Facturación | `id` | `id_comprobante` | Sí |
+| 61 | `facturacion.comprobante_pagos` | Facturación | `id` | `id_comprobante` | Sí |
+| 62 | `facturacion.comprobante_info_adicional` | Facturación | `id` | `id_comprobante` | Sí |
+| 63 | `facturacion.notas_credito_referencias` | Facturación | `id` | `id_nota_credito`, `id_comprobante_referenciado` | Sí |
+| 64 | `facturacion.envios_sri` | Facturación | `id` | `id_comprobante` | Sí |
+| 65 | `facturacion.cola_envio` | Facturación | `id` | `id_comprobante` | Sí |
+| 66 | `facturacion.notificaciones_receptor` | Facturación | `id` | `id_comprobante` | Sí |
+| 67 | `facturacion.anulaciones` | Facturación | `id` | `id_comprobante` | Sí |
+| 68 | `facturacion.reportes_ats` | Facturación | `id` | `id_compania` | Sí |
 
 > **Tenant = Sí** → tabla incluye `id_compania INT` e `id_sucursal INT` sin restricción FK.
 > **Tenant = No** → tabla de plataforma / catálogo global, sin filtrado por compañía.
 > **Tenant = Parcial** → tiene FK real a `tenant.companias` pero puede tener `id_compania` NULL (eventos de sistema en `saas.actividad_plataforma`) o solo `id_compania` sin `id_sucursal` (`tenant.sucursales`).
-
-> **Nota sobre `facturacion.comprobante_detalles` y `facturacion.comprobantes_detalle`:** actualmente coexisten ambas tablas (scripts 15 y 30 en `ddl-facturacion/`). La convergencia a un solo modelo queda como TODO cuando se implemente el `billing-service`.
 
 ---
 

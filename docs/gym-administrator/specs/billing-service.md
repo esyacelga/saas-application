@@ -378,33 +378,35 @@ CREATE INDEX idx_comprobantes_venta
     ON facturacion.comprobantes (id_venta) WHERE id_venta IS NOT NULL;
 ```
 
-### 4.6 Tabla — `facturacion.comprobante_detalles`
+### 4.6 Tabla — `facturacion.comprobantes_detalle`
 
 Cada línea del comprobante (`<detalle>` en el XML).
 
 ```sql
-CREATE TABLE facturacion.comprobante_detalles (
-    id                      BIGSERIAL   NOT NULL PRIMARY KEY,
-    id_compania             INT         NOT NULL,
-    id_sucursal             INT         NOT NULL,
-    id_comprobante          BIGINT      NOT NULL REFERENCES facturacion.comprobantes(id) ON DELETE CASCADE,
-    orden                   INT         NOT NULL,                 -- 1, 2, 3... orden en el XML
-    codigo_principal        VARCHAR(50) NOT NULL,
-    codigo_auxiliar         VARCHAR(50),
-    descripcion             VARCHAR(300) NOT NULL,
-    cantidad                DECIMAL(14,6) NOT NULL,
-    precio_unitario         DECIMAL(14,6) NOT NULL,
-    descuento               DECIMAL(14,2) NOT NULL DEFAULT 0,
-    precio_total_sin_imp    DECIMAL(14,2) NOT NULL,               -- (cantidad * precio_unitario) - descuento
-    -- Referencia opcional al origen
-    id_producto             INT,                                   -- ref a inventario.productos si aplica
-    id_tipo_membresia       INT,                                   -- ref a core.tipos_membresia si aplica
-    UNIQUE (id_comprobante, orden),
-    CONSTRAINT chk_cantidad_positiva CHECK (cantidad > 0),
-    CONSTRAINT chk_precio_no_negativo CHECK (precio_unitario >= 0)
+CREATE TABLE facturacion.comprobantes_detalle (
+    id                          BIGINT         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_comprobante              BIGINT         NOT NULL
+                                               REFERENCES facturacion.comprobantes(id)
+                                               ON DELETE CASCADE,
+    id_compania                 INT            NOT NULL,
+    id_sucursal                 INT            NOT NULL,
+    codigo_principal             VARCHAR(25)   NOT NULL,
+    codigo_auxiliar              VARCHAR(25),
+    descripcion                  VARCHAR(300)  NOT NULL,
+    cantidad                     DECIMAL(18,6) NOT NULL,
+    precio_unitario               DECIMAL(18,6) NOT NULL,
+    descuento                    DECIMAL(18,2) NOT NULL DEFAULT 0,
+    precio_total_sin_impuesto    DECIMAL(18,2) NOT NULL,          -- (cantidad * precio_unitario) - descuento
+    orden                         SMALLINT      NOT NULL DEFAULT 1, -- 1, 2, 3... orden en el XML
+    creado_en                    TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_comprobantes_detalle_orden UNIQUE (id_comprobante, orden),
+    CONSTRAINT chk_comprobantes_detalle_cantidad_positiva CHECK (cantidad > 0),
+    CONSTRAINT chk_comprobantes_detalle_precio_no_negativo CHECK (precio_unitario >= 0)
 );
-CREATE INDEX idx_comprobante_detalles_comprobante
-    ON facturacion.comprobante_detalles (id_comprobante);
+CREATE INDEX idx_comp_det_comprobante
+    ON facturacion.comprobantes_detalle (id_comprobante);
+CREATE INDEX idx_comp_det_empresa
+    ON facturacion.comprobantes_detalle (id_compania, id_sucursal);
 ```
 
 ### 4.7 Tabla — `facturacion.comprobante_detalle_impuestos`
@@ -417,7 +419,7 @@ CREATE TABLE facturacion.comprobante_detalle_impuestos (
     id_compania             INT         NOT NULL,
     id_sucursal             INT         NOT NULL,
     id_comprobante          BIGINT      NOT NULL REFERENCES facturacion.comprobantes(id) ON DELETE CASCADE,
-    id_comprobante_detalle  BIGINT      NOT NULL REFERENCES facturacion.comprobante_detalles(id) ON DELETE CASCADE,
+    id_comprobante_detalle  BIGINT      NOT NULL REFERENCES facturacion.comprobantes_detalle(id) ON DELETE CASCADE,
     codigo_impuesto         CHAR(1)     NOT NULL REFERENCES sri.tipos_impuesto(codigo),
     codigo_porcentaje       CHAR(1)     NOT NULL,                 -- ref a sri.tarifas_iva.codigo_porcentaje si IVA
     tarifa                  DECIMAL(5,2) NOT NULL,
@@ -676,7 +678,7 @@ ALTER TABLE tenant.companias
 | `facturacion` | `puntos_emision` | Tenant | ✓ | ✓ |
 | `facturacion` | `secuenciales` | Tenant | ✓ | ✓ |
 | `facturacion` | `comprobantes` | Tenant | ✓ | ✓ |
-| `facturacion` | `comprobante_detalles` | Tenant | ✓ | ✓ |
+| `facturacion` | `comprobantes_detalle` | Tenant | ✓ | ✓ |
 | `facturacion` | `comprobante_detalle_impuestos` | Tenant | ✓ | ✓ |
 | `facturacion` | `comprobante_impuestos_totales` | Tenant | ✓ | ✓ |
 | `facturacion` | `comprobante_pagos` | Tenant | ✓ | ✓ |
