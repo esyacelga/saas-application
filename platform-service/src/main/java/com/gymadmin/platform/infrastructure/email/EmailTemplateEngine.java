@@ -34,7 +34,9 @@ public class EmailTemplateEngine {
             "vencimiento_7d",  "Tu plan vence en 7 días",
             "vencimiento_3d",  "Tu plan vence en 3 días",
             "vencimiento_1d",  "Tu plan vence mañana",
-            "vencimiento_0d",  "Tu plan vence hoy"
+            "vencimiento_0d",  "Tu plan vence hoy",
+            "trial_activado",  "¡Tu Trial está activo!",
+            "pago_rechazado",  "Tu comprobante de pago no fue aprobado"
     );
 
     private final Map<String, String> cache = new ConcurrentHashMap<>();

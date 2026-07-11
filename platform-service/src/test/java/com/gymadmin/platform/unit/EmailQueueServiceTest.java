@@ -5,9 +5,11 @@ import com.gymadmin.platform.domain.model.Compania;
 import com.gymadmin.platform.domain.model.NotificacionSuscripcion;
 import com.gymadmin.platform.domain.port.in.ActividadPlataformaUseCase;
 import com.gymadmin.platform.domain.port.in.EnviarNotificacionUseCase.EncolarNotificacionCommand;
+import com.gymadmin.platform.domain.port.out.CompaniaPlanRepository;
 import com.gymadmin.platform.domain.port.out.CompaniaRepository;
 import com.gymadmin.platform.domain.port.out.EmailSender;
 import com.gymadmin.platform.domain.port.out.NotificacionRepository;
+import com.gymadmin.platform.domain.port.out.PagoPendienteValidacionRepository;
 import com.gymadmin.platform.infrastructure.email.EmailTemplateEngine;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -50,6 +52,8 @@ class EmailQueueServiceTest {
 
     @Mock NotificacionRepository notificacionRepository;
     @Mock CompaniaRepository companiaRepository;
+    @Mock CompaniaPlanRepository companiaPlanRepository;
+    @Mock PagoPendienteValidacionRepository pagoPendienteRepository;
     @Mock EmailSender emailSender;
     @Mock ActividadPlataformaUseCase actividadUseCase;
 
@@ -63,9 +67,10 @@ class EmailQueueServiceTest {
     @BeforeEach
     void setUp() {
         service = new EmailQueueService(
-                notificacionRepository, companiaRepository, emailSender, templateEngine,
+                notificacionRepository, companiaRepository, companiaPlanRepository,
+                pagoPendienteRepository, emailSender, templateEngine,
                 actividadUseCase, clockFijo,
-                "https://x.test/planes", "https://x.test");
+                "https://x.test/planes", "https://x.test", "https://x.test/reportar-pago");
     }
 
     private NotificacionSuscripcion buildNotif(int intentos) {

@@ -40,4 +40,11 @@ public interface PagoPendienteValidacionRepository {
      * Retorna la cantidad de filas afectadas.
      */
     Mono<Long> marcarRechazado(Long idPago, Long idUsuarioRoot, String motivo, Instant fechaRechazo);
+
+    /**
+     * Devuelve el pago RECHAZADO más reciente de una compañía (por {@code fecha_aprobacion DESC}).
+     * Usado por el renderer de la notificación {@code PAGO_RECHAZADO} para obtener
+     * {@code motivo_rechazo} y {@code fecha_reporte} sin persistir esos datos en la propia notificación.
+     */
+    Mono<PagoPendienteValidacion> findUltimoRechazadoByCompania(Long idCompania);
 }

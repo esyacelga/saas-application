@@ -4,6 +4,7 @@ import com.gymadmin.platform.application.service.RechazarPagoService;
 import com.gymadmin.platform.domain.exception.PagoYaProcesadoException;
 import com.gymadmin.platform.domain.model.PagoPendienteValidacion;
 import com.gymadmin.platform.domain.port.in.ActividadPlataformaUseCase;
+import com.gymadmin.platform.domain.port.in.EnviarNotificacionUseCase;
 import com.gymadmin.platform.domain.port.out.PagoPendienteValidacionRepository;
 import com.gymadmin.platform.infrastructure.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +31,7 @@ class RechazarPagoServiceTest {
 
     @Mock PagoPendienteValidacionRepository pagoRepository;
     @Mock ActividadPlataformaUseCase actividadPlataformaUseCase;
+    @Mock EnviarNotificacionUseCase enviarNotificacionUseCase;
 
     private RechazarPagoService service;
     private final Clock clockFijo = Clock.fixed(
@@ -37,7 +39,8 @@ class RechazarPagoServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new RechazarPagoService(pagoRepository, actividadPlataformaUseCase, clockFijo);
+        service = new RechazarPagoService(pagoRepository, actividadPlataformaUseCase,
+                enviarNotificacionUseCase, clockFijo);
     }
 
     @Test
@@ -80,6 +83,8 @@ class RechazarPagoServiceTest {
         when(pagoRepository.findById(eq(1L))).thenReturn(Mono.just(pago));
         when(actividadPlataformaUseCase.registrar(any(ActividadPlataformaUseCase.RegistrarActividadCommand.class)))
                 .thenReturn(Mono.empty());
+        when(enviarNotificacionUseCase.encolar(any(EnviarNotificacionUseCase.EncolarNotificacionCommand.class)))
+                .thenReturn(Mono.just(888L));
 
         StepVerifier.create(service.rechazar(1L, 42L, "documento ilegible y borroso"))
                 .verifyComplete();

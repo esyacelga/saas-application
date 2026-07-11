@@ -8,6 +8,7 @@ import com.gymadmin.platform.domain.model.CompaniaPlan;
 import com.gymadmin.platform.domain.model.Plan;
 import com.gymadmin.platform.domain.port.in.ActividadPlataformaUseCase;
 import com.gymadmin.platform.domain.port.in.ActivarTrialUseCase;
+import com.gymadmin.platform.domain.port.in.EnviarNotificacionUseCase;
 import com.gymadmin.platform.domain.port.in.ModuloCheckUseCase;
 import com.gymadmin.platform.domain.port.out.CompaniaPlanRepository;
 import com.gymadmin.platform.domain.port.out.CompaniaRepository;
@@ -40,6 +41,7 @@ public class ActivarTrialService implements ActivarTrialUseCase {
     private final PlanRepository planRepository;
     private final ActividadPlataformaUseCase actividadPlataformaUseCase;
     private final ModuloCheckUseCase moduloCheckUseCase;
+    private final EnviarNotificacionUseCase enviarNotificacionUseCase;
     private final Clock clock;
 
     public ActivarTrialService(CompaniaRepository companiaRepository,
@@ -47,12 +49,14 @@ public class ActivarTrialService implements ActivarTrialUseCase {
                                 PlanRepository planRepository,
                                 ActividadPlataformaUseCase actividadPlataformaUseCase,
                                 ModuloCheckUseCase moduloCheckUseCase,
+                                EnviarNotificacionUseCase enviarNotificacionUseCase,
                                 Clock clock) {
         this.companiaRepository = companiaRepository;
         this.companiaPlanRepository = companiaPlanRepository;
         this.planRepository = planRepository;
         this.actividadPlataformaUseCase = actividadPlataformaUseCase;
         this.moduloCheckUseCase = moduloCheckUseCase;
+        this.enviarNotificacionUseCase = enviarNotificacionUseCase;
         this.clock = clock;
     }
 
@@ -106,7 +110,28 @@ public class ActivarTrialService implements ActivarTrialUseCase {
                                     log.warn("No se pudo invalidar cache tras activar Trial: {}", err.getMessage());
                                     return Mono.just(0L);
                                 }))
+                        .then(encolarEmailTrialActivado(compania.getId(), saved.getId()))
                         .thenReturn(saved));
+    }
+
+    /**
+     * REQ-SAAS-001 Sub-fase 1.6: encola el email {@code TRIAL_ACTIVADO} al owner.
+     * El fallo del encolado no debe romper la activación del trial (fire-and-forget con log).
+     */
+    private Mono<Void> encolarEmailTrialActivado(Long idCompania, Long idCompaniaPlan) {
+        return enviarNotificacionUseCase.encolar(new EnviarNotificacionUseCase.EncolarNotificacionCommand(
+                        idCompania,
+                        idCompaniaPlan,
+                        "TRIAL_ACTIVADO",
+                        null,
+                        "email",
+                        "trial_activado",
+                        null,
+                        null))
+                .doOnError(err -> log.warn("No se pudo encolar email TRIAL_ACTIVADO (compania={}): {}",
+                        idCompania, err.getMessage()))
+                .onErrorResume(err -> Mono.empty())
+                .then();
     }
 
     private Mono<Compania> marcarTrialUsado(Compania compania) {

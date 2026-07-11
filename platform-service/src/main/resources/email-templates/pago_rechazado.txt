@@ -1,0 +1,11 @@
+Hola {owner_nombre},
+
+El pago que reportaste el {fecha_reporte} no pudo ser validado.
+
+Motivo: {motivo_rechazo}
+
+Podes reportar un nuevo comprobante con la informacion corregida: {url_reportar_pago}
+
+Si necesitas ayuda, responde este correo o contacta a soporte.
+
+Gym Admin — {url_gym_admin}

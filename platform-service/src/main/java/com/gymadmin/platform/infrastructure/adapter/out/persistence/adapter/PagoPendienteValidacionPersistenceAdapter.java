@@ -131,6 +131,18 @@ public class PagoPendienteValidacionPersistenceAdapter implements PagoPendienteV
     }
 
     @Override
+    public Mono<PagoPendienteValidacion> findUltimoRechazadoByCompania(Long idCompania) {
+        return databaseClient.sql(
+                "SELECT * FROM tenant.pagos_pendientes_validacion " +
+                "WHERE id_compania = :idCompania AND estado = 'rechazado' " +
+                "ORDER BY fecha_aprobacion DESC LIMIT 1")
+                .bind("idCompania", idCompania)
+                .map((row, meta) -> mapRow(row))
+                .one()
+                .onErrorResume(e -> Mono.empty());
+    }
+
+    @Override
     public Mono<Long> marcarRechazado(Long idPago, Long idUsuarioRoot, String motivo, Instant fechaRechazo) {
         return databaseClient.sql(
                 "UPDATE tenant.pagos_pendientes_validacion " +

@@ -7,6 +7,7 @@ import com.gymadmin.platform.domain.model.Compania;
 import com.gymadmin.platform.domain.model.CompaniaPlan;
 import com.gymadmin.platform.domain.model.Plan;
 import com.gymadmin.platform.domain.port.in.ActividadPlataformaUseCase;
+import com.gymadmin.platform.domain.port.in.EnviarNotificacionUseCase;
 import com.gymadmin.platform.domain.port.in.ModuloCheckUseCase;
 import com.gymadmin.platform.domain.port.out.CompaniaPlanRepository;
 import com.gymadmin.platform.domain.port.out.CompaniaRepository;
@@ -28,6 +29,7 @@ import java.time.ZoneOffset;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,6 +41,7 @@ class ActivarTrialServiceTest {
     @Mock PlanRepository planRepository;
     @Mock ActividadPlataformaUseCase actividadPlataformaUseCase;
     @Mock ModuloCheckUseCase moduloCheckUseCase;
+    @Mock EnviarNotificacionUseCase enviarNotificacionUseCase;
 
     private ActivarTrialService service;
     private final LocalDate hoy = LocalDate.of(2026, 7, 9);
@@ -48,7 +51,7 @@ class ActivarTrialServiceTest {
     void setUp() {
         service = new ActivarTrialService(
                 companiaRepository, companiaPlanRepository, planRepository,
-                actividadPlataformaUseCase, moduloCheckUseCase, clockFijo);
+                actividadPlataformaUseCase, moduloCheckUseCase, enviarNotificacionUseCase, clockFijo);
     }
 
     private Compania buildCompania(Long id, boolean trialUsado) {
@@ -110,6 +113,8 @@ class ActivarTrialServiceTest {
         when(actividadPlataformaUseCase.registrar(any(ActividadPlataformaUseCase.RegistrarActividadCommand.class)))
                 .thenReturn(Mono.empty());
         when(moduloCheckUseCase.invalidateCacheByCompania(eq(1L))).thenReturn(Mono.just(3L));
+        when(enviarNotificacionUseCase.encolar(any(EnviarNotificacionUseCase.EncolarNotificacionCommand.class)))
+                .thenReturn(Mono.just(777L));
 
         StepVerifier.create(service.activar(1L, 42L))
                 .assertNext(cp -> {
@@ -121,5 +126,6 @@ class ActivarTrialServiceTest {
 
         assertThat(compania.isTrialUsado()).isTrue();
         assertThat(compania.getFechaTrialUsado()).isNotNull();
+        verify(enviarNotificacionUseCase).encolar(any(EnviarNotificacionUseCase.EncolarNotificacionCommand.class));
     }
 }

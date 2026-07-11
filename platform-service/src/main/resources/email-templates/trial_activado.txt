@@ -1,0 +1,9 @@
+Bienvenido a Gym Admin, {owner_nombre}!
+
+Tu Trial de {dias_trial} dias esta activo. Podes usar todas las funciones Premium hasta el {fecha_vencimiento}.
+
+Entra a la plataforma: {url_gym_admin}
+
+Cuando tu Trial termine, tu gimnasio pasa automaticamente al plan Free. Podes adelantar la compra de Premium cuando quieras: {url_comprar_premium}
+
+Gym Admin — {url_gym_admin}
