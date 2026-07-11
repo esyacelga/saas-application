@@ -29,7 +29,7 @@ public class AuditoriaService implements AuditoriaUseCase {
                        (SELECT COUNT(*) FROM facturacion.envios_sri e
                         WHERE e.id_comprobante = c.id) AS intentos_sri
                 FROM facturacion.comprobantes c
-                JOIN facturacion.config_sri cs ON cs.id_compania = c.id_compania AND cs.activo = true
+                JOIN facturacion.config_sri cs ON cs.id_compania = c.id_compania AND cs.facturacion_activa = true
                 WHERE c.id_compania = :idCompania
                   AND c.fecha_emision >= :desde
                   AND c.fecha_emision <= :hasta

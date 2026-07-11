@@ -13,11 +13,16 @@ import java.util.Base64;
 /**
  * Decrypts P12 certificate content and password using AES-256-GCM.
  * The symmetric key is loaded once at startup from the CERT_ENCRYPTION_KEY env var.
+ * <p>
+ * Storage layout for both {@code facturacion.certificados.p12_cifrado} and
+ * {@code facturacion.certificados.password_cifrado}: {@code [IV(12 bytes) || ciphertext(includes GCM tag)]}.
+ * The DDL does not store the IV in a separate column — it is prepended to the ciphertext blob.
  */
 @Service
 public class CertificadoDecryptionService {
 
     private static final int GCM_TAG_LENGTH_BITS = 128;
+    private static final int GCM_IV_LENGTH_BYTES = 12;
 
     private final SecretKey secretKey;
 
@@ -31,8 +36,16 @@ public class CertificadoDecryptionService {
         this.secretKey = new SecretKeySpec(keyBytes, "AES");
     }
 
-    public byte[] decrypt(byte[] ciphertext, byte[] iv) {
+    public byte[] decrypt(byte[] ivAndCiphertext) {
+        if (ivAndCiphertext == null || ivAndCiphertext.length <= GCM_IV_LENGTH_BYTES) {
+            throw new IllegalArgumentException("Blob cifrado inválido: debe contener IV(12) + ciphertext");
+        }
         try {
+            byte[] iv = new byte[GCM_IV_LENGTH_BYTES];
+            System.arraycopy(ivAndCiphertext, 0, iv, 0, GCM_IV_LENGTH_BYTES);
+            byte[] ciphertext = new byte[ivAndCiphertext.length - GCM_IV_LENGTH_BYTES];
+            System.arraycopy(ivAndCiphertext, GCM_IV_LENGTH_BYTES, ciphertext, 0, ciphertext.length);
+
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv);
             cipher.init(Cipher.DECRYPT_MODE, secretKey, spec);
@@ -42,8 +55,7 @@ public class CertificadoDecryptionService {
         }
     }
 
-    public String decryptString(String base64Ciphertext, byte[] iv) {
-        byte[] decrypted = decrypt(Base64.getDecoder().decode(base64Ciphertext), iv);
-        return new String(decrypted, StandardCharsets.UTF_8);
+    public String decryptString(byte[] ivAndCiphertext) {
+        return new String(decrypt(ivAndCiphertext), StandardCharsets.UTF_8);
     }
 }

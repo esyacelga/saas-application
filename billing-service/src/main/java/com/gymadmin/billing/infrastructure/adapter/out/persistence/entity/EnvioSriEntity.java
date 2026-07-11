@@ -2,6 +2,7 @@ package com.gymadmin.billing.infrastructure.adapter.out.persistence.entity;
 
 import lombok.*;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.ReadOnlyProperty;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
@@ -60,6 +61,7 @@ public class EnvioSriEntity {
     @Column("intento_numero")
     private Short intentoNumero;
 
+    @ReadOnlyProperty
     @Column("created_at")
     private OffsetDateTime createdAt;
 }

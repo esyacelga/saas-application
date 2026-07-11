@@ -1,7 +1,11 @@
 package com.gymadmin.billing.infrastructure.adapter.out.persistence.entity;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.ReadOnlyProperty;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
@@ -24,14 +28,26 @@ public class CertificadoEntity {
     @Column("id_sucursal")
     private Integer idSucursal;
 
-    @Column("contenido_cifrado")
-    private byte[] contenidoCifrado;
+    @Column("alias")
+    private String alias;
 
-    @Column("contrasena_cifrada")
-    private String contrasenaCifrada;
+    @Column("entidad_emisora")
+    private String entidadEmisora;
 
-    @Column("iv")
-    private byte[] iv;
+    @Column("p12_cifrado")
+    private byte[] p12Cifrado;
+
+    @Column("password_cifrado")
+    private byte[] passwordCifrado;
+
+    @Column("subject_cn")
+    private String subjectCn;
+
+    @Column("ruc_certificado")
+    private String rucCertificado;
+
+    @Column("fecha_emision")
+    private LocalDate fechaEmision;
 
     @Column("fecha_vencimiento")
     private LocalDate fechaVencimiento;
@@ -39,9 +55,17 @@ public class CertificadoEntity {
     @Column("activo")
     private Boolean activo;
 
+    @Column("revocado")
+    private Boolean revocado;
+
+    @Column("motivo_revocacion")
+    private String motivoRevocacion;
+
+    @ReadOnlyProperty
     @Column("created_at")
     private OffsetDateTime createdAt;
 
-    @Column("updated_at")
-    private OffsetDateTime updatedAt;
+    @ReadOnlyProperty
+    @Column("created_by")
+    private String createdBy;
 }

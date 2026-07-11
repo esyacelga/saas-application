@@ -23,7 +23,7 @@ public class CertificadoPersistenceAdapter implements CertificadoRepository {
         return repo.findActiveByEmpresa(idCompania, idSucursal)
                 .switchIfEmpty(Mono.error(new NotFoundException(
                         "Certificado activo no encontrado para la empresa " + idCompania)))
-                .map(e -> decryptionService.decrypt(e.getContenidoCifrado(), e.getIv()));
+                .map(e -> decryptionService.decrypt(e.getP12Cifrado()));
     }
 
     @Override
@@ -31,7 +31,7 @@ public class CertificadoPersistenceAdapter implements CertificadoRepository {
         return repo.findActiveByEmpresa(idCompania, idSucursal)
                 .switchIfEmpty(Mono.error(new NotFoundException(
                         "Certificado activo no encontrado para la empresa " + idCompania)))
-                .map(e -> decryptionService.decryptString(e.getContrasenaCifrada(), e.getIv()));
+                .map(e -> decryptionService.decryptString(e.getPasswordCifrado()));
     }
 
     @Override

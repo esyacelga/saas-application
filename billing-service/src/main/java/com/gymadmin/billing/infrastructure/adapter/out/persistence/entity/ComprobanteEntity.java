@@ -1,8 +1,12 @@
 package com.gymadmin.billing.infrastructure.adapter.out.persistence.entity;
 
-import lombok.*;
-import lombok.experimental.SuperBuilder;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.ReadOnlyProperty;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
@@ -13,10 +17,10 @@ import java.time.OffsetDateTime;
 @Table("facturacion.comprobantes")
 @Getter
 @Setter
-@SuperBuilder
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ComprobanteEntity extends BaseAuditEntity {
+public class ComprobanteEntity {
 
     @Id
     private Long id;
@@ -72,7 +76,7 @@ public class ComprobanteEntity extends BaseAuditEntity {
     @Column("subtotal_sin_impuesto")
     private BigDecimal subtotalSinImpuesto;
 
-    @Column("subtotal_iva0")
+    @Column("subtotal_iva_0")
     private BigDecimal subtotalIva0;
 
     @Column("subtotal_no_objeto_iva")
@@ -126,9 +130,11 @@ public class ComprobanteEntity extends BaseAuditEntity {
     @Column("id_usuario_registro")
     private Integer idUsuarioRegistro;
 
+    @ReadOnlyProperty
     @Column("created_at")
     private OffsetDateTime createdAt;
 
+    @ReadOnlyProperty
     @Column("updated_at")
     private OffsetDateTime updatedAt;
 }

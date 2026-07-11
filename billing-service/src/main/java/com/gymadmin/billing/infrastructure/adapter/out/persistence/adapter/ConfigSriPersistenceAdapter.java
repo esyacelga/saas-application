@@ -26,19 +26,17 @@ public class ConfigSriPersistenceAdapter implements ConfigSriRepository {
 
     private ConfigSri toDomain(ConfigSriEntity e) {
         return ConfigSri.builder()
-                .id(e.getId())
                 .idCompania(e.getIdCompania())
                 .idSucursal(e.getIdSucursal())
                 .ruc(e.getRuc())
                 .razonSocial(e.getRazonSocial())
                 .nombreComercial(e.getNombreComercial())
-                .dirMatriz(e.getDirMatriz())
+                .dirEstablecimiento(e.getDirEstablecimiento())
                 .ambiente(e.getAmbiente())
+                .tipoEmision(e.getTipoEmision())
                 .contribuyenteEspecial(e.getContribuyenteEspecial())
                 .obligadoContabilidad(e.getObligadoContabilidad())
-                .codEstablecimiento(e.getCodEstablecimiento())
-                .codPuntoEmision(e.getCodPuntoEmision())
-                .activo(e.getActivo())
+                .facturacionActiva(e.getFacturacionActiva())
                 .emailNotificacion(e.getEmailNotificacion())
                 .build();
     }

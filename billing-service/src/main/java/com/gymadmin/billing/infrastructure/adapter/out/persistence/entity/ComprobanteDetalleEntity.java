@@ -6,10 +6,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.ReadOnlyProperty;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 
 @Table("facturacion.comprobantes_detalle")
 @Getter
@@ -24,6 +26,12 @@ public class ComprobanteDetalleEntity {
 
     @Column("id_comprobante")
     private Long idComprobante;
+
+    @Column("id_compania")
+    private Integer idCompania;
+
+    @Column("id_sucursal")
+    private Integer idSucursal;
 
     @Column("codigo_principal")
     private String codigoPrincipal;
@@ -48,4 +56,8 @@ public class ComprobanteDetalleEntity {
 
     @Column("orden")
     private Integer orden;
+
+    @ReadOnlyProperty
+    @Column("creado_en")
+    private OffsetDateTime creadoEn;
 }

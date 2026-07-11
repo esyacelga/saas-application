@@ -16,6 +16,12 @@ public record EmitirFacturaRequest(
         String emailReceptor,
         String direccionReceptor,
         String telefonoReceptor,
+        @NotNull @Size(min = 3, max = 3)
+        @Pattern(regexp = "\\d{3}", message = "Debe tener exactamente 3 dígitos numéricos")
+        String codEstablecimiento,
+        @NotNull @Size(min = 3, max = 3)
+        @Pattern(regexp = "\\d{3}", message = "Debe tener exactamente 3 dígitos numéricos")
+        String codPuntoEmision,
         @NotNull @Size(min = 9, max = 9)
         @Pattern(regexp = "\\d{9}", message = "Debe tener exactamente 9 dígitos numéricos")
         String codigoNumerico,

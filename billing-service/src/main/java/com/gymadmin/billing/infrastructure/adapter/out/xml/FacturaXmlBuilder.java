@@ -92,7 +92,7 @@ public class FacturaXmlBuilder {
         addElement(doc, infoTributaria, "estab", comprobante.getCodEstablecimiento());
         addElement(doc, infoTributaria, "ptoEmi", comprobante.getCodPuntoEmision());
         addElement(doc, infoTributaria, "secuencial", comprobante.getSecuencial());
-        addElement(doc, infoTributaria, "dirMatriz", configSri.getDirMatriz());
+        addElement(doc, infoTributaria, "dirMatriz", configSri.getDirEstablecimiento());
 
         return infoTributaria;
     }
@@ -102,14 +102,14 @@ public class FacturaXmlBuilder {
         Element infoFactura = doc.createElement("infoFactura");
 
         addElement(doc, infoFactura, "fechaEmision", comprobante.getFechaEmision().format(FECHA_FACTURA));
-        addElement(doc, infoFactura, "dirEstablecimiento", configSri.getDirMatriz());
+        addElement(doc, infoFactura, "dirEstablecimiento", configSri.getDirEstablecimiento());
 
         if (configSri.getContribuyenteEspecial() != null && !configSri.getContribuyenteEspecial().isBlank()) {
             addElement(doc, infoFactura, "contribuyenteEspecial", configSri.getContribuyenteEspecial());
         }
 
         addElement(doc, infoFactura, "obligadoContabilidad",
-                configSri.getObligadoContabilidad() != null ? configSri.getObligadoContabilidad() : "NO");
+                Boolean.TRUE.equals(configSri.getObligadoContabilidad()) ? "SI" : "NO");
         addElement(doc, infoFactura, "tipoIdentificacionComprador", comprobante.getTipoIdReceptor());
         addElement(doc, infoFactura, "razonSocialComprador", comprobante.getRazonSocialReceptor());
         addElement(doc, infoFactura, "identificacionComprador", comprobante.getIdReceptor());

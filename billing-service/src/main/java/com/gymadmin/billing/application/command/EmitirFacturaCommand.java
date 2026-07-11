@@ -7,6 +7,8 @@ public record EmitirFacturaCommand(
         Integer idCompania,
         Integer idSucursal,
         LocalDate fechaEmision,
+        String codEstablecimiento,
+        String codPuntoEmision,
         String secuencial,
         String codigoNumerico,
         String tipoIdReceptor,

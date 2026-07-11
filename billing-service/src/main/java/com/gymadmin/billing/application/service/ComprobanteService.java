@@ -46,8 +46,8 @@ public class ComprobanteService implements ComprobanteUseCase {
                             "01",
                             config.getRuc(),
                             config.getAmbiente(),
-                            config.getCodEstablecimiento(),
-                            config.getCodPuntoEmision(),
+                            command.codEstablecimiento(),
+                            command.codPuntoEmision(),
                             command.secuencial(),
                             command.codigoNumerico()
                     );
@@ -65,8 +65,8 @@ public class ComprobanteService implements ComprobanteUseCase {
                             .idSucursal(command.idSucursal())
                             .tipoComprobante("01")
                             .claveAcceso(claveAcceso.getValue())
-                            .codEstablecimiento(config.getCodEstablecimiento())
-                            .codPuntoEmision(config.getCodPuntoEmision())
+                            .codEstablecimiento(command.codEstablecimiento())
+                            .codPuntoEmision(command.codPuntoEmision())
                             .secuencial(command.secuencial())
                             .fechaEmision(command.fechaEmision())
                             .ambiente(config.getAmbiente())

@@ -47,7 +47,12 @@ public class AtsXmlBuilder {
             addElement(doc, ats, "razonSocial", safe(configSri.getRazonSocial()));
             addElement(doc, ats, "Anio", String.valueOf(anio));
             addElement(doc, ats, "Mes", mesStr);
-            addElement(doc, ats, "numEstabRuc", safe(configSri.getCodEstablecimiento()));
+            // ATS numEstabRuc: pick the establishment code from the first invoice (all invoices of an ATS
+            // report belong to the same reporting entity). When the report is empty, fall back to "001".
+            String numEstabRuc = comprobantes.isEmpty()
+                    ? "001"
+                    : safe(comprobantes.get(0).getCodEstablecimiento());
+            addElement(doc, ats, "numEstabRuc", numEstabRuc);
             addElement(doc, ats, "totalVentas", formatAmount(totalVentas));
             addElement(doc, ats, "codigoOperacion", "B");
             addElement(doc, ats, "indCancelacion", "N");

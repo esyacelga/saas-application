@@ -55,6 +55,8 @@ class ComprobanteDetalleR2dbcRepositoryIT extends IntegrationTestBase {
     private ComprobanteDetalleEntity buildDetalle(Long idComprobante, int orden, String descripcion) {
         return ComprobanteDetalleEntity.builder()
                 .idComprobante(idComprobante)
+                .idCompania(ID_COMPANIA)
+                .idSucursal(ID_SUCURSAL)
                 .codigoPrincipal("SKU-" + UUID.randomUUID().toString().substring(0, 8))
                 .descripcion(descripcion)
                 .cantidad(new BigDecimal("1.000000"))

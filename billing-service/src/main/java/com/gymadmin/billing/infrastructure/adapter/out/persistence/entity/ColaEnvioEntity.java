@@ -2,6 +2,7 @@ package com.gymadmin.billing.infrastructure.adapter.out.persistence.entity;
 
 import lombok.*;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.ReadOnlyProperty;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
@@ -42,9 +43,11 @@ public class ColaEnvioEntity {
     @Column("ultimo_error")
     private String ultimoError;
 
+    @ReadOnlyProperty
     @Column("created_at")
     private OffsetDateTime createdAt;
 
+    @ReadOnlyProperty
     @Column("updated_at")
     private OffsetDateTime updatedAt;
 }

@@ -7,18 +7,16 @@ import lombok.Data;
 @Builder
 public class ConfigSri {
 
-    private Long id;
     private Integer idCompania;
     private Integer idSucursal;
     private String ruc;
     private String razonSocial;
     private String nombreComercial;
-    private String dirMatriz;
+    private String dirEstablecimiento;
     private String ambiente;
+    private String tipoEmision;
     private String contribuyenteEspecial;
-    private String obligadoContabilidad;
-    private String codEstablecimiento;
-    private String codPuntoEmision;
-    private Boolean activo;
+    private Boolean obligadoContabilidad;
+    private Boolean facturacionActiva;
     private String emailNotificacion;
 }

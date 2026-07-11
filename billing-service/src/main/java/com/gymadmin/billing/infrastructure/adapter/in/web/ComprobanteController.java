@@ -51,6 +51,8 @@ public class ComprobanteController {
                             idCompania,
                             request.idSucursal(),
                             LocalDate.now(),
+                            request.codEstablecimiento(),
+                            request.codPuntoEmision(),
                             request.secuencial(),
                             request.codigoNumerico(),
                             request.tipoIdReceptor(),

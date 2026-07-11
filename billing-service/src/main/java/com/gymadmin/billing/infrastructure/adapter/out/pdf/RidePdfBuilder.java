@@ -69,10 +69,10 @@ public class RidePdfBuilder implements RidePdfPort {
         PdfPCell emisorCell = new PdfPCell();
         emisorCell.setPadding(6);
         emisorCell.addElement(new Phrase(configSri != null ? safe(configSri.getRazonSocial()) : safe(comprobante.getRazonSocialReceptor()), boldLarge));
-        emisorCell.addElement(new Phrase("Dirección Matriz: " + (configSri != null ? safe(configSri.getDirMatriz()) : ""), normal));
+        emisorCell.addElement(new Phrase("Dirección Matriz: " + (configSri != null ? safe(configSri.getDirEstablecimiento()) : ""), normal));
         emisorCell.addElement(new Phrase("RUC: " + (configSri != null ? safe(configSri.getRuc()) : ""), normal));
         emisorCell.addElement(new Phrase("Obligado a llevar Contabilidad: " +
-                (configSri != null && configSri.getObligadoContabilidad() != null ? configSri.getObligadoContabilidad() : "NO"), normal));
+                (configSri != null && Boolean.TRUE.equals(configSri.getObligadoContabilidad()) ? "SI" : "NO"), normal));
         header.addCell(emisorCell);
 
         PdfPCell docCell = new PdfPCell();
