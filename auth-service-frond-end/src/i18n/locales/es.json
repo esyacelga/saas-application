@@ -965,6 +965,53 @@
     "loginHint": "Usa el correo y contraseña que acabas de crear.",
     "registerLink": "¿No tienes cuenta? Regístrate gratis"
   },
+  "planWidget": {
+    "ariaLabel": "Uso del plan actual",
+    "plan": {
+      "FREE": "Free",
+      "TRIAL": "Trial",
+      "PREMIUM": "Premium",
+      "LEGACY_GRANDFATHERED": "Premium"
+    },
+    "clientes": { "label": "clientes" },
+    "staff": { "label": "Staff" },
+    "sedes": { "label": "Sedes" },
+    "ilimitado": "Recursos ilimitados",
+    "alert": {
+      "cerca": "Cerca del límite",
+      "limite": "Límite alcanzado",
+      "sobreLimite": "Regularizar antes de {{fecha}}"
+    },
+    "trial": {
+      "vence": "Prueba activa: {{dias}} días restantes"
+    },
+    "verPlan": "Ver plan",
+    "actualizar": "Actualizar",
+    "ariaVerPlan": "Ver opciones de plan y suscripción"
+  },
+  "upgradeModal": {
+    "title": {
+      "clientes": "Has alcanzado el límite de clientes",
+      "staff": "Has alcanzado el límite de empleados",
+      "sucursales": "Has alcanzado el límite de sedes",
+      "trialLimite": "Tu período de prueba ha alcanzado sus límites"
+    },
+    "subtitle": {
+      "free": "Tu plan Free incluye hasta {{maximo}} {{recurso}}. Actualmente tienes {{actual}}.",
+      "trial": "Durante el Trial puedes probar con hasta {{maximo}} {{recurso}}. Ya alcanzaste ese número."
+    },
+    "body": {
+      "clientes": "Con el plan Premium puedes registrar clientes sin límite, agregar más sucursales y ampliar tu equipo de trabajo.",
+      "staff": "Con el plan Premium puedes incorporar todo el personal que necesites, sin restricciones de equipo.",
+      "sucursales": "Con el plan Premium puedes abrir todas las sedes que necesites para hacer crecer tu gimnasio.",
+      "trial": "Cambia a un plan pagado para continuar operando sin interrupciones y conservar todos tus datos."
+    },
+    "cta": {
+      "primary": "Ver opciones de plan",
+      "secondary": "Entendido"
+    },
+    "close": "Cerrar"
+  },
   "rolPlataformaModal": {
     "createTitle": "Nuevo rol de plataforma",
     "nameLabel": "Nombre",

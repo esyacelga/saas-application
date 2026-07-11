@@ -271,6 +271,8 @@ Facturación electrónica SRI Ecuador. Todos los endpoints requieren `Authorizat
 **Auth:** Bearer JWT (`tipo: staff`)  
 **Description:** Anular comprobante. Solo permitido en estados `AUTORIZADO` o `GENERADO`.
 
+> ⚠️ **Riesgo fiscal — anulación lógica local, NO ante SRI.** Este endpoint solo actualiza `estado = ANULADO` en la BD del gimnasio. **No** llama al SRI, **no** valida ventana temporal (día 7 del mes siguiente), **no** rechaza facturas a consumidor final, **no** requiere motivo y **no** genera nota de crédito. Su uso en producción puede generar divergencia con el SRI y sanciones tributarias. Ver [pendientes/anulacion-sri.md](../pendientes/anulacion-sri.md) para el rediseño necesario.
+
 **Path param:** `id` — ID del comprobante
 
 **Response 200:**

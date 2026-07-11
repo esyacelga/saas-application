@@ -23,6 +23,14 @@ Facturación electrónica SRI Ecuador. Emisión, firma digital y autorización d
 
 ---
 
+## pendientes/ — Trabajos por implementar
+
+| Documento | Prioridad | Descripción |
+|-----------|-----------|-------------|
+| [anulacion-sri.md](pendientes/anulacion-sri.md) | 🔴 Alta | 📋 Anulación fiscal SRI + notas de crédito. Hoy el endpoint `POST /comprobantes/{id}/anular` solo hace UPDATE local; falta cumplir normativa Ecuador (ventana día 7, consumidor final, catálogo de motivos, NC tipo 04, workflow de aprobación). BD ya modeló las 3 tablas necesarias. |
+
+---
+
 ## Convenciones de esta carpeta
 
 - Nombres de archivo en `kebab-case` dentro de `api/` y `flows/`.

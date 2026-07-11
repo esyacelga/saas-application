@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { LanguageSwitcher } from '@/ui/components/LanguageSwitcher'
 import { PrintQrModal } from '@/ui/components/PrintQrModal'
+import { PlanUsageWidget } from '@/ui/components/PlanUsageWidget'
 import { useAuthStore, useCurrentUser } from '@/infrastructure/store/auth/auth.store'
 import { authRepository } from '@/infrastructure/http/auth/AuthHttpRepository'
 import type { JwtPayloadStaff } from '@/domain/auth/entities/User.entity'
@@ -102,6 +103,11 @@ function SidebarContent({ navItems, user, inicialNombre, onClose, onLogout, onPr
       </nav>
 
       <div className="px-3 py-4 space-y-2" style={{ borderTop: '1px solid var(--sidebar-border)' }}>
+        {/* Zona (0): widget de uso del plan — visible solo para id_rol === 1 (Dueño/Admin) */}
+        <div style={{ borderBottom: '1px solid var(--sidebar-border)', paddingBottom: '0.5rem', marginBottom: '0.25rem' }}>
+          <PlanUsageWidget />
+        </div>
+
         <div className="flex items-center gap-3 px-3 py-2 rounded-lg">
           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-orange-500 text-white text-sm font-bold flex-shrink-0">
             {inicialNombre}

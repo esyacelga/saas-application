@@ -113,6 +113,11 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 | comprobantes.md, admin.md, reportes.md | ✅ Refleja el código actual (verificado 2026-07-11 contra `ComprobanteController`, `AdminController`, `ReporteController`). Total: 13 endpoints documentados (8+3+2). |
 | integracion.md | 📋 Propuesto 2026-07-11 — Contrato de integración para que `core-service` consuma `billing-service` al vender membresías. Describe flujo asíncrono, JWT multi-tenancy, manejo de errores, idempotencia, y checklist de implementación. |
 
+### docs/billing-service/pendientes/
+| Documento | Estado |
+|-----------|--------|
+| anulacion-sri.md | 📋 Propuesto 2026-07-11 — **🔴 Riesgo fiscal alto.** El endpoint actual `POST /comprobantes/{id}/anular` solo hace UPDATE local: no valida ventana (día 7 mes siguiente), no rechaza consumidor final, no requiere motivo, no genera nota de crédito, no llama al SRI. La BD ya modeló 3 tablas (`facturacion.anulaciones`, `facturacion.notas_credito_referencias`, `sri.motivos_anulacion_nc` con seed) que el código Java aún no usa. Ver doc para gap analysis, diseño propuesto y checklist. |
+
 ### docs/platform-service/ y platform-service/CLAUDE.md
 | Documento | Estado |
 |-----------|--------|

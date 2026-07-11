@@ -10,22 +10,31 @@ import com.gymadmin.platform.infrastructure.exception.NotFoundException;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+
 /**
  * REQ-SAAS-001 (RN-06, HU-04): reporte de uso actual vs límites del plan.
  */
 @Service
 public class ConsultarUsoLimitesService implements ConsultarUsoLimitesUseCase {
 
+    private static final String CODIGO_TRIAL = "TRIAL";
+
     private final CompaniaPlanRepository companiaPlanRepository;
     private final PlanRepository planRepository;
     private final LimiteRecursoService limiteRecursoService;
+    private final Clock clock;
 
     public ConsultarUsoLimitesService(CompaniaPlanRepository companiaPlanRepository,
                                        PlanRepository planRepository,
-                                       LimiteRecursoService limiteRecursoService) {
+                                       LimiteRecursoService limiteRecursoService,
+                                       Clock clock) {
         this.companiaPlanRepository = companiaPlanRepository;
         this.planRepository = planRepository;
         this.limiteRecursoService = limiteRecursoService;
+        this.clock = clock;
     }
 
     @Override
@@ -50,8 +59,16 @@ public class ConsultarUsoLimitesService implements ConsultarUsoLimitesUseCase {
                         new UsoRecurso(t.getT2(), toLong(plan.getMaxClientesActivos())),
                         new UsoRecurso(t.getT3(), toLong(plan.getMaxStaff())),
                         cp.isSobreLimite(),
-                        cp.getSobreLimiteHasta()
+                        cp.getSobreLimiteHasta(),
+                        calcularDiasRestantes(plan, cp)
                 ));
+    }
+
+    private Integer calcularDiasRestantes(Plan plan, CompaniaPlan cp) {
+        if (!CODIGO_TRIAL.equals(plan.getCodigo()) || cp.getFechaFin() == null) {
+            return null;
+        }
+        return (int) ChronoUnit.DAYS.between(LocalDate.now(clock), cp.getFechaFin());
     }
 
     private Long toLong(Integer valor) {

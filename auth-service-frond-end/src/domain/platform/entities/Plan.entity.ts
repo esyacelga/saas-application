@@ -75,3 +75,19 @@ export interface NotifConfig {
   canal: 'EMAIL' | 'WHATSAPP' | 'AMBOS'
   activo: boolean
 }
+
+// REQ-SAAS-001: Uso y límites del plan — respuesta de GET /companias/{id}/uso-limites
+export interface UsoLimitesRecurso {
+  actual: number
+  maximo: number | null
+}
+
+export interface UsoLimitesResponse {
+  planCodigo: 'FREE' | 'TRIAL' | 'PREMIUM' | 'LEGACY_GRANDFATHERED'
+  sucursales: UsoLimitesRecurso
+  clientesActivos: UsoLimitesRecurso
+  staff: UsoLimitesRecurso
+  sobreLimite: boolean
+  sobreLimiteHasta: string | null   // LocalDate ISO, ej: "2026-01-15"
+  diasRestantes: number | null      // solo para TRIAL; puede ser negativo si venció
+}

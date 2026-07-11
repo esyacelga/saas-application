@@ -8,6 +8,7 @@ import type {
   CompaniaPlan,
   Pago,
   NotifConfig,
+  UsoLimitesResponse,
 } from '@/domain/platform/entities/Plan.entity'
 import type {
   CrearPlanDto,
@@ -410,6 +411,13 @@ class PlatformHttpRepositoryImpl implements PlatformRepository {
 
   async getActividad(params: import('./platform.dto').ActividadParams = {}): Promise<import('./platform.dto').PaginadoActividadResponse> {
     const { data } = await api.get<import('./platform.dto').PaginadoActividadResponse>('/actividad', { params })
+    return data
+  }
+
+  // REQ-SAAS-001: Uso y límites del plan
+  async getUsoLimites(idCompania: number): Promise<UsoLimitesResponse> {
+    const { data } = await api.get<UsoLimitesResponse>(`/companias/${idCompania}/uso-limites`)
+    // El backend ya devuelve camelCase en este endpoint según la spec
     return data
   }
 }

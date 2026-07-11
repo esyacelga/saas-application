@@ -11,7 +11,8 @@ public record UsoLimitesResponse(
         RecursoUso clientesActivos,
         RecursoUso staff,
         boolean sobreLimite,
-        LocalDate sobreLimiteHasta
+        LocalDate sobreLimiteHasta,
+        Integer diasRestantes
 ) {
     public static UsoLimitesResponse from(UsoLimitesResult r) {
         return new UsoLimitesResponse(
@@ -20,7 +21,8 @@ public record UsoLimitesResponse(
                 RecursoUso.from(r.clientesActivos()),
                 RecursoUso.from(r.staff()),
                 r.sobreLimite(),
-                r.sobreLimiteHasta()
+                r.sobreLimiteHasta(),
+                r.diasRestantes()
         );
     }
 

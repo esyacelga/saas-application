@@ -965,6 +965,53 @@
     "loginHint": "Use the email and password you just created.",
     "registerLink": "Don't have an account? Register for free"
   },
+  "planWidget": {
+    "ariaLabel": "Current plan usage",
+    "plan": {
+      "FREE": "Free",
+      "TRIAL": "Trial",
+      "PREMIUM": "Premium",
+      "LEGACY_GRANDFATHERED": "Premium"
+    },
+    "clientes": { "label": "members" },
+    "staff": { "label": "Staff" },
+    "sedes": { "label": "Branches" },
+    "ilimitado": "Unlimited resources",
+    "alert": {
+      "cerca": "Near the limit",
+      "limite": "Limit reached",
+      "sobreLimite": "Regularize before {{fecha}}"
+    },
+    "trial": {
+      "vence": "Trial active: {{dias}} days remaining"
+    },
+    "verPlan": "View plan",
+    "actualizar": "Upgrade",
+    "ariaVerPlan": "View plan and subscription options"
+  },
+  "upgradeModal": {
+    "title": {
+      "clientes": "You have reached the member limit",
+      "staff": "You have reached the staff limit",
+      "sucursales": "You have reached the branch limit",
+      "trialLimite": "Your trial period has reached its limits"
+    },
+    "subtitle": {
+      "free": "Your Free plan includes up to {{maximo}} {{recurso}}. You currently have {{actual}}.",
+      "trial": "During the Trial you can test with up to {{maximo}} {{recurso}}. You have already reached that number."
+    },
+    "body": {
+      "clientes": "With the Premium plan you can register unlimited members, add more branches and expand your team.",
+      "staff": "With the Premium plan you can bring in all the staff you need, without team restrictions.",
+      "sucursales": "With the Premium plan you can open as many branches as you need to grow your gym.",
+      "trial": "Switch to a paid plan to keep operating without interruptions and retain all your data."
+    },
+    "cta": {
+      "primary": "View plan options",
+      "secondary": "Got it"
+    },
+    "close": "Close"
+  },
   "rolPlataformaModal": {
     "createTitle": "New platform role",
     "nameLabel": "Name",

@@ -20,6 +20,7 @@ public interface ConsultarUsoLimitesUseCase {
             UsoRecurso clientesActivos,
             UsoRecurso staff,
             boolean sobreLimite,
-            LocalDate sobreLimiteHasta
+            LocalDate sobreLimiteHasta,
+            Integer diasRestantes
     ) {}
 }

@@ -6,6 +6,7 @@ import type {
   CompaniaPlan,
   Pago,
   NotifConfig,
+  UsoLimitesResponse,
 } from '@/domain/platform/entities/Plan.entity'
 import type {
   CrearPlanDto,
@@ -71,4 +72,7 @@ export interface PlatformRepository {
   // Notificaciones config
   getNotifConfig(idCompania: number): Promise<NotifConfig[]>
   updateNotifConfig(idCompania: number, body: NotifConfig[]): Promise<void>
+
+  // Uso y límites del plan (REQ-SAAS-001)
+  getUsoLimites(idCompania: number): Promise<UsoLimitesResponse>
 }

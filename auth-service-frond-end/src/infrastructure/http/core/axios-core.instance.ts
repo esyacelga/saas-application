@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { useAuthStore } from '@/infrastructure/store/auth/auth.store'
 import { useLoaderStore } from '@/infrastructure/store/loader/loader.store'
+import { useLimitPlanModalStore } from '@/infrastructure/store/plan/useLimitPlanModalStore'
 
 const coreApi = axios.create({
   baseURL: import.meta.env.VITE_API_CORE_URL ?? 'http://localhost:8083/api/v1',
@@ -20,6 +21,23 @@ coreApi.interceptors.response.use(
   },
   (error) => {
     useLoaderStore.getState().done()
+
+    // Detectar límite de plan alcanzado — solo esta condición exacta abre el modal.
+    // Otros 403 (permisos de rol, token inválido) se propagan sin cambios.
+    if (
+      error.response?.status === 403 &&
+      typeof error.response.data?.codigo === 'string' &&
+      error.response.data.codigo === 'limite_plan_alcanzado'
+    ) {
+      const { recurso, actual, maximo, planActual } = error.response.data as {
+        recurso: string
+        actual: number
+        maximo: number
+        planActual: string
+      }
+      useLimitPlanModalStore.getState().abrirModal({ recurso, actual, maximo, planActual })
+    }
+
     return Promise.reject(error)
   },
 )
