@@ -22,7 +22,7 @@ class ComprobanteReporteR2dbcRepositoryIT extends IntegrationTestBase {
     private ComprobanteR2dbcRepository comprobanteRepository;
 
     private ComprobanteEntity buildComprobanteAutorizado(LocalDate fechaEmision) {
-        String claveAcceso = UUID.randomUUID().toString().replace("-", "").substring(0, 49);
+        String claveAcceso = ((UUID.randomUUID().toString() + UUID.randomUUID().toString()).replace("-", "")).substring(0, 49);
         String secuencial = UUID.randomUUID().toString().replace("-", "").substring(0, 9);
         return ComprobanteEntity.builder()
                 .idCompania(ID_COMPANIA)

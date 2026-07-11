@@ -20,11 +20,17 @@ class ComprobanteR2dbcRepositoryIT extends IntegrationTestBase {
     private ComprobanteR2dbcRepository repository;
 
     private static String randomClaveAcceso() {
-        return UUID.randomUUID().toString().replace("-", "").substring(0, 49);
+        String s = (UUID.randomUUID().toString() + UUID.randomUUID().toString()).replace("-", "");
+        return s.substring(0, 49);
     }
 
     private static String randomSecuencial() {
         return UUID.randomUUID().toString().replace("-", "").substring(0, 9);
+    }
+
+    private static String randomNumeroAutorizacion() {
+        String s = (UUID.randomUUID().toString() + UUID.randomUUID().toString()).replace("-", "");
+        return s.substring(0, 49);
     }
 
     private ComprobanteEntity buildComprobante(String claveAcceso, String secuencial, String estado) {
@@ -97,7 +103,7 @@ class ComprobanteR2dbcRepositoryIT extends IntegrationTestBase {
         @Test
         @DisplayName("retorna Mono vacío cuando no existe comprobante con esa clave")
         void findByClaveAcceso_comprobanteNoExiste_retornaMonoVacio() {
-            String claveInexistente = UUID.randomUUID().toString().replace("-", "").substring(0, 49);
+            String claveInexistente = randomClaveAcceso();
 
             StepVerifier.create(repository.findByClaveAcceso(claveInexistente))
                     .verifyComplete();
@@ -183,7 +189,7 @@ class ComprobanteR2dbcRepositoryIT extends IntegrationTestBase {
         void updateEstadoById_comprobanteExiste_actualizaCampos() {
             ComprobanteEntity comprobante = buildComprobante(randomClaveAcceso(), randomSecuencial(), "GENERADO");
             OffsetDateTime fechaAut = OffsetDateTime.now();
-            String numeroAut = UUID.randomUUID().toString().replace("-", "").substring(0, 49);
+            String numeroAut = randomNumeroAutorizacion();
 
             StepVerifier.create(repository.save(comprobante)
                             .flatMap(saved -> repository.updateEstadoById(
