@@ -63,10 +63,9 @@ class DegradacionTrialIntegrationTest extends BaseIntegrationTest {
         // ── 1) Fijamos Clock al día X y preparamos gym Free + planes ────────
         mutableClock.setInstant(diaActivacion.atStartOfDay(ZoneOffset.UTC).toInstant());
 
-        Long planFreeId = crearPlanConCodigo("Free Deg", "FREE_DEG_" + System.nanoTime(), 0.0, true, null, null);
-
-        // Registramos plan TRIAL en el catálogo con el código exacto que busca ActivarTrialService
-        // (findByCodigo("TRIAL")) — insertado vía SQL para controlar codigo y plan_degradacion_id.
+        // Insertamos Free y Trial vía SQL directo para poder fijar codigo='FREE'/'TRIAL'
+        // exactos y esGratuito=true (el endpoint /planes rechaza precioMensual=0).
+        Long planFreeId = ensurePlanCodigoFree();
         Long planTrialCanonicoId = ensurePlanCodigoTrial(planFreeId);
 
         Long idCompania = crearGymConPlanBasico("Gym Trial Deg", "1713000000001", planFreeId);
@@ -190,6 +189,21 @@ class DegradacionTrialIntegrationTest extends BaseIntegrationTest {
     }
 
     /**
+     * SubscriptionJobService detecta destino Free cuando {@code planDestino.getCodigo() == "FREE"}
+     * o {@code esGratuito == true}. Insertamos vía SQL para poder fijar codigo='FREE' exacto y
+     * precio_mensual=0 (el endpoint /planes rechaza precio 0).
+     */
+    private Long ensurePlanCodigoFree() {
+        return databaseClient.sql(
+                "INSERT INTO saas.planes (nombre, descripcion, precio_mensual, codigo, duracion_dias, " +
+                "es_gratuito, plan_degradacion_id, moneda, es_legacy, activo, eliminado, creacion_usuario) " +
+                "VALUES ('Free Canónico', 'Free perpetuo', 0, 'FREE', NULL, true, NULL, 'USD', false, true, false, 'test') " +
+                "RETURNING id")
+                .map((row, meta) -> row.get("id", Long.class))
+                .one().block();
+    }
+
+    /**
      * ActivarTrialService busca el plan por {@code findByCodigo("TRIAL")}. Necesitamos
      * que exista una fila con codigo='TRIAL', duracion_dias=60 y plan_degradacion_id apuntando
      * al Free recién creado. Como {@code codigo} tiene UNIQUE constraint y {@code BaseIntegrationTest}
@@ -268,9 +282,14 @@ class DegradacionTrialIntegrationTest extends BaseIntegrationTest {
             return new MutableClock();
         }
 
-        @Bean
+        /**
+         * Nombre del bean distinto ({@code testClock}) para no colisionar con el
+         * bean {@code clock} de {@link com.gymadmin.platform.infrastructure.config.ClockConfig}.
+         * Con {@code @Primary} este es el que Spring inyecta en cualquier consumidor.
+         */
+        @Bean("testClock")
         @Primary
-        public Clock clock(MutableClock mutableClock) {
+        public Clock testClock(MutableClock mutableClock) {
             return mutableClock;
         }
     }

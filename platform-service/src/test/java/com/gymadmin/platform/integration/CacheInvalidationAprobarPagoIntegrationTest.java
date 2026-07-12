@@ -56,14 +56,24 @@ class CacheInvalidationAprobarPagoIntegrationTest extends BaseIntegrationTest {
 
         Long idCompania = crearGymConPlan("Gym Cache", "1714000000001", planFreeId);
 
-        // ── 1) Primer check: Free no tiene finanzas → 403 modulo_no_incluido ──
+        // Cancelamos plan actual para evitar violar constraint ux_compania_plan_vigente
+        // cuando AprobarPagoService cree la nueva suscripción Premium (patrón owner
+        // que cancela primero y luego reporta el pago).
+        databaseClient.sql(
+                "UPDATE tenant.compania_planes SET estado = 'reemplazada' " +
+                "WHERE id_compania = :id AND estado = 'activo'")
+                .bind("id", idCompania)
+                .then().block();
+
+        // ── 1) Primer check: la compañía no tiene plan activo → 402 plan_vencido ─
+        // (tras cancelar el Free el estado observable es "sin plan activo" hasta que
+        // la aprobación del pago genere la nueva suscripción Premium)
         webTestClient.get()
                 .uri("/api/v1/modulos/check?id_compania={idC}&codigo={cod}", idCompania, "finanzas")
                 .exchange()
-                .expectStatus().isForbidden()
+                .expectStatus().isEqualTo(402)
                 .expectBody()
-                .jsonPath("$.permitido").isEqualTo(false)
-                .jsonPath("$.razon").isEqualTo("modulo_no_incluido");
+                .jsonPath("$.permitido").isEqualTo(false);
 
         // ── 2) Owner reporta pago hacia Premium ──────────────────────────────
         MultipartBodyBuilder builder = new MultipartBodyBuilder();

@@ -16,6 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Mono;
@@ -126,6 +127,20 @@ class ActivarTrialServiceTest {
 
         assertThat(compania.isTrialUsado()).isTrue();
         assertThat(compania.getFechaTrialUsado()).isNotNull();
-        verify(enviarNotificacionUseCase).encolar(any(EnviarNotificacionUseCase.EncolarNotificacionCommand.class));
+
+        // REQ-SAAS-001 Sub-fase 1.6 (deuda técnica ítem #5): dias_antes es NOT NULL en DB.
+        // El comando debe pasar 0 (sentinel: "no es un aviso previo a vencimiento"),
+        // nunca null — de lo contrario el INSERT falla silenciosamente y el email
+        // TRIAL_ACTIVADO nunca se encola.
+        ArgumentCaptor<EnviarNotificacionUseCase.EncolarNotificacionCommand> cmdCap =
+                ArgumentCaptor.forClass(EnviarNotificacionUseCase.EncolarNotificacionCommand.class);
+        verify(enviarNotificacionUseCase).encolar(cmdCap.capture());
+        EnviarNotificacionUseCase.EncolarNotificacionCommand cmd = cmdCap.getValue();
+        assertThat(cmd.tipo()).isEqualTo("TRIAL_ACTIVADO");
+        assertThat(cmd.diasAntes()).isEqualTo(0);
+        assertThat(cmd.idCompania()).isEqualTo(1L);
+        assertThat(cmd.idCompaniaPlan()).isEqualTo(500L);
+        assertThat(cmd.canal()).isEqualTo("email");
+        assertThat(cmd.templateKey()).isEqualTo("trial_activado");
     }
 }

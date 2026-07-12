@@ -117,13 +117,20 @@ public class ActivarTrialService implements ActivarTrialUseCase {
     /**
      * REQ-SAAS-001 Sub-fase 1.6: encola el email {@code TRIAL_ACTIVADO} al owner.
      * El fallo del encolado no debe romper la activación del trial (fire-and-forget con log).
+     * <p>
+     * {@code diasAntes = 0}: la columna {@code dias_antes} de
+     * {@code tenant.notificaciones_suscripcion} es {@code NOT NULL}. Para emails de
+     * bienvenida (no de vencimiento) usamos el sentinel {@code 0} — "no es un aviso previo
+     * a vencimiento". El ruteo del template en {@link EmailQueueService#templateKey}
+     * decide por {@code tipo}, no por {@code diasAntes}, así que este valor es sólo
+     * satisfacer el NOT NULL sin cambiar la semántica del render.
      */
     private Mono<Void> encolarEmailTrialActivado(Long idCompania, Long idCompaniaPlan) {
         return enviarNotificacionUseCase.encolar(new EnviarNotificacionUseCase.EncolarNotificacionCommand(
                         idCompania,
                         idCompaniaPlan,
                         "TRIAL_ACTIVADO",
-                        null,
+                        0,
                         "email",
                         "trial_activado",
                         null,

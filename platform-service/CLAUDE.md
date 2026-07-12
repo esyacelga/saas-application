@@ -31,6 +31,14 @@ mvn test -Dtest=CompaniaIntegrationTest        # Run a single integration test c
 
 Java 25 (the JVM that runs the tests must be Java 25 — set `JAVA_HOME` to a JDK 25 install, e.g. Zulu 25). All tests hit a real PostgreSQL database, not mocks. Ensure your `.env` points to a reachable DB before running.
 
+> **Windows PowerShell — importante**: el `mvn` del sistema en Windows suele apuntar a JDK 21 por default. Antes de correr cualquier comando Maven, exporta `JAVA_HOME` a Zulu 25:
+> ```powershell
+> $env:JAVA_HOME = "C:\Program Files\Zulu\zulu-25"
+> $env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
+> mvn -v   # debe mostrar "Java version: 25"
+> ```
+> Sin este ajuste el build falla con `error: release version 25 not supported`.
+
 **Test flavors** (all extend `BaseIntegrationTest` + `DotEnvInitializer`, which loads `.env` and cleans the DB in FK-safe order in `@BeforeEach`):
 - `unit/*Test.java` — Mockito unit tests (no Spring context).
 - `integration/*IntegrationTest.java` — endpoint-level via `WebTestClient`, run by default with `mvn test`.

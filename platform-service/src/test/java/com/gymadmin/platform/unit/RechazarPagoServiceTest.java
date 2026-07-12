@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Mono;
@@ -21,8 +22,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -71,7 +74,7 @@ class RechazarPagoServiceTest {
     }
 
     @Test
-    @DisplayName("rechazo exitoso → registra evento PAGO_RECHAZADO")
+    @DisplayName("rechazo exitoso → registra evento PAGO_RECHAZADO y encola email con diasAntes=0")
     void rechazoExitosoOk() {
         PagoPendienteValidacion pago = new PagoPendienteValidacion();
         pago.setId(1L);
@@ -88,5 +91,18 @@ class RechazarPagoServiceTest {
 
         StepVerifier.create(service.rechazar(1L, 42L, "documento ilegible y borroso"))
                 .verifyComplete();
+
+        // REQ-SAAS-001 Sub-fase 1.6 (deuda técnica ítem #5): dias_antes es NOT NULL en DB.
+        // El comando debe pasar 0 (sentinel), nunca null — de lo contrario el INSERT falla
+        // silenciosamente y el email PAGO_RECHAZADO nunca se encola.
+        ArgumentCaptor<EnviarNotificacionUseCase.EncolarNotificacionCommand> cmdCap =
+                ArgumentCaptor.forClass(EnviarNotificacionUseCase.EncolarNotificacionCommand.class);
+        verify(enviarNotificacionUseCase).encolar(cmdCap.capture());
+        EnviarNotificacionUseCase.EncolarNotificacionCommand cmd = cmdCap.getValue();
+        assertThat(cmd.tipo()).isEqualTo("PAGO_RECHAZADO");
+        assertThat(cmd.diasAntes()).isEqualTo(0);
+        assertThat(cmd.idCompania()).isEqualTo(5L);
+        assertThat(cmd.canal()).isEqualTo("email");
+        assertThat(cmd.templateKey()).isEqualTo("pago_rechazado");
     }
 }

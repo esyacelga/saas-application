@@ -28,8 +28,34 @@ public class ActividadPlataformaPersistenceAdapter implements ActividadPlataform
 
     @Override
     public Mono<Void> save(ActividadPlataforma actividad) {
-        ActividadPlataformaEntity entity = toEntity(actividad);
-        return r2dbcRepository.save(entity).then();
+        // REQ-SAAS-001 Sub-fase 1.6 item #5: la columna `detalle` es JSONB y
+        // R2DBC no aplica cast implícito text→jsonb en INSERT. Del mismo modo,
+        // `ip` es INET. Persistimos con SQL explícito y CAST para evitar
+        // BadSqlGrammarException cuando el evento trae detalle o ip no nulos.
+        DatabaseClient.GenericExecuteSpec spec = databaseClient.sql(
+                "INSERT INTO saas.actividad_plataforma (" +
+                "tipo_evento, modulo, entidad_id, entidad_nombre, detalle, usuario, " +
+                "ip, fecha, id_compania, id_usuario_actor, tipo_actor) " +
+                "VALUES (:tipoEvento, :modulo, :entidadId, :entidadNombre, " +
+                "CAST(:detalle AS jsonb), :usuario, CAST(:ip AS inet), :fecha, " +
+                ":idCompania, :idUsuarioActor, :tipoActor)")
+                .bind("tipoEvento", actividad.getTipoEvento() != null ? actividad.getTipoEvento() : "")
+                .bind("modulo", actividad.getModulo() != null ? actividad.getModulo() : "suscripciones")
+                .bind("usuario", actividad.getUsuario() != null ? actividad.getUsuario() : "sistema")
+                .bind("fecha", actividad.getFecha() != null ? actividad.getFecha() : OffsetDateTime.now())
+                .bind("tipoActor", actividad.getTipoActor() != null ? actividad.getTipoActor().name() : "SISTEMA");
+        spec = bindNullable(spec, "entidadId", actividad.getEntidadId(), Long.class);
+        spec = bindNullable(spec, "entidadNombre", actividad.getEntidadNombre(), String.class);
+        spec = bindNullable(spec, "detalle", actividad.getDetalle(), String.class);
+        spec = bindNullable(spec, "ip", actividad.getIp(), String.class);
+        spec = bindNullable(spec, "idCompania", actividad.getIdCompania(), Long.class);
+        spec = bindNullable(spec, "idUsuarioActor", actividad.getIdUsuarioActor(), Long.class);
+        return spec.fetch().rowsUpdated().then();
+    }
+
+    private <T> DatabaseClient.GenericExecuteSpec bindNullable(DatabaseClient.GenericExecuteSpec spec,
+                                                                String name, T value, Class<T> type) {
+        return value == null ? spec.bindNull(name, type) : spec.bind(name, value);
     }
 
     @Override

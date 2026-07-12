@@ -71,13 +71,25 @@ public class RechazarPagoService implements RechazarPagoUseCase {
      * REQ-SAAS-001 Sub-fase 1.6: encola el email {@code PAGO_RECHAZADO} al owner.
      * El renderer del email lee el motivo/fecha del propio pago (query separado).
      * El fallo del encolado no debe romper el rechazo (fire-and-forget con log).
+     * <p>
+     * {@code diasAntes = 0}: la columna {@code dias_antes} de
+     * {@code tenant.notificaciones_suscripcion} es {@code NOT NULL}. Para emails
+     * transaccionales (no de vencimiento) usamos el sentinel {@code 0}. El ruteo del
+     * template decide por {@code tipo}, no por {@code diasAntes}.
+     * <p>
+     * {@code idCompaniaPlan = null}: un pago rechazado no está ligado a un plan
+     * específico (el owner intentaba pagar/renovar; el pago fue rechazado y nunca
+     * se creó/renovó un {@code CompaniaPlan}). Requiere que
+     * {@code tenant.notificaciones_suscripcion.id_compania_plan} sea NULLABLE —
+     * ver changeset Liquibase {@code GYM-001-144}
+     * ({@code ddl-freemium/05_alter_table_tenant_notificaciones_suscripcion_nullable_id_compania_plan.sql}).
      */
     private Mono<Void> encolarEmailPagoRechazado(Long idCompania) {
         return enviarNotificacionUseCase.encolar(new EnviarNotificacionUseCase.EncolarNotificacionCommand(
                         idCompania,
                         null,
                         "PAGO_RECHAZADO",
-                        null,
+                        0,
                         "email",
                         "pago_rechazado",
                         null,

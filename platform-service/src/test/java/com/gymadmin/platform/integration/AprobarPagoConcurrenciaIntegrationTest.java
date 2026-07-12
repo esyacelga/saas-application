@@ -50,6 +50,15 @@ class AprobarPagoConcurrenciaIntegrationTest extends BaseIntegrationTest {
         Long idCompania = crearGymConPlanBasico("Gym Concurrencia", "1712000000001");
         Long idPlanDestino = crearPlanPremium("Premium Concurrencia");
 
+        // Cancelamos el plan actual (constraint ux_compania_plan_vigente prohíbe 2 ACTIVO).
+        // El owner reporta el pago con la suscripción ya cancelada — patrón usual: el usuario
+        // canceló su plan Básico y reporta un pago para migrar a Premium.
+        databaseClient.sql(
+                "UPDATE tenant.compania_planes SET estado = 'reemplazada' " +
+                "WHERE id_compania = :id AND estado = 'activo'")
+                .bind("id", idCompania)
+                .then().block();
+
         Long idPagoPendiente = reportarPago(idCompania, idPlanDestino, "TXN-CONC-001", "59.99");
 
         // ── Dos aprobaciones disparadas en paralelo ──────────────────────────

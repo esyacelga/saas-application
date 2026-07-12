@@ -984,3 +984,25 @@ databaseChangeLog:
             path: ddl-freemium/03_seed_saas_config_plataforma.sql
             relativeToChangelogFile: true
             splitStatements: false
+
+  - changeSet:
+      id: GYM-001-143
+      author: gesyacelga
+      context: dev, test, prod
+      comment: 'REQ-SAAS-001 Sub-fase 1.6 ítem #4/#5 — tenant.pagos_pendientes_validacion.comprobante_url pasa a NULLABLE (comprobante opcional en el reporte del owner)'
+      changes:
+        - sqlFile:
+            path: ddl-freemium/04_alter_table_tenant_pagos_pendientes_validacion_nullable_comprobante.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-001-144
+      author: gesyacelga
+      context: dev, test, prod
+      comment: 'REQ-SAAS-001 Sub-fase 1.6 ítem #5 (deuda técnica) — tenant.notificaciones_suscripcion.id_compania_plan pasa a NULLABLE (emails transaccionales PAGO_RECHAZADO no tienen CompaniaPlan asociado)'
+      changes:
+        - sqlFile:
+            path: ddl-freemium/05_alter_table_tenant_notificaciones_suscripcion_nullable_id_compania_plan.sql
+            relativeToChangelogFile: true
+            splitStatements: false

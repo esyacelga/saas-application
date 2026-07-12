@@ -59,15 +59,27 @@ public class CompaniaPlanPersistenceAdapter implements CompaniaPlanRepository {
         // REQ-SAAS-001 sección 5bis — validación de transiciones prohibidas.
         // Solo aplica cuando ya existe un registro previo (UPDATE); en INSERT (id null)
         // cualquier estado inicial es válido siempre que el CHECK de DB lo permita.
-        Mono<Void> validation = (companiaPlan.getId() == null)
-                ? Mono.empty()
-                : repository.findById(companiaPlan.getId())
-                    .flatMap(previous -> validateTransition(previous, companiaPlan));
+        if (companiaPlan.getId() == null) {
+            return Mono.defer(() -> {
+                CompaniaPlanEntity entity = toEntity(companiaPlan);
+                return repository.save(entity).map(this::toDomain);
+            });
+        }
 
-        return validation.then(Mono.defer(() -> {
-            CompaniaPlanEntity entity = toEntity(companiaPlan);
-            return repository.save(entity).map(this::toDomain);
-        }));
+        return repository.findById(companiaPlan.getId())
+                .flatMap(previous -> validateTransition(previous, companiaPlan)
+                        .then(Mono.defer(() -> {
+                            CompaniaPlanEntity entity = toEntity(companiaPlan);
+                            // REQ-SAAS-001 Sub-fase 1.6 item #5: el modelo de dominio no
+                            // transporta creacion_fecha/creacion_usuario. Al hacer UPDATE
+                            // preservamos los valores originales de la fila previa para no
+                            // violar la constraint NOT NULL de creacion_fecha ni perder la
+                            // auditoría original.
+                            entity.setCreacionFecha(previous.getCreacionFecha());
+                            entity.setCreacionUsuario(previous.getCreacionUsuario());
+                            entity.setEliminado(previous.getEliminado() != null ? previous.getEliminado() : Boolean.FALSE);
+                            return repository.save(entity).map(this::toDomain);
+                        })));
     }
 
     private Mono<Void> validateTransition(CompaniaPlanEntity previous, CompaniaPlan next) {
