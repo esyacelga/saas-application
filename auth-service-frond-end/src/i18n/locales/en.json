@@ -189,7 +189,8 @@
     "clientes": "Members",
     "tiposMembresia": "Membership types",
     "configuracion": "Settings",
-    "pagosPendientes": "Pending payments"
+    "pagosPendientes": "Pending payments",
+    "miSuscripcion": "My subscription"
   },
   "dashboard": {
     "welcome": "Welcome",
@@ -1000,6 +1001,8 @@
     "fechaFin": "Expires on",
     "diasRestantes": "Days remaining",
     "trialUrgente": "Your trial period expires in {{dias}} days",
+    "trialVencido": "Your trial period has expired",
+    "trialVencidoDetalle": "Report a payment to reactivate your subscription. Your data remains unchanged.",
     "planActivo": "Active plan",
     "bannerRevision": "Your payment is under review. We will notify you once confirmed.",
     "bannerRechazado": "Your last payment was rejected. You can report a new one.",
@@ -1021,7 +1024,8 @@
   },
   "step3": {
     "trialBadge": "🎁 Try free for 60 days, no card required",
-    "prefiereFree": "I prefer to start with the Free plan →"
+    "prefiereFree": "I prefer to start with the Free plan →",
+    "errorCargaPlanes": "Failed to load plans. Please try again."
   },
   "upgradeModal": {
     "title": {
@@ -1078,6 +1082,12 @@
     "placeholderReferencia": "E.g.: TX-20240112-001",
     "labelBancoOrigen": "Origin bank",
     "placeholderBancoOrigen": "E.g.: Banco Pichincha",
+    "labelComprobante": "Receipt",
+    "comprobanteSeleccionar": "Attach receipt (PDF or image)",
+    "comprobanteQuitar": "Remove receipt",
+    "comprobanteHint": "Accepted formats: PDF, PNG, JPG, WEBP. Max 5 MB.",
+    "comprobanteTipoInvalido": "File type not allowed. Use PDF, PNG, JPG or WEBP.",
+    "comprobanteMuyGrande": "File exceeds the 5 MB maximum size.",
     "rateLimitNota": "You can report up to 3 payments per hour.",
     "cancelar": "Cancel",
     "enviar": "Submit payment",

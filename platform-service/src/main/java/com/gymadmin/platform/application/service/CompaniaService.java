@@ -18,6 +18,14 @@ import java.util.List;
 @Service
 public class CompaniaService implements CompaniaUseCase {
 
+    private static final int DIAS_PLAN_PERMANENTE = 100 * 365;
+
+    private static LocalDate calcularFechaFin(Plan plan) {
+        Integer dias = plan.getDuracionDias();
+        int efectivos = (dias == null || dias <= 0) ? DIAS_PLAN_PERMANENTE : dias;
+        return LocalDate.now().plusDays(efectivos);
+    }
+
     private final CompaniaRepository companiaRepository;
     private final CompaniaPlanRepository companiaPlanRepository;
     private final SucursalRepository sucursalRepository;
@@ -89,7 +97,7 @@ public class CompaniaService implements CompaniaUseCase {
                                         cp.setIdCompania(savedCompania.getId());
                                         cp.setIdPlan(plan.getId());
                                         cp.setFechaInicio(LocalDate.now());
-                                        cp.setFechaFin(LocalDate.now().plusMonths(1));
+                                        cp.setFechaFin(calcularFechaFin(plan));
                                         cp.setDiasGracia(7);
                                         cp.setEstado(CompaniaPlan.Estado.ACTIVO);
                                         cp.setTipoCambio(CompaniaPlan.TipoCambio.NUEVO);
@@ -181,7 +189,7 @@ public class CompaniaService implements CompaniaUseCase {
         cp.setIdCompania(compania.getId());
         cp.setIdPlan(plan.getId());
         cp.setFechaInicio(LocalDate.now());
-        cp.setFechaFin(LocalDate.now().plusMonths(1));
+        cp.setFechaFin(calcularFechaFin(plan));
         cp.setDiasGracia(7);
         cp.setEstado(CompaniaPlan.Estado.ACTIVO);
         cp.setTipoCambio(CompaniaPlan.TipoCambio.NUEVO);

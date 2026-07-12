@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2, Info } from 'lucide-react'
+import { Loader2, Info, Paperclip, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import {
@@ -38,6 +38,9 @@ export function ReportarPagoModal({
 }: Props) {
   const { t } = useTranslation()
   const [errorBanner, setErrorBanner] = useState<string | null>(null)
+  const [comprobante, setComprobante] = useState<File | null>(null)
+  const [comprobanteError, setComprobanteError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const {
     register,
@@ -54,9 +57,43 @@ export function ReportarPagoModal({
 
   const today = new Date().toISOString().slice(0, 10)
 
+  const MAX_COMPROBANTE_BYTES = 5 * 1024 * 1024
+  const TIPOS_COMPROBANTE_PERMITIDOS = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'application/pdf']
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setComprobanteError(null)
+    const file = e.target.files?.[0] ?? null
+    if (!file) {
+      setComprobante(null)
+      return
+    }
+    if (!TIPOS_COMPROBANTE_PERMITIDOS.includes(file.type)) {
+      setComprobanteError(t('reportarPago.comprobanteTipoInvalido'))
+      setComprobante(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+    if (file.size > MAX_COMPROBANTE_BYTES) {
+      setComprobanteError(t('reportarPago.comprobanteMuyGrande'))
+      setComprobante(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+    setComprobante(file)
+  }
+
+  const quitarComprobante = () => {
+    setComprobante(null)
+    setComprobanteError(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
   const handleClose = () => {
     reset()
     setErrorBanner(null)
+    setComprobante(null)
+    setComprobanteError(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
     onClose()
   }
 
@@ -68,7 +105,7 @@ export function ReportarPagoModal({
     fd.append('fecha_transferencia', values.fechaTransferencia)
     fd.append('referencia', values.referencia)
     if (values.bancoOrigen) fd.append('banco_origen', values.bancoOrigen)
-    // TODO(REQ-SAAS-001): subida de comprobante — agregar <input type="file"> cuando esté S3 storage
+    if (comprobante) fd.append('comprobante', comprobante, comprobante.name)
 
     try {
       await platformRepository.reportarPagoOwner(idCompania, fd)
@@ -202,6 +239,68 @@ export function ReportarPagoModal({
               placeholder={t('reportarPago.placeholderBancoOrigen')}
               className="mt-1"
             />
+          </div>
+
+          {/* Comprobante (opcional) */}
+          <div>
+            <Label>
+              {t('reportarPago.labelComprobante')}
+              <span className="ml-1 text-xs" style={{ color: 'var(--page-muted)' }}>
+                {t('common.optional')}
+              </span>
+            </Label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            {!comprobante ? (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="mt-1 w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors"
+                style={{
+                  background: 'var(--input-bg, var(--page-surface))',
+                  border: '1px dashed var(--page-border)',
+                  color: 'var(--page-muted)',
+                }}
+              >
+                <Paperclip size={14} />
+                <span>{t('reportarPago.comprobanteSeleccionar')}</span>
+              </button>
+            ) : (
+              <div
+                className="mt-1 flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm"
+                style={{
+                  background: 'var(--input-bg, var(--page-surface))',
+                  border: '1px solid var(--page-border)',
+                  color: 'var(--page-text)',
+                }}
+              >
+                <span className="flex items-center gap-2 min-w-0">
+                  <Paperclip size={14} className="flex-shrink-0" style={{ color: 'var(--color-warning, #f97316)' }} />
+                  <span className="truncate">{comprobante.name}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={quitarComprobante}
+                  aria-label={t('reportarPago.comprobanteQuitar')}
+                  className="flex-shrink-0 p-1 rounded hover:bg-black/5"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+            <p className="text-xs mt-1" style={{ color: 'var(--page-muted)' }}>
+              {t('reportarPago.comprobanteHint')}
+            </p>
+            {comprobanteError && (
+              <p className="text-xs mt-1" style={{ color: '#ef4444' }}>
+                {comprobanteError}
+              </p>
+            )}
           </div>
 
           {/* Nota de rate limit */}

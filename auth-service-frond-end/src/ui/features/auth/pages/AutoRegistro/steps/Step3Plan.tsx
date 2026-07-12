@@ -10,9 +10,10 @@ interface Props {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   form: UseFormReturn<WizardStep3Form, any, any>
   onLoadingChange: (loading: boolean) => void
+  onPlanChange?: (codigo: string | null) => void
 }
 
-export function Step3Plan({ form, onLoadingChange }: Props) {
+export function Step3Plan({ form, onLoadingChange, onPlanChange }: Props) {
   const { setValue, watch, formState: { errors } } = form
   const idPlanSeleccionado = watch('idPlan')
 
@@ -20,12 +21,19 @@ export function Step3Plan({ form, onLoadingChange }: Props) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
+  useEffect(() => {
+    if (!onPlanChange) return
+    const seleccionado = planes.find(p => p.id === idPlanSeleccionado)
+    onPlanChange(seleccionado?.codigo ?? null)
+  }, [idPlanSeleccionado, planes, onPlanChange])
+
   const loadPlanes = useCallback(async () => {
     setLoading(true)
     setError(false)
     try {
       const res = await platformPublicApi.get<Plan[]>('/planes/publicos')
-      const activos = res.data.filter(p => p.activo)
+      // El endpoint público ya filtra activos en el backend; `activo` no viaja en el DTO.
+      const activos = res.data
       setPlanes(activos)
       if (activos.length === 1 && activos[0].precioMensual === 0) {
         setValue('idPlan', activos[0].id, { shouldValidate: true })

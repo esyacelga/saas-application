@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { CreditCard, Dumbbell, LayoutDashboard, LogOut, Menu, Palette, Printer, ScrollText, Settings, Shield, Smartphone, Tag, Users, X } from 'lucide-react'
+import { CreditCard, Dumbbell, LayoutDashboard, LogOut, Menu, Palette, Printer, ScrollText, Settings, Shield, Smartphone, Sparkles, Tag, Users, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { LanguageSwitcher } from '@/ui/components/LanguageSwitcher'
 import { PrintQrModal } from '@/ui/components/PrintQrModal'
 import { PlanUsageWidget } from '@/ui/components/PlanUsageWidget'
+import { UpgradeModal } from '@/ui/components/UpgradeModal'
 import { useAuthStore, useCurrentUser } from '@/infrastructure/store/auth/auth.store'
 import { authRepository } from '@/infrastructure/http/auth/AuthHttpRepository'
 import type { JwtPayloadStaff } from '@/domain/auth/entities/User.entity'
@@ -28,6 +29,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { to: '/admin/roles',            labelKey: 'nav.rolesPermissions', icon: <Shield size={20} />,       permiso: 'roles:leer' },
   { to: '/admin/clientes/app',     labelKey: 'nav.appAccounts',      icon: <Smartphone size={20} /> },
   { to: '/admin/bitacora',         labelKey: 'nav.activityLog',      icon: <ScrollText size={20} />,   permiso: 'usuarios:leer' },
+  { to: '/admin/mi-suscripcion',   labelKey: 'nav.miSuscripcion',    icon: <Sparkles size={20} /> },
   { to: '/admin/configuracion',   labelKey: 'nav.configuracion',    icon: <Settings size={20} /> },
 ]
 
@@ -285,6 +287,7 @@ export function AdminLayout() {
       </div>
 
       <PrintQrModal open={printQrOpen} onClose={() => setPrintQrOpen(false)} />
+      <UpgradeModal />
     </div>
   )
 }

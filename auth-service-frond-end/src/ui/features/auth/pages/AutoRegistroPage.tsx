@@ -37,7 +37,7 @@ type ServerError = { tipo: 'correo' | 'ci' | 'ruc' | 'idPlan' | 'rate_limit' | '
 
 interface Resultado {
   nombreGimnasio: string
-  qrToken: string
+  planCodigo: string | null
 }
 
 export function AutoRegistroPage() {
@@ -49,6 +49,7 @@ export function AutoRegistroPage() {
   const [submitting, setSubmitting] = useState(false)
   const [serverError, setServerError] = useState<ServerError | null>(null)
   const [step3Blocked, setStep3Blocked] = useState(true)
+  const [planCodigoSeleccionado, setPlanCodigoSeleccionado] = useState<string | null>(null)
 
   // State acumulado para cada paso
   const [step1Data, setStep1Data] = useState<WizardStep1Form | null>(null)
@@ -85,6 +86,10 @@ export function AutoRegistroPage() {
 
   const handleStep3LoadingChange = useCallback((blocked: boolean) => {
     setStep3Blocked(blocked)
+  }, [])
+
+  const handleStep3PlanChange = useCallback((codigo: string | null) => {
+    setPlanCodigoSeleccionado(codigo)
   }, [])
 
   const goBack = () => {
@@ -131,7 +136,9 @@ export function AutoRegistroPage() {
         },
       })
 
-      setResultado({ nombreGimnasio: step1Data.nombre, qrToken: res.qrToken })
+      // qrToken de la respuesta no se muestra aquí; el owner lo genera después desde /admin/imprimir-qr
+      void res
+      setResultado({ nombreGimnasio: step1Data.nombre, planCodigo: planCodigoSeleccionado })
       setRegistroCompletado(true)
     } catch (err) {
       if (isAxiosError(err)) {
@@ -168,7 +175,7 @@ export function AutoRegistroPage() {
   if (isAuthenticated) return <Navigate to="/admin/dashboard" replace />
 
   if (registroCompletado && resultado) {
-    return <ResumenExito nombreGimnasio={resultado.nombreGimnasio} qrToken={resultado.qrToken} />
+    return <ResumenExito nombreGimnasio={resultado.nombreGimnasio} planCodigo={resultado.planCodigo} />
   }
 
   const isStep4 = currentStep === 4
@@ -229,7 +236,11 @@ export function AutoRegistroPage() {
         {currentStep === 1 && <Step1Empresa form={form1} />}
         {currentStep === 2 && <Step2Sucursal form={form2} />}
         {currentStep === 3 && (
-          <Step3Plan form={form3} onLoadingChange={handleStep3LoadingChange} />
+          <Step3Plan
+            form={form3}
+            onLoadingChange={handleStep3LoadingChange}
+            onPlanChange={handleStep3PlanChange}
+          />
         )}
         {currentStep === 4 && (
           <Step4DatosPropios form={form4} serverError={step4Error} />

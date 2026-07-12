@@ -1,21 +1,25 @@
-import { useState } from 'react'
-import { CheckCircle2, Copy, Check } from 'lucide-react'
+import { CheckCircle2, LogIn, Settings, CreditCard, Clock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 interface Props {
   nombreGimnasio: string
-  qrToken: string
+  planCodigo: string | null
 }
 
-export function ResumenExito({ nombreGimnasio, qrToken }: Props) {
-  const navigate = useNavigate()
-  const [copiado, setCopiado] = useState(false)
+interface Paso {
+  icon: React.ReactNode
+  texto: string
+}
 
-  const handleCopiar = async () => {
-    await navigator.clipboard.writeText(qrToken)
-    setCopiado(true)
-    setTimeout(() => setCopiado(false), 2000)
-  }
+const PASOS: Paso[] = [
+  { icon: <LogIn size={13} style={{ color: '#f97316' }} />, texto: 'Inicia sesión y revisa tu dashboard' },
+  { icon: <Settings size={13} style={{ color: '#f97316' }} />, texto: 'Configura nombre comercial, logo y horarios' },
+  { icon: <CreditCard size={13} style={{ color: '#f97316' }} />, texto: 'Crea tu primer tipo de membresía' },
+]
+
+export function ResumenExito({ nombreGimnasio, planCodigo }: Props) {
+  const navigate = useNavigate()
+  const esTrial = planCodigo === 'TRIAL'
 
   return (
     <div className="flex flex-col items-center gap-5 py-2 text-center">
@@ -35,34 +39,25 @@ export function ResumenExito({ nombreGimnasio, qrToken }: Props) {
         className="w-full rounded-xl p-4 text-left"
         style={{ border: '1px solid var(--page-border)', background: 'var(--page-surface)' }}
       >
-        <p className="text-xs font-semibold mb-2" style={{ color: 'var(--page-text)' }}>
-          Tu token QR de asistencia
+        <p className="text-xs font-semibold mb-3" style={{ color: 'var(--page-text)' }}>
+          Empieza a configurar tu gimnasio
         </p>
-        <div className="flex items-center gap-2">
-          <code
-            className="flex-1 font-mono text-xs break-all rounded-md px-3 py-2"
-            style={{ background: 'var(--page-bg)', color: 'var(--page-text)', border: '1px solid var(--page-border)' }}
-          >
-            {qrToken}
-          </code>
-          <button
-            type="button"
-            onClick={handleCopiar}
-            className="flex-shrink-0 flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg transition-all"
-            style={{
-              background: copiado ? '#f0fdf4' : 'var(--page-bg)',
-              color: copiado ? '#16a34a' : 'var(--page-muted)',
-              border: `1px solid ${copiado ? '#bbf7d0' : 'var(--page-border)'}`,
-            }}
-          >
-            {copiado ? <Check size={12} /> : <Copy size={12} />}
-            {copiado ? '¡Copiado!' : 'Copiar'}
-          </button>
-        </div>
-        <p className="text-xs mt-2" style={{ color: 'var(--page-muted)' }}>
-          Úsalo para que tus clientes registren su asistencia con el QR.
-        </p>
+        <ul className="space-y-1.5">
+          {PASOS.map((paso, i) => (
+            <li key={i} className="flex items-start gap-2.5 py-1.5">
+              <span className="flex-shrink-0 mt-0.5">{paso.icon}</span>
+              <span className="text-xs" style={{ color: 'var(--page-muted)' }}>{paso.texto}</span>
+            </li>
+          ))}
+        </ul>
       </div>
+
+      {esTrial && (
+        <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--page-muted)' }}>
+          <Clock size={12} />
+          <span>Tienes 60 días de prueba gratuita para explorar todas las funciones.</span>
+        </div>
+      )}
 
       <button
         type="button"

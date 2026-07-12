@@ -41,7 +41,7 @@ public class PlanController {
         this.actividadUseCase = actividadUseCase;
     }
 
-    @Operation(summary = "Listar todos los planes (plataforma)", security = @SecurityRequirement(name = "bearerAuth"))
+    @Operation(summary = "Listar todos los planes (staff o plataforma)", security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Lista de planes"),
         @ApiResponse(responseCode = "403", description = "Acceso denegado")
@@ -49,8 +49,13 @@ public class PlanController {
     @GetMapping
     public Flux<PlanResponse> listarPlanes() {
         return getJwtPrincipal()
-                .flatMapMany(principal -> accessControl.requirePlataforma(principal)
-                        .thenMany(planUseCase.listarPlanes().map(this::toResponse)));
+                .flatMapMany(principal -> {
+                    if (principal != null && principal.isPlataforma()) {
+                        return planUseCase.listarPlanes().map(this::toResponse);
+                    }
+                    return accessControl.requireStaff(principal)
+                            .thenMany(planUseCase.listarPlanes().map(this::toResponse));
+                });
     }
 
     @Operation(summary = "Crear un nuevo plan (super_admin)", security = @SecurityRequirement(name = "bearerAuth"))

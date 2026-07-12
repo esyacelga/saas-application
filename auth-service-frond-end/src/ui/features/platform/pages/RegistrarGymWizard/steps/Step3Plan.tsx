@@ -1,6 +1,7 @@
 import type { UseFormReturn } from 'react-hook-form'
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { CreditCard, Check, Loader2 } from 'lucide-react'
 import { platformRepository } from '@/infrastructure/http/platform/PlatformHttpRepository'
 import type { Plan } from '@/domain/platform/entities/Plan.entity'
@@ -34,7 +35,9 @@ export function Step3Plan({ form, yaUsoTrial = false }: Props) {
           }
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        toast.error(t('step3.errorCargaPlanes'))
+      })
       .finally(() => setLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

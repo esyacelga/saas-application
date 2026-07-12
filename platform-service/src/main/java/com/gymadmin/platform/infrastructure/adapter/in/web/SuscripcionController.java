@@ -56,7 +56,7 @@ public class SuscripcionController {
     @GetMapping("/api/v1/companias/{id}/suscripcion")
     public Mono<ResponseEntity<SuscripcionResponse>> getSuscripcionActiva(@PathVariable Long id) {
         return getJwtPrincipal()
-                .flatMap(principal -> accessControl.requirePlataforma(principal)
+                .flatMap(principal -> accessControl.requireOwnerOrAdminOfCompania(principal, id)
                         .then(suscripcionUseCase.getSuscripcionActiva(id))
                         .map(cp -> ResponseEntity.ok(toResponse(cp))));
     }
@@ -69,7 +69,7 @@ public class SuscripcionController {
     @GetMapping("/api/v1/companias/{id}/suscripcion/historial")
     public Flux<SuscripcionResponse> getHistorial(@PathVariable Long id) {
         return getJwtPrincipal()
-                .flatMapMany(principal -> accessControl.requirePlataforma(principal)
+                .flatMapMany(principal -> accessControl.requireOwnerOrAdminOfCompania(principal, id)
                         .thenMany(suscripcionUseCase.getHistorial(id).map(this::toResponse)));
     }
 

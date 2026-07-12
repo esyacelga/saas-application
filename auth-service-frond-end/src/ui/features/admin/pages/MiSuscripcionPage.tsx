@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Navigate } from 'react-router-dom'
-import { AlertTriangle, XCircle, RefreshCw, Check } from 'lucide-react'
+import { AlertTriangle, XCircle, RefreshCw, Check, AlertOctagon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { PageHeader } from '@/ui/components/PageHeader'
 import { platformRepository } from '@/infrastructure/http/platform/PlatformHttpRepository'
@@ -50,6 +49,24 @@ function BannerPagoEnRevision({ mensaje }: { mensaje: string }) {
       <p className="text-sm" style={{ color: 'var(--page-text)' }}>
         {mensaje}
       </p>
+    </div>
+  )
+}
+
+function BannerTrialVencido({ mensaje, detalle }: { mensaje: string; detalle: string }) {
+  return (
+    <div
+      className="flex items-start gap-3 rounded-xl px-4 py-3"
+      style={{
+        background: 'rgba(239,68,68,0.1)',
+        border: '1px solid rgba(239,68,68,0.45)',
+      }}
+    >
+      <AlertOctagon size={16} className="mt-0.5 flex-shrink-0" style={{ color: '#ef4444' }} />
+      <div>
+        <p className="text-sm font-semibold" style={{ color: '#ef4444' }}>{mensaje}</p>
+        <p className="text-xs mt-1" style={{ color: 'var(--page-text)' }}>{detalle}</p>
+      </div>
     </div>
   )
 }
@@ -303,10 +320,7 @@ export function MiSuscripcionPage() {
   const rawUser = useCurrentUser()
   const user = rawUser?.tipo === 'staff' ? (rawUser as JwtPayloadStaff) : null
 
-  // Guard: solo id_rol === 1 (owner/admin principal)
-  if (!user || user.id_rol !== 1) {
-    return <Navigate to="/admin/sin-acceso" replace />
-  }
+  if (!user) return null
 
   const idCompania = user.id_compania
 
@@ -349,7 +363,7 @@ export function MiSuscripcionPage() {
       uso: rUso.status === 'fulfilled' ? rUso.value : null,
       suscripcion: rSus.status === 'fulfilled' ? rSus.value : null,
       historial: rHist.status === 'fulfilled' ? rHist.value : [],
-      planes: rPlanes.status === 'fulfilled' ? rPlanes.value.filter(p => p.activo) : [],
+      planes: rPlanes.status === 'fulfilled' ? rPlanes.value : [],
       pagosPendientes: rPagos.status === 'fulfilled' ? rPagos.value : [],
     })
     setLoading(false)
@@ -389,8 +403,10 @@ export function MiSuscripcionPage() {
 
   // Suscripcion activa info
   const esTrial = planActualObj?.codigo === 'TRIAL' || uso?.planCodigo === 'TRIAL'
+  const esFree = planActualObj?.codigo === 'FREE' || uso?.planCodigo === 'FREE'
   const diasRestantes = uso?.diasRestantes ?? suscripcion?.diasRestantes ?? 0
-  const trialUrgente = esTrial && diasRestantes <= 7 && diasRestantes >= 0
+  const trialVencido = esTrial && diasRestantes <= 0
+  const trialUrgente = esTrial && diasRestantes > 0 && diasRestantes <= 7
 
   // Filtra Trial del grid de planes si ya es el plan actual (usuario ya lo usa)
   const planesMostrar = planes.filter(p => {
@@ -412,6 +428,12 @@ export function MiSuscripcionPage() {
       <div className="flex-1 overflow-auto p-4 space-y-4">
 
         {/* ── Banners condicionales ── */}
+        {trialVencido && (
+          <BannerTrialVencido
+            mensaje={t('miSuscripcion.trialVencido')}
+            detalle={t('miSuscripcion.trialVencidoDetalle')}
+          />
+        )}
         {hayPagoPendiente && (
           <BannerPagoEnRevision mensaje={t('miSuscripcion.bannerRevision')} />
         )}
@@ -458,7 +480,7 @@ export function MiSuscripcionPage() {
 
               {/* Fecha fin + días restantes */}
               <div className="flex flex-wrap gap-4 text-sm">
-                {suscripcion.fechaFin && (
+                {suscripcion.fechaFin && !esFree && (
                   <div>
                     <span style={{ color: 'var(--page-muted)' }}>{t('miSuscripcion.fechaFin')}: </span>
                     <span style={{ color: 'var(--page-text)' }}>
@@ -466,19 +488,28 @@ export function MiSuscripcionPage() {
                     </span>
                   </div>
                 )}
+                {esFree && (
+                  <div>
+                    <span style={{ color: 'var(--page-muted)' }}>Vigencia: </span>
+                    <span style={{ color: 'var(--page-text)' }}>Permanente</span>
+                  </div>
+                )}
                 {esTrial && (
                   <div>
                     <span style={{ color: 'var(--page-muted)' }}>{t('miSuscripcion.diasRestantes')}: </span>
                     <span
-                      style={{ color: trialUrgente ? '#ef4444' : 'var(--page-text)', fontWeight: trialUrgente ? 700 : 400 }}
+                      style={{
+                        color: (trialUrgente || trialVencido) ? '#ef4444' : 'var(--page-text)',
+                        fontWeight: (trialUrgente || trialVencido) ? 700 : 400,
+                      }}
                     >
-                      {diasRestantes}
+                      {trialVencido ? 0 : diasRestantes}
                     </span>
                   </div>
                 )}
               </div>
 
-              {/* Alerta Trial urgente */}
+              {/* Alerta Trial urgente (solo si aún no venció) */}
               {trialUrgente && (
                 <p className="text-xs font-semibold" style={{ color: '#ef4444' }}>
                   {t('miSuscripcion.trialUrgente', { dias: diasRestantes })}

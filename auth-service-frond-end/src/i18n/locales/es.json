@@ -189,7 +189,8 @@
     "clientes": "Clientes",
     "tiposMembresia": "Tipos de membresía",
     "configuracion": "Configuración",
-    "pagosPendientes": "Pagos pendientes"
+    "pagosPendientes": "Pagos pendientes",
+    "miSuscripcion": "Mi suscripción"
   },
   "dashboard": {
     "welcome": "Bienvenido",
@@ -1000,6 +1001,8 @@
     "fechaFin": "Vence el",
     "diasRestantes": "Días restantes",
     "trialUrgente": "Tu período de prueba vence en {{dias}} días",
+    "trialVencido": "Tu período de prueba ha vencido",
+    "trialVencidoDetalle": "Reporta un pago para reactivar tu suscripción. Los datos se conservan sin cambios.",
     "planActivo": "Plan activo",
     "bannerRevision": "Tu pago está en revisión. Te avisaremos cuando se confirme.",
     "bannerRechazado": "Tu último pago fue rechazado. Puedes reportar uno nuevo.",
@@ -1021,7 +1024,8 @@
   },
   "step3": {
     "trialBadge": "🎁 Prueba 60 días gratis, sin tarjeta",
-    "prefiereFree": "Prefiero empezar con el plan Free →"
+    "prefiereFree": "Prefiero empezar con el plan Free →",
+    "errorCargaPlanes": "No se pudieron cargar los planes. Intenta nuevamente."
   },
   "upgradeModal": {
     "title": {
@@ -1078,6 +1082,12 @@
     "placeholderReferencia": "Ej: TX-20240112-001",
     "labelBancoOrigen": "Banco origen",
     "placeholderBancoOrigen": "Ej: Banco Pichincha",
+    "labelComprobante": "Comprobante",
+    "comprobanteSeleccionar": "Adjuntar comprobante (PDF o imagen)",
+    "comprobanteQuitar": "Quitar comprobante",
+    "comprobanteHint": "Formatos aceptados: PDF, PNG, JPG, WEBP. Máximo 5 MB.",
+    "comprobanteTipoInvalido": "Tipo de archivo no permitido. Usa PDF, PNG, JPG o WEBP.",
+    "comprobanteMuyGrande": "El archivo supera el tamaño máximo de 5 MB.",
     "rateLimitNota": "Puedes reportar hasta 3 pagos por hora.",
     "cancelar": "Cancelar",
     "enviar": "Enviar pago",
