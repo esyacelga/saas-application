@@ -79,4 +79,10 @@ export interface PlatformRepository {
 
   // REQ-SAAS-001 Sub-fase 1.6: Pagos pendientes de validación (vista owner)
   getPagosPendientesOwner(idCompania: number, limit?: number): Promise<PagoPendienteResponse[]>
+
+  // REQ-SAAS-001 ítem #4: Flujos nuevos
+  reportarPagoOwner(idCompania: number, formData: FormData): Promise<PagoPendienteResponse>
+  getPagosPendientesRoot(params: { estado?: string; pagina: number; limit: number }): Promise<{ total: number; pagina: number; limit: number; datos: PagoPendienteResponse[] }>
+  aprobarPagoPendiente(id: number): Promise<{ id_pago: number; id_compania_plan: number; estado: string }>
+  rechazarPagoPendiente(id: number, motivo: string): Promise<void>
 }

@@ -51,6 +51,7 @@ function mapPagoPendiente(r: Record<string, unknown>): PagoPendienteResponse {
   return {
     id: r.id as number,
     idCompania: (r.id_compania ?? r.idCompania) as number,
+    nombreCompania: (r.nombre_compania ?? r.nombreCompania ?? null) as string | null,
     idPlanDestino: (r.id_plan_destino ?? r.idPlanDestino) as number,
     monto: r.monto as number,
     moneda: (r.moneda ?? 'USD') as string,
@@ -449,6 +450,40 @@ class PlatformHttpRepositoryImpl implements PlatformRepository {
       params: { limit },
     })
     return data.map(r => mapPagoPendiente(r as Record<string, unknown>))
+  }
+
+  // REQ-SAAS-001 ítem #4: Reportar pago (tenant owner, multipart)
+  async reportarPagoOwner(idCompania: number, formData: FormData): Promise<PagoPendienteResponse> {
+    // No forzar Content-Type — Axios lo setea automáticamente con el boundary correcto al recibir FormData
+    const { data } = await api.post<unknown>(`/companias/${idCompania}/pagos/reportar`, formData)
+    return mapPagoPendiente(data as Record<string, unknown>)
+  }
+
+  // REQ-SAAS-001 ítem #4: Bandeja root — lista paginada de pagos pendientes
+  async getPagosPendientesRoot(params: { estado?: string; pagina: number; limit: number }): Promise<{ total: number; pagina: number; limit: number; datos: PagoPendienteResponse[] }> {
+    const { data } = await api.get<{ total: number; pagina: number; limit: number; datos: unknown[] }>(
+      '/plataforma/pagos-pendientes',
+      { params: { estado: params.estado || undefined, pagina: params.pagina, limit: params.limit } },
+    )
+    return {
+      total: data.total,
+      pagina: data.pagina,
+      limit: data.limit,
+      datos: data.datos.map(r => mapPagoPendiente(r as Record<string, unknown>)),
+    }
+  }
+
+  // REQ-SAAS-001 ítem #4: Aprobar pago pendiente
+  async aprobarPagoPendiente(id: number): Promise<{ id_pago: number; id_compania_plan: number; estado: string }> {
+    const { data } = await api.post<{ id_pago: number; id_compania_plan: number; estado: string }>(
+      `/plataforma/pagos-pendientes/${id}/aprobar`,
+    )
+    return data
+  }
+
+  // REQ-SAAS-001 ítem #4: Rechazar pago pendiente
+  async rechazarPagoPendiente(id: number, motivo: string): Promise<void> {
+    await api.post(`/plataforma/pagos-pendientes/${id}/rechazar`, { motivo })
   }
 }
 

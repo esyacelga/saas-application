@@ -188,7 +188,8 @@
     "features": "Características",
     "clientes": "Clientes",
     "tiposMembresia": "Tipos de membresía",
-    "configuracion": "Configuración"
+    "configuracion": "Configuración",
+    "pagosPendientes": "Pagos pendientes"
   },
   "dashboard": {
     "welcome": "Bienvenido",
@@ -1066,5 +1067,89 @@
     "createSuccess": "Rol creado correctamente",
     "duplicateName": "Ya existe un rol con ese nombre en esta compañía",
     "createError": "Error al crear el rol"
+  },
+  "reportarPago": {
+    "title": "Reportar pago",
+    "labelPlan": "Plan de destino",
+    "placeholderPlan": "Seleccionar plan...",
+    "labelMonto": "Monto (USD)",
+    "labelFechaTransferencia": "Fecha de transferencia",
+    "labelReferencia": "Referencia bancaria",
+    "placeholderReferencia": "Ej: TX-20240112-001",
+    "labelBancoOrigen": "Banco origen",
+    "placeholderBancoOrigen": "Ej: Banco Pichincha",
+    "rateLimitNota": "Puedes reportar hasta 3 pagos por hora.",
+    "cancelar": "Cancelar",
+    "enviar": "Enviar pago",
+    "enviando": "Enviando...",
+    "exito": "Pago reportado correctamente. Te avisaremos cuando sea revisado.",
+    "error": {
+      "rateLimitExcedido": "Has alcanzado el límite de 3 pagos por hora. Espera antes de reportar otro.",
+      "duplicado": "Ya existe un pago pendiente con esa referencia.",
+      "generico": "Error al reportar el pago. Intenta de nuevo."
+    },
+    "validacion": {
+      "planRequerido": "Selecciona un plan de destino",
+      "montoRequerido": "El monto debe ser mayor a 0",
+      "montoDecimales": "El monto no puede tener más de 2 decimales",
+      "fechaRequerida": "La fecha de transferencia es requerida",
+      "fechaFutura": "La fecha no puede ser futura",
+      "referenciaRequerida": "La referencia bancaria es requerida"
+    }
+  },
+  "pagosPendientes": {
+    "title": "Pagos pendientes",
+    "description": "Revisa y gestiona los pagos reportados por los gimnasios",
+    "colId": "ID",
+    "colCompania": "Compañía",
+    "colPlan": "Plan destino",
+    "colMonto": "Monto",
+    "colFechaReporte": "Fecha reporte",
+    "colEstado": "Estado",
+    "colAcciones": "Acciones",
+    "filtroEstado": "Estado",
+    "filtroTodos": "Todos",
+    "aplicarFiltros": "Actualizar",
+    "empty": "No hay pagos registrados.",
+    "emptyFiltered": "No hay pagos para los filtros aplicados.",
+    "errorCarga": "No se pudo cargar la lista de pagos.",
+    "reintentar": "Reintentar",
+    "paginaX": "Pág {{pagina}} / {{total}}",
+    "anterior": "Anterior",
+    "siguiente": "Siguiente",
+    "btnAprobar": "Aprobar",
+    "btnRechazar": "Rechazar",
+    "btnVer": "Ver detalle",
+    "compania": "Compañía",
+    "planDesconocido": "Plan #{{id}}",
+    "aprobar": {
+      "title": "Aprobar pago",
+      "descripcion": "¿Confirmas aprobar el pago #{{id}} de {{compania}}? Esta acción activará la suscripción correspondiente.",
+      "exito": "Pago #{{id}} aprobado correctamente."
+    },
+    "rechazar": {
+      "title": "Rechazar pago #{{id}}",
+      "descripcion": "Indica el motivo del rechazo para {{compania}}. El propietario verá esta razón.",
+      "placeholder": "Describe el motivo del rechazo (mínimo 10 caracteres)...",
+      "cancelar": "Cancelar",
+      "confirmar": "Rechazar",
+      "enviando": "Rechazando...",
+      "exito": "Pago #{{id}} rechazado."
+    },
+    "detalle": {
+      "title": "Pago #{{id}}",
+      "id": "ID",
+      "compania": "Compañía",
+      "plan": "Plan destino",
+      "monto": "Monto",
+      "fechaReporte": "Fecha reporte",
+      "fechaTransferencia": "Fecha transferencia",
+      "referencia": "Referencia",
+      "bancoOrigen": "Banco origen",
+      "estado": "Estado",
+      "motivoRechazo": "Motivo rechazo",
+      "fechaAprobacion": "Fecha aprobación",
+      "verComprobante": "Ver comprobante adjunto"
+    }
   }
 }

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import {
   Activity, ChevronLeft, ChevronRight, Dumbbell,
-  LayoutDashboard, LogOut, Shield, Users, Package, Settings2, Building2, Palette, UserRound,
+  LayoutDashboard, LogOut, Shield, Users, Package, Settings2, Building2, Palette, UserRound, ClipboardCheck,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
@@ -40,6 +40,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/platform/roles',           labelKey: 'nav.platformRoles',    icon: <Shield size={15} /> },
   { to: '/platform/actividad',       labelKey: 'nav.activity',         icon: <Activity size={15} /> },
   { to: '/platform/personas',        labelKey: 'nav.personas',         icon: <UserRound size={15} /> },
+  { to: '/platform/pagos-pendientes', labelKey: 'nav.pagosPendientes', icon: <ClipboardCheck size={15} /> },
 ]
 
 export function PlatformLayout() {

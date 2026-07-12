@@ -1,8 +1,10 @@
 package com.gymadmin.platform.unit;
 
 import com.gymadmin.platform.application.service.AccessControlService;
+import com.gymadmin.platform.domain.model.Compania;
 import com.gymadmin.platform.domain.model.PagoPendienteValidacion;
 import com.gymadmin.platform.domain.port.in.ListarPagosPendientesOwnerUseCase;
+import com.gymadmin.platform.domain.port.out.CompaniaRepository;
 import com.gymadmin.platform.infrastructure.adapter.in.web.PagosPendientesOwnerController;
 import com.gymadmin.platform.infrastructure.config.JwtPrincipal;
 import com.gymadmin.platform.infrastructure.exception.ForbiddenException;
@@ -25,6 +27,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -32,7 +35,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * REQ-SAAS-001 (Sub-fase 1.6, item #3): tests del
+ * REQ-SAAS-001 (Sub-fase 1.6, item #3 + item #4): tests del
  * {@link PagosPendientesOwnerController}. Usamos {@link WebTestClient} en modo
  * standalone e inyectamos el {@code JwtPrincipal} vía {@code SecurityContext},
  * siguiendo el mismo patrón que {@code BannerControllerTest}.
@@ -41,9 +44,10 @@ import static org.mockito.Mockito.when;
 class PagosPendientesOwnerControllerTest {
 
     private final ListarPagosPendientesOwnerUseCase useCase = mock(ListarPagosPendientesOwnerUseCase.class);
+    private final CompaniaRepository companiaRepository = mock(CompaniaRepository.class);
     private final AccessControlService accessControl = new AccessControlService();
     private final PagosPendientesOwnerController controller =
-            new PagosPendientesOwnerController(useCase, accessControl);
+            new PagosPendientesOwnerController(useCase, accessControl, companiaRepository);
 
     private WebTestClient clientForPrincipal(JwtPrincipal principal) {
         return WebTestClient.bindToController(controller)
@@ -74,6 +78,13 @@ class PagosPendientesOwnerControllerTest {
         return new JwtPrincipal("u-2", "staff", null, idCompania, null);
     }
 
+    private Compania compania(Long id, String nombre) {
+        Compania c = new Compania();
+        c.setId(id);
+        c.setNombre(nombre);
+        return c;
+    }
+
     private PagoPendienteValidacion pago(Long id,
                                          PagoPendienteValidacion.Estado estado,
                                          String motivoRechazo) {
@@ -91,13 +102,15 @@ class PagosPendientesOwnerControllerTest {
     }
 
     @Test
-    @DisplayName("200 OK cuando pathVar coincide con jwt.id_compania (owner)")
+    @DisplayName("200 OK cuando pathVar coincide con jwt.id_compania (owner) y trae nombreCompania")
     void ok200ParaOwnerDelTenant() {
         PagoPendienteValidacion pendiente = pago(2L, PagoPendienteValidacion.Estado.PENDIENTE, null);
         PagoPendienteValidacion rechazado = pago(1L, PagoPendienteValidacion.Estado.RECHAZADO,
                 "Comprobante ilegible");
         when(useCase.listarPorCompania(eq(42L), anyInt()))
                 .thenReturn(Flux.just(pendiente, rechazado));
+        when(companiaRepository.findById(42L))
+                .thenReturn(Mono.just(compania(42L, "Gym Titan")));
 
         clientForPrincipal(ownerOf(42L))
                 .get()
@@ -107,15 +120,19 @@ class PagosPendientesOwnerControllerTest {
                 .expectBody()
                 .jsonPath("$[0].id").isEqualTo(2)
                 .jsonPath("$[0].estado").isEqualTo("PENDIENTE")
+                .jsonPath("$[0].nombreCompania").isEqualTo("Gym Titan")
                 .jsonPath("$[1].id").isEqualTo(1)
                 .jsonPath("$[1].estado").isEqualTo("RECHAZADO")
-                .jsonPath("$[1].motivoRechazo").isEqualTo("Comprobante ilegible");
+                .jsonPath("$[1].motivoRechazo").isEqualTo("Comprobante ilegible")
+                .jsonPath("$[1].nombreCompania").isEqualTo("Gym Titan");
     }
 
     @Test
     @DisplayName("200 OK también para staff (sin rol_plataforma) del mismo tenant")
     void ok200ParaStaffDelTenant() {
         when(useCase.listarPorCompania(eq(42L), anyInt())).thenReturn(Flux.empty());
+        when(companiaRepository.findById(42L))
+                .thenReturn(Mono.just(compania(42L, "Gym Titan")));
 
         clientForPrincipal(staffOf(42L))
                 .get()
@@ -127,11 +144,32 @@ class PagosPendientesOwnerControllerTest {
     }
 
     @Test
+    @DisplayName("compañía borrada / no existe → nombreCompania null, no falla")
+    void companiaNoExisteDevuelveNombreNull() {
+        PagoPendienteValidacion pendiente = pago(2L, PagoPendienteValidacion.Estado.PENDIENTE, null);
+        when(useCase.listarPorCompania(eq(42L), anyInt()))
+                .thenReturn(Flux.just(pendiente));
+        when(companiaRepository.findById(42L)).thenReturn(Mono.empty());
+
+        clientForPrincipal(ownerOf(42L))
+                .get()
+                .uri("/api/v1/companias/42/pagos-pendientes")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$[0].id").isEqualTo(2)
+                .jsonPath("$[0].nombreCompania").isEmpty();
+    }
+
+    @Test
     @DisplayName("403 Forbidden cuando pathVar != jwt.id_compania")
     void forbid403SiTenantMismatch() {
-        // El use case NO debe emitir datos: aunque el metodo se construye
-        // dentro de thenMany(...), el guard corta la cadena antes de subscribirse.
-        when(useCase.listarPorCompania(eq(42L), anyInt())).thenReturn(Flux.empty());
+        // El use case NO debe emitir datos: aunque los métodos aguas abajo se
+        // construyan dentro de thenMany(...), el guard corta la cadena antes
+        // de subscribirse. Necesitamos stubs no-null en la construcción del
+        // publisher para que la cadena reactiva se pueda instanciar.
+        when(useCase.listarPorCompania(anyLong(), anyInt())).thenReturn(Flux.empty());
+        when(companiaRepository.findById(anyLong())).thenReturn(Mono.empty());
 
         clientForPrincipal(ownerOf(99L))
                 .get()
@@ -147,6 +185,8 @@ class PagosPendientesOwnerControllerTest {
     @DisplayName("respeta el parámetro limit y lo propaga al use case")
     void propagaParametroLimit() {
         when(useCase.listarPorCompania(eq(42L), eq(5))).thenReturn(Flux.empty());
+        when(companiaRepository.findById(42L))
+                .thenReturn(Mono.just(compania(42L, "Gym Titan")));
 
         clientForPrincipal(ownerOf(42L))
                 .get()

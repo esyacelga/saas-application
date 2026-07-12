@@ -1,9 +1,11 @@
 package com.gymadmin.platform.infrastructure.adapter.in.web;
 
 import com.gymadmin.platform.application.service.AccessControlService;
+import com.gymadmin.platform.domain.model.Compania;
 import com.gymadmin.platform.domain.port.in.AprobarPagoUseCase;
 import com.gymadmin.platform.domain.port.in.ListarPagosPendientesUseCase;
 import com.gymadmin.platform.domain.port.in.RechazarPagoUseCase;
+import com.gymadmin.platform.domain.port.out.CompaniaRepository;
 import com.gymadmin.platform.infrastructure.adapter.in.web.dto.PagoPendienteResponse;
 import com.gymadmin.platform.infrastructure.adapter.in.web.dto.RechazarPagoRequest;
 import com.gymadmin.platform.infrastructure.config.JwtPrincipal;
@@ -27,7 +29,9 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * REQ-SAAS-001 (RN-08, HU-05, Sub-fase 1.4): bandeja de pagos pendientes de
@@ -42,15 +46,18 @@ public class PagoPlataformaController {
     private final AprobarPagoUseCase aprobarPagoUseCase;
     private final RechazarPagoUseCase rechazarPagoUseCase;
     private final AccessControlService accessControl;
+    private final CompaniaRepository companiaRepository;
 
     public PagoPlataformaController(ListarPagosPendientesUseCase listarPagosPendientesUseCase,
                                      AprobarPagoUseCase aprobarPagoUseCase,
                                      RechazarPagoUseCase rechazarPagoUseCase,
-                                     AccessControlService accessControl) {
+                                     AccessControlService accessControl,
+                                     CompaniaRepository companiaRepository) {
         this.listarPagosPendientesUseCase = listarPagosPendientesUseCase;
         this.aprobarPagoUseCase = aprobarPagoUseCase;
         this.rechazarPagoUseCase = rechazarPagoUseCase;
         this.accessControl = accessControl;
+        this.companiaRepository = companiaRepository;
     }
 
     @Operation(summary = "Listar pagos pendientes de validación (root/soporte)", security = @SecurityRequirement(name = "bearerAuth"))
@@ -69,16 +76,16 @@ public class PagoPlataformaController {
                 .flatMap(principal -> accessControl.requireRootOrSoporte(principal)
                         .then(listarPagosPendientesUseCase.contar(query))
                         .flatMap(total -> listarPagosPendientesUseCase.listar(query)
-                                .map(PagoPendienteResponse::from)
                                 .collectList()
-                                .map(datos -> {
-                                    Map<String, Object> body = new LinkedHashMap<>();
-                                    body.put("total", total);
-                                    body.put("pagina", query.pagina());
-                                    body.put("limit", query.limit());
-                                    body.put("datos", datos);
-                                    return ResponseEntity.ok(body);
-                                })));
+                                .flatMap(pagos -> enriquecerConNombreCompania(pagos)
+                                        .map(datos -> {
+                                            Map<String, Object> body = new LinkedHashMap<>();
+                                            body.put("total", total);
+                                            body.put("pagina", query.pagina());
+                                            body.put("limit", query.limit());
+                                            body.put("datos", datos);
+                                            return ResponseEntity.ok(body);
+                                        }))));
     }
 
     @Operation(summary = "Aprobar un pago pendiente (root/soporte)", security = @SecurityRequirement(name = "bearerAuth"))
@@ -117,6 +124,28 @@ public class PagoPlataformaController {
                 .flatMap(principal -> accessControl.requireRootOrSoporte(principal)
                         .then(rechazarPagoUseCase.rechazar(id, toLongOrNull(principal.getUserId()), request.motivo()))
                         .thenReturn(ResponseEntity.<Void>noContent().build()));
+    }
+
+    /**
+     * REQ-SAAS-001 (Sub-fase 1.6, item #4): batch fetch de las compañías
+     * involucradas en la página actual para poblar {@code nombreCompania} sin
+     * un roundtrip por pago. Si una compañía está borrada / no existe,
+     * el nombre queda {@code null} (no falla la respuesta).
+     */
+    private Mono<List<PagoPendienteResponse>> enriquecerConNombreCompania(
+            List<com.gymadmin.platform.domain.model.PagoPendienteValidacion> pagos) {
+        if (pagos.isEmpty()) {
+            return Mono.just(List.of());
+        }
+        List<Long> ids = pagos.stream()
+                .map(com.gymadmin.platform.domain.model.PagoPendienteValidacion::getIdCompania)
+                .distinct()
+                .toList();
+        return companiaRepository.findAllByIds(ids)
+                .collectMap(Compania::getId, Compania::getNombre)
+                .map(nombresPorId -> pagos.stream()
+                        .map(p -> PagoPendienteResponse.from(p, nombresPorId.get(p.getIdCompania())))
+                        .collect(Collectors.toList()));
     }
 
     private Long toLongOrNull(String userId) {

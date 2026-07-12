@@ -54,6 +54,17 @@ public abstract class BaseIntegrationTest {
         databaseClient.sql("DELETE FROM seguridad.permisos").then().block();
         databaseClient.sql("DELETE FROM seguridad.roles").then().block();
         databaseClient.sql("DELETE FROM identidad.personas WHERE ci LIKE 'IT-%'").then().block();
+
+        // REQ-SAAS-001 Sub-fase 1.6 item #4: el comprobante ahora es opcional en el
+        // reporte de pago del owner. La migración que hace comprobante_url NULLABLE
+        // aún NO fue aplicada al DDL local (pendiente changeset del DBA). Aquí lo
+        // afinamos in-place para el entorno de test (ALTER idempotente).
+        databaseClient.sql(
+                "ALTER TABLE tenant.pagos_pendientes_validacion " +
+                "ALTER COLUMN comprobante_url DROP NOT NULL")
+                .then()
+                .onErrorResume(err -> reactor.core.publisher.Mono.empty())
+                .block();
     }
 
     protected Long crearPersona(String ci, String nombre) {
@@ -80,6 +91,16 @@ public abstract class BaseIntegrationTest {
 
     protected String jwtAdminCompania(Long idCompania) {
         return buildJwt("user-admin-compania", "staff", "admin_compania", idCompania);
+    }
+
+    /**
+     * REQ-SAAS-001 (Sub-fase 1.4): token owner/admin del tenant — usado por
+     * los endpoints {@code POST /companias/{id}/pagos/reportar} y
+     * {@code POST /companias/{id}/suscripcion/trial}. El principal debe pasar
+     * {@link com.gymadmin.platform.application.service.AccessControlService#requireOwnerOrAdminOfCompania}.
+     */
+    protected String jwtOwnerCompania(Long idCompania) {
+        return buildJwt("user-owner-compania", "staff", "admin_compania", idCompania);
     }
 
     protected String bearerHeader(String jwt) {

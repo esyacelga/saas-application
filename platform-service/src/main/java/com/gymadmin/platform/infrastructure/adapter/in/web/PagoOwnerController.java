@@ -2,6 +2,7 @@ package com.gymadmin.platform.infrastructure.adapter.in.web;
 
 import com.gymadmin.platform.application.service.AccessControlService;
 import com.gymadmin.platform.domain.port.in.ReportarPagoUseCase;
+import com.gymadmin.platform.domain.port.out.CompaniaRepository;
 import com.gymadmin.platform.infrastructure.adapter.in.web.dto.PagoPendienteResponse;
 import com.gymadmin.platform.infrastructure.config.JwtPrincipal;
 import com.gymadmin.platform.infrastructure.ratelimit.PostgresRateLimiter;
@@ -36,6 +37,11 @@ import java.time.LocalDate;
  * <p>
  * Aplica rate-limit contra Postgres (máx 3 reportes por hora por tenant) antes
  * de invocar el caso de uso.
+ * <p>
+ * Sub-fase 1.6 (item #4): la parte multipart {@code comprobante} pasa a ser
+ * opcional para soportar el flujo del frontend ("Reportar pago" del owner
+ * cuando aún no tiene el comprobante escaneado). Cuando viene null, no se sube
+ * a Cloudinary y el registro persistido queda con {@code comprobanteUrl = null}.
  */
 @RestController
 @Tag(name = "Pagos owner", description = "Reporte de pagos por transferencia del owner")
@@ -46,13 +52,16 @@ public class PagoOwnerController {
     private final ReportarPagoUseCase reportarPagoUseCase;
     private final AccessControlService accessControl;
     private final PostgresRateLimiter rateLimiter;
+    private final CompaniaRepository companiaRepository;
 
     public PagoOwnerController(ReportarPagoUseCase reportarPagoUseCase,
                                 AccessControlService accessControl,
-                                PostgresRateLimiter rateLimiter) {
+                                PostgresRateLimiter rateLimiter,
+                                CompaniaRepository companiaRepository) {
         this.reportarPagoUseCase = reportarPagoUseCase;
         this.accessControl = accessControl;
         this.rateLimiter = rateLimiter;
+        this.companiaRepository = companiaRepository;
     }
 
     @Operation(summary = "Reportar pago por transferencia (owner/admin)", security = @SecurityRequirement(name = "bearerAuth"))
@@ -66,7 +75,7 @@ public class PagoOwnerController {
     @PostMapping(value = "/api/v1/companias/{id}/pagos/reportar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Mono<ResponseEntity<PagoPendienteResponse>> reportarPago(
             @PathVariable Long id,
-            @RequestPart("comprobante") FilePart comprobante,
+            @RequestPart(value = "comprobante", required = false) FilePart comprobante,
             @RequestPart("id_plan_destino") String idPlanDestino,
             @RequestPart("monto") String monto,
             @RequestPart("fecha_transferencia") String fechaTransferencia,
@@ -80,7 +89,7 @@ public class PagoOwnerController {
                                 id,
                                 MAX_REPORTES_POR_HORA,
                                 Duration.ofHours(1)))
-                        .then(readBytes(comprobante))
+                        .then(readBytesOrEmpty(comprobante))
                         .flatMap(bytes -> reportarPagoUseCase.reportar(new ReportarPagoUseCase.ReportarPagoCommand(
                                 id,
                                 Long.parseLong(idPlanDestino),
@@ -88,16 +97,21 @@ public class PagoOwnerController {
                                 LocalDate.parse(fechaTransferencia),
                                 bancoOrigen,
                                 referencia,
-                                bytes,
-                                comprobante.filename(),
+                                bytes.length == 0 ? null : bytes,
+                                comprobante != null ? comprobante.filename() : null,
                                 toLongOrNull(principal.getUserId()),
                                 clientIp(exchange)
                         )))
-                        .map(pago -> ResponseEntity.status(HttpStatus.CREATED)
-                                .body(PagoPendienteResponse.from(pago))));
+                        .flatMap(pago -> companiaRepository.findById(pago.getIdCompania())
+                                .map(c -> PagoPendienteResponse.from(pago, c.getNombre()))
+                                .defaultIfEmpty(PagoPendienteResponse.from(pago, null)))
+                        .map(response -> ResponseEntity.status(HttpStatus.CREATED).body(response)));
     }
 
-    private Mono<byte[]> readBytes(FilePart filePart) {
+    private Mono<byte[]> readBytesOrEmpty(FilePart filePart) {
+        if (filePart == null) {
+            return Mono.just(new byte[0]);
+        }
         return DataBufferUtils.join(filePart.content())
                 .map(buf -> {
                     byte[] bytes = new byte[buf.readableByteCount()];

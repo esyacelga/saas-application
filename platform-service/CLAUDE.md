@@ -115,7 +115,9 @@ Key route groups:
 - `ActividadPlataformaController` → `/api/v1/actividad` — list audit log
 - `ModuloCheckController` → `/api/v1/modulos/check` — public QR-based module access check
 - `BannerController` → `/api/v1/companias/{id}/banners-activos` (GET) + `/api/v1/companias/{id}/banners/{idBanner}/descartar` (POST) — REQ-SAAS-001 Sub-fase 1.5, banners in-app de vencimiento (owner/admin del tenant)
-- `PagosPendientesOwnerController` → `/api/v1/companias/{idCompania}/pagos-pendientes` (GET) — REQ-SAAS-001 Sub-fase 1.6, listado de pagos reportados por el propio tenant (todos los estados, ordenados por `fecha_reporte DESC`); alimenta el banner "pago en revisión" / "pago rechazado: {motivo}" de la página *Mi suscripción*.
+- `PagosPendientesOwnerController` → `/api/v1/companias/{idCompania}/pagos-pendientes` (GET) — REQ-SAAS-001 Sub-fase 1.6, listado de pagos reportados por el propio tenant (todos los estados, ordenados por `fecha_reporte DESC`); alimenta el banner "pago en revisión" / "pago rechazado: {motivo}" de la página *Mi suscripción*. Desde item #4 la respuesta incluye `nombreCompania`.
+- `PagoOwnerController` → `POST /api/v1/companias/{id}/pagos/reportar` — reporte multipart; desde Sub-fase 1.6 item #4 la parte `comprobante` pasa a ser **opcional** (sin archivo, `comprobanteUrl` queda `null`; no se sube a Cloudinary). Rate limit: 3/hora/tenant. Respuesta incluye `nombreCompania`.
+- `PagoPlataformaController` → `/api/v1/plataforma/pagos-pendientes` (GET bandeja + POST `/{id}/aprobar` + POST `/{id}/rechazar`) — bandeja root/soporte; desde Sub-fase 1.6 item #4 la bandeja enriquece cada pago con `nombreCompania` via batch fetch (`CompaniaRepository.findAllByIds`).
 
 ## Monorepo Context
 

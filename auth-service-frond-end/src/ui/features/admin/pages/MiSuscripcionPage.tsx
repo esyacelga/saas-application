@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Navigate } from 'react-router-dom'
-import { toast } from 'sonner'
 import { AlertTriangle, XCircle, RefreshCw, Check } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { PageHeader } from '@/ui/components/PageHeader'
 import { platformRepository } from '@/infrastructure/http/platform/PlatformHttpRepository'
 import { EstadoPlanBadge } from '@/ui/features/platform/components/EstadoPlanBadge'
 import { useCurrentUser } from '@/infrastructure/store/auth/auth.store'
+import { ReportarPagoModal } from '@/ui/features/admin/components/ReportarPagoModal'
 import type { JwtPayloadStaff } from '@/domain/auth/entities/User.entity'
 import type { CompaniaPlan, Plan, UsoLimitesResponse, PagoPendienteResponse } from '@/domain/platform/entities/Plan.entity'
 import { cn } from '@/lib/utils'
@@ -136,10 +136,12 @@ function PlanCard({
   plan,
   esPlanActual,
   hayPagoPendiente,
+  onReportarPago,
 }: {
   plan: Plan
   esPlanActual: boolean
   hayPagoPendiente: boolean
+  onReportarPago: (idPlan: number) => void
 }) {
   const { t } = useTranslation()
   const esGratis = plan.precioMensual === 0
@@ -229,12 +231,12 @@ function PlanCard({
           </button>
         ) : (
           <button
-            disabled={hayPagoPendiente}
-            onClick={() => toast.info(t('miSuscripcion.proximamente'))}
+            disabled={hayPagoPendiente || esGratis}
+            onClick={() => onReportarPago(plan.id)}
             className="w-full py-2 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
-              background: hayPagoPendiente ? 'var(--page-border)' : 'var(--color-warning, #f97316)',
-              color: hayPagoPendiente ? 'var(--page-muted)' : '#fff',
+              background: (hayPagoPendiente || esGratis) ? 'var(--page-border)' : 'var(--color-warning, #f97316)',
+              color: (hayPagoPendiente || esGratis) ? 'var(--page-muted)' : '#fff',
             }}
           >
             {hayPagoPendiente ? t('miSuscripcion.pagoEnRevision') : t('miSuscripcion.upgrade')}
@@ -355,6 +357,18 @@ export function MiSuscripcionPage() {
 
   useEffect(() => { cargar() }, [cargar])
 
+  // ── Estado modal reportar pago ───────────────────────────────────────────────
+  const [modalReportar, setModalReportar] = useState<{ open: boolean; idPlanDestinoInicial: number | null }>({
+    open: false,
+    idPlanDestinoInicial: null,
+  })
+
+  const abrirModalReportar = (idPlan: number | null) =>
+    setModalReportar({ open: true, idPlanDestinoInicial: idPlan })
+
+  const cerrarModalReportar = () =>
+    setModalReportar(prev => ({ ...prev, open: false }))
+
   // ── Derivaciones ────────────────────────────────────────────────────────────
 
   const { uso, suscripcion, historial, planes, pagosPendientes } = data
@@ -471,14 +485,15 @@ export function MiSuscripcionPage() {
                 </p>
               )}
 
-              {/* Botón Reportar pago si no está ACTIVO */}
+              {/* Botón Reportar pago → abre modal con idPlanDestinoInicial = null */}
               {suscripcion.estado !== 'ACTIVO' && (
                 <button
-                  onClick={() => toast.info(t('miSuscripcion.proximamente'))}
-                  className="mt-1 px-4 py-2 rounded-lg text-xs font-semibold transition-colors"
-                  style={{ background: 'var(--color-warning, #f97316)', color: '#fff' }}
+                  disabled={hayPagoPendiente}
+                  onClick={() => abrirModalReportar(null)}
+                  className="mt-1 px-4 py-2 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ background: hayPagoPendiente ? 'var(--page-border)' : 'var(--color-warning, #f97316)', color: hayPagoPendiente ? 'var(--page-muted)' : '#fff' }}
                 >
-                  {t('miSuscripcion.reportarPago')}
+                  {hayPagoPendiente ? t('miSuscripcion.pagoEnRevision') : t('miSuscripcion.reportarPago')}
                 </button>
               )}
             </div>
@@ -568,6 +583,7 @@ export function MiSuscripcionPage() {
                   plan={plan}
                   esPlanActual={plan.id === planActualId}
                   hayPagoPendiente={hayPagoPendiente}
+                  onReportarPago={abrirModalReportar}
                 />
               ))}
             </div>
@@ -575,6 +591,16 @@ export function MiSuscripcionPage() {
         )}
 
       </div>
+
+      {/* ── Modal Reportar Pago ── */}
+      <ReportarPagoModal
+        open={modalReportar.open}
+        onClose={cerrarModalReportar}
+        idCompania={idCompania}
+        planes={planes.filter(p => p.activo && p.precioMensual > 0)}
+        idPlanDestinoInicial={modalReportar.idPlanDestinoInicial}
+        onSuccess={cargar}
+      />
     </div>
   )
 }

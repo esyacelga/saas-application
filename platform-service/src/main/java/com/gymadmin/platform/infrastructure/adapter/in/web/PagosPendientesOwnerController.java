@@ -2,6 +2,7 @@ package com.gymadmin.platform.infrastructure.adapter.in.web;
 
 import com.gymadmin.platform.application.service.AccessControlService;
 import com.gymadmin.platform.domain.port.in.ListarPagosPendientesOwnerUseCase;
+import com.gymadmin.platform.domain.port.out.CompaniaRepository;
 import com.gymadmin.platform.infrastructure.adapter.in.web.dto.PagoPendienteResponse;
 import com.gymadmin.platform.infrastructure.config.JwtPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,6 +30,9 @@ import reactor.core.publisher.Mono;
  * — el path variable {@code {idCompania}} debe coincidir con {@code jwt.id_compania}
  * (super_admin/soporte pueden operar sobre cualquier tenant). Cualquier staff del
  * tenant puede consultarlo; la discriminación por rol es responsabilidad del frontend.
+ * <p>
+ * Sub-fase 1.6 (item #4): la respuesta incluye {@code nombreCompania} para que el
+ * frontend pueda mostrarlo sin resolver el ID contra otro endpoint.
  */
 @RestController
 @Tag(name = "Pagos pendientes owner", description = "REQ-SAAS-001 Sub-fase 1.6 — pagos del propio tenant")
@@ -36,11 +40,14 @@ public class PagosPendientesOwnerController {
 
     private final ListarPagosPendientesOwnerUseCase listarPagosPendientesOwnerUseCase;
     private final AccessControlService accessControl;
+    private final CompaniaRepository companiaRepository;
 
     public PagosPendientesOwnerController(ListarPagosPendientesOwnerUseCase listarPagosPendientesOwnerUseCase,
-                                          AccessControlService accessControl) {
+                                          AccessControlService accessControl,
+                                          CompaniaRepository companiaRepository) {
         this.listarPagosPendientesOwnerUseCase = listarPagosPendientesOwnerUseCase;
         this.accessControl = accessControl;
+        this.companiaRepository = companiaRepository;
     }
 
     @Operation(
@@ -57,8 +64,11 @@ public class PagosPendientesOwnerController {
             @RequestParam(defaultValue = "10") int limit) {
         return getJwtPrincipal()
                 .flatMapMany(principal -> accessControl.requireOwnerOrAdminOfCompania(principal, idCompania)
-                        .thenMany(listarPagosPendientesOwnerUseCase.listarPorCompania(idCompania, limit))
-                        .map(PagoPendienteResponse::from));
+                        .thenMany(companiaRepository.findById(idCompania)
+                                .map(c -> c.getNombre())
+                                .defaultIfEmpty("")
+                                .flatMapMany(nombre -> listarPagosPendientesOwnerUseCase.listarPorCompania(idCompania, limit)
+                                        .map(p -> PagoPendienteResponse.from(p, nombre.isEmpty() ? null : nombre)))));
     }
 
     private Mono<JwtPrincipal> getJwtPrincipal() {

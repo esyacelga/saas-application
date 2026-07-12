@@ -63,12 +63,25 @@ public class ReportarPagoService implements ReportarPagoUseCase {
     }
 
     private Mono<PagoPendienteValidacion> subirYPersistir(ReportarPagoCommand command, String hash) {
-        return cloudinaryService.subirComprobante(command.comprobanteBytes(), command.nombreArchivo(), command.idCompania())
+        return subirComprobanteSiExiste(command)
                 .flatMap(comprobante -> resolverActivacionProgramada(command.idCompania())
                         .flatMap(activacionProgramada -> planRepository.findById(command.idPlanDestino())
                                 .switchIfEmpty(Mono.error(new NotFoundException("Plan", command.idPlanDestino())))
                                 .flatMap(plan -> persistirPago(command, hash, comprobante, plan, activacionProgramada))
                                 .flatMap(saved -> registrarEventoReporte(command, hash, saved).thenReturn(saved))));
+    }
+
+    /**
+     * REQ-SAAS-001 (Sub-fase 1.6, item #4): el comprobante ahora es opcional.
+     * Cuando el owner reporta el pago sin adjuntar archivo, no invocamos a
+     * Cloudinary y devolvemos un {@link ComprobanteSubidoResponse} con
+     * {@code url = null} y {@code hash = null}.
+     */
+    private Mono<ComprobanteSubidoResponse> subirComprobanteSiExiste(ReportarPagoCommand command) {
+        if (command.comprobanteBytes() == null || command.comprobanteBytes().length == 0) {
+            return Mono.just(new ComprobanteSubidoResponse(null, null));
+        }
+        return cloudinaryService.subirComprobante(command.comprobanteBytes(), command.nombreArchivo(), command.idCompania());
     }
 
     private Mono<Boolean> resolverActivacionProgramada(Long idCompania) {

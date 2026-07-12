@@ -98,6 +98,7 @@ export interface UsoLimitesResponse {
 export interface PagoPendienteResponse {
   id: number
   idCompania: number
+  nombreCompania: string | null   // REQ-SAAS-001 ítem #4: nuevo campo del backend
   idPlanDestino: number
   monto: number
   moneda: string

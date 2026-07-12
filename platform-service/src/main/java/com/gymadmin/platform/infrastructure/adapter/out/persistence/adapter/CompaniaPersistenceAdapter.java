@@ -10,6 +10,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Collection;
 
 @Component
 public class CompaniaPersistenceAdapter implements CompaniaRepository {
@@ -40,6 +41,14 @@ public class CompaniaPersistenceAdapter implements CompaniaRepository {
         CompaniaEntity entity = toEntity(compania);
         entity.setActivo(true);
         return repository.save(entity).map(this::toDomain);
+    }
+
+    @Override
+    public Flux<Compania> findAllByIds(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Flux.empty();
+        }
+        return repository.findAllById(ids).map(this::toDomain);
     }
 
     @Override

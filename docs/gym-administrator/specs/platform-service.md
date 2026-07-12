@@ -838,26 +838,30 @@ LIMIT 1;
 
 // Request: multipart/form-data
 POST /api/v1/companias/{id}/pagos/reportar
-  comprobante: file (JPEG/PNG/PDF, max 5MB)
+  comprobante: file (JPEG/PNG/PDF, max 5MB) — OPTIONAL desde Sub-fase 1.6 (item #4)
   id_plan_destino: long
   monto: decimal
   fecha_transferencia: date (YYYY-MM-DD)
   banco_origen: string (optional)
   referencia: string (optional)
 
-// Response 201
+// Response 201 (fields en camelCase)
 {
   "id": 42,
-  "id_compania": 5,
-  "id_plan_destino": 3,
+  "idCompania": 5,
+  "nombreCompania": "Gym Power",
+  "idPlanDestino": 3,
   "monto": "29.99",
   "moneda": "USD",
-  "fecha_reporte": "2026-07-10T14:30:00Z",
-  "comprobante_url": "https://res.cloudinary.com/...pago-42.pdf",
-  "banco_origen": "Banco Pichincha",
+  "fechaReporte": "2026-07-10T14:30:00Z",
+  "comprobanteUrl": "https://res.cloudinary.com/...pago-42.pdf",  // null si no se envió comprobante
+  "bancoOrigen": "Banco Pichincha",
   "referencia": "TXN-001",
   "estado": "PENDIENTE",
-  "hash_idempotencia": "sha256(...)"
+  "motivoRechazo": null,
+  "aprobadoPor": null,
+  "fechaAprobacion": null,
+  "activacionProgramada": false
 }
 
 // Errors:
@@ -873,7 +877,7 @@ POST /api/v1/companias/{id}/pagos/reportar
 // Requiere: JWT plataforma (root o soporte)
 // Query params: ?estado=PENDIENTE&pagina=1&limit=20
 
-// Response 200
+// Response 200 (fields en camelCase)
 {
   "total": 5,
   "pagina": 1,
@@ -881,21 +885,21 @@ POST /api/v1/companias/{id}/pagos/reportar
   "datos": [
     {
       "id": 42,
-      "id_compania": 5,
-      "id_compania_nombre": "Gym Power",
-      "id_plan_destino": 3,
+      "idCompania": 5,
+      "nombreCompania": "Gym Power",
+      "idPlanDestino": 3,
       "monto": "29.99",
       "moneda": "USD",
-      "fecha_reporte": "2026-07-10T14:30:00Z",
-      "fecha_transferencia": "2026-07-10",
-      "comprobante_url": "https://res.cloudinary.com/...pago-42.pdf",
-      "banco_origen": "Banco Pichincha",
+      "fechaReporte": "2026-07-10T14:30:00Z",
+      "fechaTransferencia": "2026-07-10",
+      "comprobanteUrl": "https://res.cloudinary.com/...pago-42.pdf",
+      "bancoOrigen": "Banco Pichincha",
       "referencia": "TXN-001",
       "estado": "PENDIENTE",
-      "motivo_rechazo": null,
-      "aprobado_por": null,
-      "fecha_aprobacion": null,
-      "activacion_programada": false
+      "motivoRechazo": null,
+      "aprobadoPor": null,
+      "fechaAprobacion": null,
+      "activacionProgramada": false
     }
   ]
 }

@@ -188,7 +188,8 @@
     "features": "Features",
     "clientes": "Members",
     "tiposMembresia": "Membership types",
-    "configuracion": "Settings"
+    "configuracion": "Settings",
+    "pagosPendientes": "Pending payments"
   },
   "dashboard": {
     "welcome": "Welcome",
@@ -1066,5 +1067,89 @@
     "createSuccess": "Role created successfully",
     "duplicateName": "A role with that name already exists in this company",
     "createError": "Error creating the role"
+  },
+  "reportarPago": {
+    "title": "Report payment",
+    "labelPlan": "Target plan",
+    "placeholderPlan": "Select plan...",
+    "labelMonto": "Amount (USD)",
+    "labelFechaTransferencia": "Transfer date",
+    "labelReferencia": "Bank reference",
+    "placeholderReferencia": "E.g.: TX-20240112-001",
+    "labelBancoOrigen": "Origin bank",
+    "placeholderBancoOrigen": "E.g.: Banco Pichincha",
+    "rateLimitNota": "You can report up to 3 payments per hour.",
+    "cancelar": "Cancel",
+    "enviar": "Submit payment",
+    "enviando": "Submitting...",
+    "exito": "Payment reported successfully. We will notify you once reviewed.",
+    "error": {
+      "rateLimitExcedido": "You have reached the limit of 3 payments per hour. Please wait before reporting another.",
+      "duplicado": "A pending payment with that reference already exists.",
+      "generico": "Failed to report the payment. Please try again."
+    },
+    "validacion": {
+      "planRequerido": "Select a target plan",
+      "montoRequerido": "Amount must be greater than 0",
+      "montoDecimales": "Amount cannot have more than 2 decimal places",
+      "fechaRequerida": "Transfer date is required",
+      "fechaFutura": "Date cannot be in the future",
+      "referenciaRequerida": "Bank reference is required"
+    }
+  },
+  "pagosPendientes": {
+    "title": "Pending payments",
+    "description": "Review and manage payments reported by gyms",
+    "colId": "ID",
+    "colCompania": "Company",
+    "colPlan": "Target plan",
+    "colMonto": "Amount",
+    "colFechaReporte": "Report date",
+    "colEstado": "Status",
+    "colAcciones": "Actions",
+    "filtroEstado": "Status",
+    "filtroTodos": "All",
+    "aplicarFiltros": "Refresh",
+    "empty": "No payments registered.",
+    "emptyFiltered": "No payments match the applied filters.",
+    "errorCarga": "Failed to load the payment list.",
+    "reintentar": "Retry",
+    "paginaX": "Page {{pagina}} / {{total}}",
+    "anterior": "Previous",
+    "siguiente": "Next",
+    "btnAprobar": "Approve",
+    "btnRechazar": "Reject",
+    "btnVer": "View detail",
+    "compania": "Company",
+    "planDesconocido": "Plan #{{id}}",
+    "aprobar": {
+      "title": "Approve payment",
+      "descripcion": "Confirm approval of payment #{{id}} from {{compania}}? This will activate the corresponding subscription.",
+      "exito": "Payment #{{id}} approved successfully."
+    },
+    "rechazar": {
+      "title": "Reject payment #{{id}}",
+      "descripcion": "Provide the rejection reason for {{compania}}. The owner will see this reason.",
+      "placeholder": "Describe the rejection reason (minimum 10 characters)...",
+      "cancelar": "Cancel",
+      "confirmar": "Reject",
+      "enviando": "Rejecting...",
+      "exito": "Payment #{{id}} rejected."
+    },
+    "detalle": {
+      "title": "Payment #{{id}}",
+      "id": "ID",
+      "compania": "Company",
+      "plan": "Target plan",
+      "monto": "Amount",
+      "fechaReporte": "Report date",
+      "fechaTransferencia": "Transfer date",
+      "referencia": "Reference",
+      "bancoOrigen": "Origin bank",
+      "estado": "Status",
+      "motivoRechazo": "Rejection reason",
+      "fechaAprobacion": "Approval date",
+      "verComprobante": "View attached receipt"
+    }
   }
 }

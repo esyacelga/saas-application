@@ -25,6 +25,7 @@ import { PlatformActividadPage } from '@/ui/features/platform/pages/PlatformActi
 import { PlatformDashboardPage } from '@/ui/features/platform/pages/PlatformDashboardPage'
 import { PersonasPage } from '@/ui/features/platform/pages/PersonasPage'
 import { PersonaDetallePage } from '@/ui/features/platform/pages/PersonaDetallePage'
+import { PagosPendientesPage } from '@/ui/features/platform/pages/PagosPendientesPage'
 import { ClientesPage } from '@/ui/features/core/pages/ClientesPage'
 import { TiposMembresiaPage } from '@/ui/features/core/pages/TiposMembresiaPage'
 import { ConfiguracionPage } from '@/ui/features/admin/pages/ConfiguracionPage'
@@ -89,6 +90,7 @@ export const router = createBrowserRouter([
           { path: '/platform/actividad', element: <PlatformActividadPage /> },
           { path: '/platform/personas', element: <PersonasPage /> },
           { path: '/platform/personas/:id', element: <PersonaDetallePage /> },
+          { path: '/platform/pagos-pendientes', element: <PagosPendientesPage /> },
         ],
       },
     ],
