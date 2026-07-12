@@ -138,6 +138,7 @@ public class PlanController {
                 : List.of();
         return new PlanResponse(
                 plan.getId(),
+                plan.getCodigo(),
                 plan.getNombre(),
                 plan.getDescripcion(),
                 plan.getPrecioMensual(),

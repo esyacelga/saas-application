@@ -47,4 +47,12 @@ public interface PagoPendienteValidacionRepository {
      * {@code motivo_rechazo} y {@code fecha_reporte} sin persistir esos datos en la propia notificación.
      */
     Mono<PagoPendienteValidacion> findUltimoRechazadoByCompania(Long idCompania);
+
+    /**
+     * REQ-SAAS-001 (Sub-fase 1.6, item #3): listado de pagos reportados por una compañía
+     * (todos los estados) ordenado por {@code fecha_reporte DESC}. Usado por el endpoint
+     * owner {@code GET /api/v1/companias/{idCompania}/pagos-pendientes} para renderizar el
+     * banner "pago en revisión" o "pago rechazado: {motivo}" en la página "Mi suscripción".
+     */
+    Flux<PagoPendienteValidacion> listarPorCompania(Long idCompania, int limit);
 }

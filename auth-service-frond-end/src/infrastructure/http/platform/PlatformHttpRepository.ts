@@ -9,6 +9,7 @@ import type {
   Pago,
   NotifConfig,
   UsoLimitesResponse,
+  PagoPendienteResponse,
 } from '@/domain/platform/entities/Plan.entity'
 import type {
   CrearPlanDto,
@@ -37,11 +38,32 @@ import type {
 function mapPlan(r: Record<string, unknown>): Plan {
   return {
     id: r.id as number,
+    codigo: (r.codigo ?? '') as string,
     nombre: r.nombre as string,
     descripcion: (r.descripcion ?? '') as string,
     precioMensual: (r.precio_mensual ?? r.precioMensual) as number,
     activo: r.activo as boolean,
     caracteristicas: ((r.caracteristicas ?? []) as Record<string, unknown>[]).map(mapCaracteristica),
+  }
+}
+
+function mapPagoPendiente(r: Record<string, unknown>): PagoPendienteResponse {
+  return {
+    id: r.id as number,
+    idCompania: (r.id_compania ?? r.idCompania) as number,
+    idPlanDestino: (r.id_plan_destino ?? r.idPlanDestino) as number,
+    monto: r.monto as number,
+    moneda: (r.moneda ?? 'USD') as string,
+    fechaReporte: (r.fecha_reporte ?? r.fechaReporte) as string,
+    fechaTransferencia: (r.fecha_transferencia ?? r.fechaTransferencia ?? null) as string | null,
+    comprobanteUrl: (r.comprobante_url ?? r.comprobanteUrl ?? null) as string | null,
+    bancoOrigen: (r.banco_origen ?? r.bancoOrigen ?? null) as string | null,
+    referencia: (r.referencia ?? null) as string | null,
+    estado: r.estado as PagoPendienteResponse['estado'],
+    motivoRechazo: (r.motivo_rechazo ?? r.motivoRechazo ?? null) as string | null,
+    aprobadoPor: (r.aprobado_por ?? r.aprobadoPor ?? null) as number | null,
+    fechaAprobacion: (r.fecha_aprobacion ?? r.fechaAprobacion ?? null) as string | null,
+    activacionProgramada: (r.activacion_programada ?? r.activacionProgramada ?? false) as boolean,
   }
 }
 
@@ -419,6 +441,14 @@ class PlatformHttpRepositoryImpl implements PlatformRepository {
     const { data } = await api.get<UsoLimitesResponse>(`/companias/${idCompania}/uso-limites`)
     // El backend ya devuelve camelCase en este endpoint según la spec
     return data
+  }
+
+  // REQ-SAAS-001 Sub-fase 1.6: Pagos pendientes de validación (vista owner)
+  async getPagosPendientesOwner(idCompania: number, limit = 10): Promise<PagoPendienteResponse[]> {
+    const { data } = await api.get<unknown[]>(`/companias/${idCompania}/pagos-pendientes`, {
+      params: { limit },
+    })
+    return data.map(r => mapPagoPendiente(r as Record<string, unknown>))
   }
 }
 

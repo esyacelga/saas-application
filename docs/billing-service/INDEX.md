@@ -25,9 +25,13 @@ Facturación electrónica SRI Ecuador. Emisión, firma digital y autorización d
 
 ## pendientes/ — Trabajos por implementar
 
+**Empezar por [roadmap-sri-2026.md](pendientes/roadmap-sri-2026.md)** — es el backlog ejecutable priorizado por sprints, con checklist por GAP. Los demás documentos son detalle.
+
 | Documento | Prioridad | Descripción |
 |-----------|-----------|-------------|
+| [roadmap-sri-2026.md](pendientes/roadmap-sri-2026.md) | 🔴 Alta | 📋 **División en 6 fases con dependencias.** Punto de entrada para arrancar el desarrollo. Cada fase apunta al detalle del GAP en gap-analysis. |
 | [anulacion-sri.md](pendientes/anulacion-sri.md) | 🔴 Alta | 📋 Anulación fiscal SRI + notas de crédito. Hoy el endpoint `POST /comprobantes/{id}/anular` solo hace UPDATE local; falta cumplir normativa Ecuador (ventana día 7, consumidor final, catálogo de motivos, NC tipo 04, workflow de aprobación). BD ya modeló las 3 tablas necesarias. |
+| [gap-analysis-sri-2026.md](pendientes/gap-analysis-sri-2026.md) | 🔴 Alta | 📋 Cruce completo de brechas entre normativa SRI 2025-2026 y estado actual del código. 13 GAPs identificados: ficha técnica v2.1.0 vs v2.32, transmisión inmediata desde 2026-01-01, notas de crédito/débito/retención sin código, secuencial no atómico, catálogos SRI sin usar, ATS incompleto, bancarización sin validar. |
 
 ---
 

@@ -989,6 +989,39 @@
     "actualizar": "Actualizar",
     "ariaVerPlan": "Ver opciones de plan y suscripción"
   },
+  "miSuscripcion": {
+    "title": "Mi suscripción",
+    "description": "Estado de tu plan y opciones de cambio",
+    "sectionPlan": "Plan actual",
+    "sectionUso": "Uso de recursos",
+    "sectionHistorial": "Historial de cambios",
+    "sectionPlanes": "Cambia tu plan",
+    "fechaFin": "Vence el",
+    "diasRestantes": "Días restantes",
+    "trialUrgente": "Tu período de prueba vence en {{dias}} días",
+    "planActivo": "Plan activo",
+    "bannerRevision": "Tu pago está en revisión. Te avisaremos cuando se confirme.",
+    "bannerRechazado": "Tu último pago fue rechazado. Puedes reportar uno nuevo.",
+    "reportarPago": "Reportar pago",
+    "pagoEnRevision": "Pago en revisión",
+    "proximamente": "Esta función estará disponible pronto",
+    "historialEmpty": "Sin historial de cambios",
+    "recurso": {
+      "clientes": "Clientes activos",
+      "staff": "Staff",
+      "sucursales": "Sedes"
+    },
+    "ilimitado": "Sin límite",
+    "upgrade": "Cambiar a este plan",
+    "planActual": "Plan actual",
+    "errorCarga": "Error al cargar la información del plan",
+    "reintentar": "Reintentar",
+    "motivoRechazo": "Motivo: {{motivo}}"
+  },
+  "step3": {
+    "trialBadge": "🎁 Prueba 60 días gratis, sin tarjeta",
+    "prefiereFree": "Prefiero empezar con el plan Free →"
+  },
   "upgradeModal": {
     "title": {
       "clientes": "Has alcanzado el límite de clientes",

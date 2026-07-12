@@ -5,6 +5,7 @@ import java.util.List;
 
 public record PlanResponse(
         Long id,
+        String codigo,
         String nombre,
         String descripcion,
         BigDecimal precioMensual,

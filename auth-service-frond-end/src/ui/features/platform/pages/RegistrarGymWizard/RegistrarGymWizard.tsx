@@ -367,7 +367,7 @@ export function RegistrarGymWizard({ open, onClose, onCreated }: Props) {
             <div className="flex-1 overflow-y-auto px-6 py-5">
               {step === 1 && <Step1Empresa form={form1} />}
               {step === 2 && <Step2Sucursal form={form2} />}
-              {step === 3 && <Step3Plan form={form3} />}
+              {step === 3 && <Step3Plan form={form3} yaUsoTrial={false} />}
               {step === 4 && (
                 <Step4UsuarioPrincipal
                   form={form4}

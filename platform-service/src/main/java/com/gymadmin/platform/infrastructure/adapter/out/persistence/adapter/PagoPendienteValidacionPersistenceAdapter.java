@@ -131,6 +131,18 @@ public class PagoPendienteValidacionPersistenceAdapter implements PagoPendienteV
     }
 
     @Override
+    public Flux<PagoPendienteValidacion> listarPorCompania(Long idCompania, int limit) {
+        return databaseClient.sql(
+                "SELECT * FROM tenant.pagos_pendientes_validacion " +
+                "WHERE id_compania = :idCompania " +
+                "ORDER BY fecha_reporte DESC LIMIT :limit")
+                .bind("idCompania", idCompania)
+                .bind("limit", limit)
+                .map((row, meta) -> mapRow(row))
+                .all();
+    }
+
+    @Override
     public Mono<PagoPendienteValidacion> findUltimoRechazadoByCompania(Long idCompania) {
         return databaseClient.sql(
                 "SELECT * FROM tenant.pagos_pendientes_validacion " +

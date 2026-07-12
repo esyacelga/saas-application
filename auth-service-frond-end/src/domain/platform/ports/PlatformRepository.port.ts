@@ -7,6 +7,7 @@ import type {
   Pago,
   NotifConfig,
   UsoLimitesResponse,
+  PagoPendienteResponse,
 } from '@/domain/platform/entities/Plan.entity'
 import type {
   CrearPlanDto,
@@ -75,4 +76,7 @@ export interface PlatformRepository {
 
   // Uso y límites del plan (REQ-SAAS-001)
   getUsoLimites(idCompania: number): Promise<UsoLimitesResponse>
+
+  // REQ-SAAS-001 Sub-fase 1.6: Pagos pendientes de validación (vista owner)
+  getPagosPendientesOwner(idCompania: number, limit?: number): Promise<PagoPendienteResponse[]>
 }

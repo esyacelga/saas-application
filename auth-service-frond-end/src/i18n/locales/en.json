@@ -989,6 +989,39 @@
     "actualizar": "Upgrade",
     "ariaVerPlan": "View plan and subscription options"
   },
+  "miSuscripcion": {
+    "title": "My subscription",
+    "description": "Your plan status and upgrade options",
+    "sectionPlan": "Current plan",
+    "sectionUso": "Resource usage",
+    "sectionHistorial": "Change history",
+    "sectionPlanes": "Change your plan",
+    "fechaFin": "Expires on",
+    "diasRestantes": "Days remaining",
+    "trialUrgente": "Your trial period expires in {{dias}} days",
+    "planActivo": "Active plan",
+    "bannerRevision": "Your payment is under review. We will notify you once confirmed.",
+    "bannerRechazado": "Your last payment was rejected. You can report a new one.",
+    "reportarPago": "Report payment",
+    "pagoEnRevision": "Payment under review",
+    "proximamente": "This feature will be available soon",
+    "historialEmpty": "No change history",
+    "recurso": {
+      "clientes": "Active members",
+      "staff": "Staff",
+      "sucursales": "Branches"
+    },
+    "ilimitado": "Unlimited",
+    "upgrade": "Switch to this plan",
+    "planActual": "Current plan",
+    "errorCarga": "Error loading plan information",
+    "reintentar": "Retry",
+    "motivoRechazo": "Reason: {{motivo}}"
+  },
+  "step3": {
+    "trialBadge": "🎁 Try free for 60 days, no card required",
+    "prefiereFree": "I prefer to start with the Free plan →"
+  },
   "upgradeModal": {
     "title": {
       "clientes": "You have reached the member limit",

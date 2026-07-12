@@ -8,6 +8,7 @@ export interface Caracteristica {
 
 export interface Plan {
   id: number
+  codigo: string
   nombre: string
   descripcion: string
   precioMensual: number
@@ -90,4 +91,24 @@ export interface UsoLimitesResponse {
   sobreLimite: boolean
   sobreLimiteHasta: string | null   // LocalDate ISO, ej: "2026-01-15"
   diasRestantes: number | null      // solo para TRIAL; puede ser negativo si venció
+}
+
+// REQ-SAAS-001 Sub-fase 1.6: Pagos reportados por el propio tenant (owner)
+// Espeja PagoPendienteResponse.java del platform-service
+export interface PagoPendienteResponse {
+  id: number
+  idCompania: number
+  idPlanDestino: number
+  monto: number
+  moneda: string
+  fechaReporte: string           // Instant → ISO string
+  fechaTransferencia: string | null  // LocalDate → ISO string
+  comprobanteUrl: string | null
+  bancoOrigen: string | null
+  referencia: string | null
+  estado: 'PENDIENTE' | 'RECHAZADO' | 'APROBADO' | 'PAGADO' | 'FALLIDO'
+  motivoRechazo: string | null
+  aprobadoPor: number | null
+  fechaAprobacion: string | null  // Instant → ISO string
+  activacionProgramada: boolean
 }
