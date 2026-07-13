@@ -17,25 +17,29 @@
 ## Flujo de la llamada
 
 ```
-core-service                              billing-service
-    |                                           |
-    | POST /api/v1/comprobantes/facturas        |
-    | Authorization: Bearer <jwt-staff>         |
-    | Content-Type: application/json            |
-    |------------------------------------------>|
-    |                                           |
-    |                    crea Comprobante
-    |                    estado=GENERADO
-    |                    encola envío al SRI
-    |                                           |
-    |      201 Created + ComprobanteResponse     |
-    |<------------------------------------------|
+core-service                              billing-service                   SRI
+    |                                           |                            |
+    | POST /api/v1/comprobantes/facturas        |                            |
+    | Authorization: Bearer <jwt-staff>         |                            |
+    | Content-Type: application/json            |                            |
+    |------------------------------------------>|                            |
+    |                                           |                            |
+    |                    crea Comprobante (GENERADO)                         |
+    |                                           |                            |
+    |                    [G2 · transmisión inmediata, timeout 15 s]          |
+    |                    firmar → RECEPCION → AUTORIZACION                   |
+    |                                           |--------------------------->|
+    |                                           |<---------------------------|
+    |                                           |                            |
+    |      201 Created + ComprobanteResponse (estado=AUTORIZADO / DEVUELTO / |
+    |                                          NO_AUTORIZADO / ERROR)         |
+    |<------------------------------------------|                            |
     |
     | guardar id_comprobante en core.membresias
     | o core.ventas (columna id_comprobante)
 ```
 
-El comprobante entra en estado `GENERADO` inmediatamente. La firma XML, envío al SRI y autorización ocurren de forma asíncrona en `billing-service` (ver [flows/sri-submission-retry.md](../flows/sri-submission-retry.md)).
+Con G2 (Fase 1) el comprobante llega a un estado terminal (`AUTORIZADO`) o transitorio (`DEVUELTO`, `NO_AUTORIZADO`, `ERROR`) **dentro del mismo POST**. Si el pipeline síncrono falla o cae por timeout, la firma XML, envío al SRI y autorización se reintentan asíncronamente vía `facturacion.cola_envio` (ver [flows/sri-submission-retry.md](../flows/sri-submission-retry.md)).
 
 ---
 
@@ -148,23 +152,34 @@ Ver [comprobantes.md](comprobantes.md) para el contrato completo de estas operac
 
 ---
 
-## Flujo asíncrono — NO esperar autorización SRI
+## G2 · Transmisión inmediata (Fase 1, activo desde 2026-01-01)
 
-**Dato crítico:** La respuesta HTTP 201 significa que el comprobante se **generó e insertó** en BD (estado `GENERADO`). **El envío al SRI y la autorización ocurren fuera del request HTTP.**
+**Dato crítico:** El pipeline **firmar XML → enviar al SRI RECEPCION → consultar AUTORIZACION → generar RIDE** se ejecuta **síncronamente dentro del POST** con un `timeout` configurable (default `sri.timeout.envio-seconds = 15`). El comprobante llega a un estado terminal (`AUTORIZADO`) o transitorio (`DEVUELTO` / `NO_AUTORIZADO` / `ERROR`) antes de responder.
 
-1. `billing-service` devuelve 201 en <500ms.
-2. Internamente, encola el comprobante en `facturacion.cola_envio` con `estado = 'PENDIENTE'`.
-3. Un job scheduler (`RetrySchedulerService`) procesa la cola cada 60 segundos:
-   - Firma XML con el certificado P12 (estado → `FIRMADO`).
-   - Envía al SRI vía SOAP (estado → `ENVIADO`).
-   - Si SRI acepta, consulta autorización (estado → `AUTORIZADO` o `NO_AUTORIZADO`).
-   - Si falla, reintentos con backoff: 1, 5, 15, 60, 240 minutos.
+### Timeline esperado
 
-**Implicación para core-service:**
+| Fase | Tiempo típico | Notas |
+|------|---------------|-------|
+| Validación de catálogos + reserva secuencial + INSERT | <200 ms | En memoria + una escritura R2DBC. |
+| Firma XAdES-BES local | <500 ms | Requiere P12 desencriptado en memoria. |
+| RECEPCION SOAP al SRI | 1–5 s | Depende del SRI. |
+| AUTORIZACION SOAP al SRI | 1–5 s | Depende del SRI. |
+| Generación de RIDE PDF | <200 ms | OpenPDF, sincrónico. |
+| **Total del POST** | **3–10 s (p95)** | **Timeout duro a 15 s.** |
 
-- NO confiar en que el comprobante esté `AUTORIZADO` inmediatamente después del 201.
-- Si necesita el RIDE PDF o número de autorización para enviar al cliente de inmediato, consultar posteriormente: `GET /api/v1/comprobantes/{id}` con reintentos.
-- Alternativa: usar un webhook (no implementado hoy) que notifique a core cuando el estado cambie a `AUTORIZADO`.
+### Qué esperar en el response
+
+- **Happy path (`estado = AUTORIZADO`):** el `numero_autorizacion`, `fecha_autorizacion` y `ride_pdf_path` vienen poblados. La factura está lista para entregar al cliente.
+- **`estado = DEVUELTO` o `NO_AUTORIZADO`:** el SRI rechazó por datos (RUC inválido, secuencial repetido, etc.). El billing-service ya encoló un reintento con backoff `{1, 5, 15, 60, 240}` min. **Core-service debe considerar la venta como emitida** — el reintento la llevará a `AUTORIZADO` en la mayoría de casos.
+- **`estado = ERROR`:** timeout de 15 s o error de red. La cola se creó con `proxima_ejecucion = now()` para que el scheduler la agarre en <60 s. **Core-service debe considerar la venta como emitida** y consultar el estado más tarde.
+- **HTTP siempre 201** cuando la factura queda persistida. Solo se devuelve 5xx si falla el `INSERT` inicial.
+
+### Implicación para core-service
+
+- NO fallar la venta si el estado es `DEVUELTO`, `NO_AUTORIZADO` o `ERROR` — todos son transitorios.
+- Si necesita el RIDE PDF o `numero_autorizacion` para enviar al cliente y no vino en la respuesta 201, hacer polling a `GET /api/v1/comprobantes/{id}` (p.ej. cada 30 s durante 5 min).
+- Alternativa futura: webhook (no implementado hoy) que notifique cuando el estado cambie a `AUTORIZADO`.
+- **Configurar timeouts del `WebClient`** en core-service para **al menos 20 s** al llamar a `POST /api/v1/comprobantes/facturas` (deja margen para los 15 s del pipeline + red).
 
 ---
 

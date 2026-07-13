@@ -1,6 +1,10 @@
 package com.gymadmin.billing.infrastructure.adapter.in.web;
 
 import com.gymadmin.billing.IntegrationTestBase;
+import com.gymadmin.billing.domain.model.sri.RespuestaAutorizacion;
+import com.gymadmin.billing.domain.model.sri.RespuestaRecepcion;
+import com.gymadmin.billing.domain.port.out.SriSoapPort;
+import com.gymadmin.billing.domain.port.out.XmlSignaturePort;
 import com.gymadmin.billing.infrastructure.adapter.out.persistence.entity.ConfigSriEntity;
 import com.gymadmin.billing.infrastructure.adapter.out.persistence.repository.ComprobanteR2dbcRepository;
 import io.jsonwebtoken.Jwts;
@@ -16,7 +20,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.r2dbc.core.DatabaseClient;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import javax.crypto.SecretKey;
@@ -28,6 +34,9 @@ import java.util.List;
 import java.util.Random;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 @DisplayName("POST /api/v1/comprobantes/facturas — emitir factura electrónica")
 class EmitirFacturaIT extends IntegrationTestBase {
@@ -43,6 +52,18 @@ class EmitirFacturaIT extends IntegrationTestBase {
 
     @Autowired
     private ComprobanteR2dbcRepository comprobanteRepository;
+
+    // G2 · el pipeline síncrono se dispara dentro del POST. Mockeamos los puertos
+    // externos (SRI SOAP, firma XAdES, certificado P12) para no salir a la red real
+    // ni requerir un P12 sembrado en la BD de IT.
+    @MockitoBean
+    private SriSoapPort sriSoapPort;
+
+    @MockitoBean
+    private XmlSignaturePort xmlSignaturePort;
+
+    @MockitoBean
+    private com.gymadmin.billing.domain.port.out.CertificadoRepository certificadoRepository;
 
     @Value("${jwt.secret}")
     private String jwtSecret;
@@ -75,10 +96,27 @@ class EmitirFacturaIT extends IntegrationTestBase {
         r2dbcEntityTemplate.insert(ConfigSriEntity.class)
                 .using(config)
                 .block();
+
+        // G2 · pipeline síncrono: por defecto happy path AUTORIZADO. Tests
+        // individuales sobrescriben estos stubs para simular otros escenarios.
+        when(certificadoRepository.getActiveCertificateContent(anyInt(), anyInt()))
+                .thenReturn(Mono.just(new byte[]{1, 2, 3}));
+        when(certificadoRepository.getActiveCertificatePassword(anyInt(), anyInt()))
+                .thenReturn(Mono.just("password"));
+        when(xmlSignaturePort.sign(anyString(), org.mockito.ArgumentMatchers.any(byte[].class), anyString()))
+                .thenReturn(Mono.just("<signed>xml</signed>"));
+        when(sriSoapPort.enviarComprobante(anyString(), anyString()))
+                .thenReturn(Mono.just(RespuestaRecepcion.builder().estado("RECIBIDA").build()));
+        when(sriSoapPort.autorizarComprobante(anyString(), anyString()))
+                .thenReturn(Mono.just(RespuestaAutorizacion.builder()
+                        .estado("AUTORIZADO")
+                        .numeroAutorizacion("AUT-IT-" + System.currentTimeMillis())
+                        .fechaAutorizacion(OffsetDateTime.now())
+                        .build()));
     }
 
     @Test
-    @DisplayName("emite una factura correctamente y persiste el comprobante en estado GENERADO")
+    @DisplayName("G2 · emite una factura correctamente y llega a estado AUTORIZADO tras el pipeline síncrono")
     void emitirFactura_happyPath_creaComprobante() {
         String bearer = staffBearer();
         String codigoNumerico = randomDigits(9);
@@ -122,7 +160,7 @@ class EmitirFacturaIT extends IntegrationTestBase {
                 .expectBody()
                 .jsonPath("$.id").isNotEmpty()
                 .jsonPath("$.clave_acceso").value(v -> assertThat(v.toString()).hasSize(49))
-                .jsonPath("$.estado").isEqualTo("GENERADO")
+                .jsonPath("$.estado").isEqualTo("AUTORIZADO")
                 .jsonPath("$.tipo_comprobante").isEqualTo("01")
                 .jsonPath("$.ambiente").isEqualTo("1")
                 .jsonPath("$.id_compania").isEqualTo(ID_COMPANIA)
@@ -137,14 +175,17 @@ class EmitirFacturaIT extends IntegrationTestBase {
                 .jsonPath("$.razon_social_receptor").isEqualTo("Cliente de Prueba")
                 .jsonPath("$.total").isEqualTo(50.00)
                 .jsonPath("$.subtotal_sin_impuesto").isEqualTo(50.00)
-                .jsonPath("$.moneda").isEqualTo("DOLAR");
+                .jsonPath("$.moneda").isEqualTo("DOLAR")
+                .jsonPath("$.numero_autorizacion").value(v -> assertThat(v.toString())
+                        .as("Debe venir número de autorización devuelto por el mock del SRI")
+                        .startsWith("AUT-IT-"));
 
-        StepVerifier.create(comprobanteRepository.findByEmpresa(ID_COMPANIA, ID_SUCURSAL, "GENERADO", 50, 0))
+        StepVerifier.create(comprobanteRepository.findByEmpresa(ID_COMPANIA, ID_SUCURSAL, "AUTORIZADO", 50, 0))
                 .recordWith(java.util.ArrayList::new)
                 .thenConsumeWhile(c -> true)
                 .consumeRecordedWith(items -> assertThat(items)
-                        .as("Debe existir al menos un comprobante GENERADO para la empresa de test")
-                        .anyMatch(c -> "GENERADO".equals(c.getEstado())
+                        .as("Debe existir al menos un comprobante AUTORIZADO para la empresa de test")
+                        .anyMatch(c -> "AUTORIZADO".equals(c.getEstado())
                                 && ID_COMPANIA == c.getIdCompania()
                                 && c.getSecuencial() != null
                                 && c.getSecuencial().matches("\\d{9}")))

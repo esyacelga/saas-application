@@ -50,6 +50,13 @@ sri:
     autorizacion: ${SRI_WSDL_AUTORIZACION:https://celcer.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline?wsdl}
   storage:
     base-path: ${SRI_STORAGE_PATH:./storage/sri}
+  # G2 — Transmisión inmediata: timeout del pipeline síncrono
+  # firma → envío → autorización disparado desde POST /facturas.
+  # Al vencer, la factura queda en estado ERROR y la fila
+  # facturacion.cola_envio se crea con proxima_ejecucion = now()
+  # para reintento inmediato del scheduler.
+  timeout:
+    envio-seconds: ${SRI_TIMEOUT_ENVIO_SECONDS:15}
 
 # P12 certificate decryption key (symmetric, stored in env var)
 facturacion:

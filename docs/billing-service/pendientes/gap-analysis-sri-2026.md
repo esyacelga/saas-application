@@ -14,8 +14,8 @@ Este documento **no rediseña** la solución. Solo lista los GAPs cruzados contr
 
 | # | GAP | Severidad | Bloquea producción |
 |---|-----|-----------|:------------------:|
-| G1 | Ficha técnica del XML es v2.1.0; SRI publicó v2.32 (nov-2025) | 🔴 Alta | Sí |
-| G2 | Transmisión inmediata obligatoria desde 2026-01-01; hoy el primer intento va por cola con delay | 🔴 Alta | Sí |
+| G1 | Ficha técnica del XML es v2.1.0; SRI publicó v2.32 (nov-2025) — ✅ resuelto: subido a v2.24 (ver [ADR 001](adr/001-version-xml-sri.md)) | 🔴 Alta | Sí |
+| G2 | Transmisión inmediata obligatoria desde 2026-01-01 — ✅ resuelto: pipeline síncrono con timeout de 15 s dentro del POST; la cola queda como fallback (ver [flows/sri-submission-retry.md](../flows/sri-submission-retry.md)) | 🔴 Alta | Sí |
 | G3 | Anulación fiscal — ya cubierto en [anulacion-sri.md](anulacion-sri.md) | 🔴 Alta | Sí |
 | G4 | Notas de crédito (tipo 04) — sin código Java, aunque tablas y catálogo ya están en BD | 🔴 Alta | Sí (dependencia de G3) |
 | G5 | Secuencial NO se reserva atómicamente contra BD; lo provee el cliente en el request | 🔴 Alta | Sí (riesgo de duplicados) |
@@ -49,6 +49,8 @@ Este documento **no rediseña** la solución. Solo lista los GAPs cruzados contr
 
 ### G1 — Versión de la ficha técnica (XML v2.1.0 vs v2.32)
 
+> **Estado:** ✅ Resuelto en 2026-07-11 subiendo a **v2.24** (mínima que oficializa el código de tarifa `4` IVA 15%). Ver [ADR 001](adr/001-version-xml-sri.md).
+
 **Situación:** `FacturaXmlBuilder.java:67` genera `<factura ... version="2.1.0">`. El SRI publicó **v2.32 en noviembre de 2025**.
 
 **Impacto de las diferencias más relevantes:**
@@ -70,20 +72,30 @@ Este documento **no rediseña** la solución. Solo lista los GAPs cruzados contr
 
 ### G2 — Transmisión inmediata obligatoria desde 2026-01-01
 
-**Situación:** El flujo actual es 100% asíncrono vía cola:
-1. `POST /comprobantes/facturas` → guarda `GENERADO`, responde HTTP 201.
-2. `RetrySchedulerService` procesa cada **60 segundos**. Primer intento del backoff comienza al minuto 1.
+> **Estado:** ✅ **Resuelto en 2026-07-13 (Fase 1).** Ver [flows/sri-submission-retry.md](../flows/sri-submission-retry.md) para el flujo actualizado.
+
+**Situación previa:** El flujo era 100% asíncrono vía cola:
+1. `POST /comprobantes/facturas` → guardaba `GENERADO`, respondía HTTP 201.
+2. `RetrySchedulerService` procesaba cada **60 segundos**. Primer intento del backoff comenzaba al minuto 1.
 
 **Normativa 2026:** el comprobante debe transmitirse al SRI **en tiempo real** (mismo día, tolerancia de minutos). Fuente: Boletín 072, Res. NAC-DGERCGC25-00000014.
 
-**Riesgo:** para facturas emitidas cerca de fin del día, el retry puede diferir la transmisión más allá del día calendario del `fechaEmision`, generando divergencia observable por el SRI. Multa hasta USD 482 por comprobante.
+**Solución implementada (Fase 1 · G2):**
+- **`ComprobanteService.emitirFactura`** ahora dispara síncronamente `EnvioSriService.procesarEmisionInmediata` después de persistir el `Comprobante` en `GENERADO`.
+- Pipeline síncrono: firmar XML v2.24 → RECEPCION SOAP → AUTORIZACION SOAP → generar RIDE, todo bajo un timeout configurable (`sri.timeout.envio-seconds`, default 15 s).
+- **HTTP 201 siempre** cuando la factura queda persistida; el `estado` en el body refleja el resultado: `AUTORIZADO` / `DEVUELTO` / `NO_AUTORIZADO` / `ERROR`.
+- **Cola como fallback**: solo se crea fila en `facturacion.cola_envio` cuando el pipeline síncrono falla. Si es timeout / error de red, `proxima_ejecucion = now()` para reintento inmediato del scheduler (dentro de 60 s). Si es DEVUELTO / NO_AUTORIZADO, se usa el backoff `{1, 5, 15, 60, 240}` min existente.
+- **Métricas nuevas:** `sri.emision.duracion` (Timer, p50/p95/p99 del pipeline síncrono) y `sri.emision.timeouts` (Counter). SLO: p95 < 30 s en primer envío, p99 < 5 min contando fallback.
+- **Bug corregido de paso:** `EnvioSriService.buildXmlFromComprobante` era un placeholder inválido `<factura ... version="2.24"><placeholder ... /></factura>`. Ahora reconstruye el XML real llamando a `FacturaXmlBuilder.buildXml(...)`.
 
-**Qué hacer:**
-- Hacer que el **primer intento de firma+envío+autorización sea síncrono** dentro del propio POST (o al menos disparado inmediatamente, no vía scheduler cada 60s).
-- Mantener la cola solo como **fallback** para casos donde el SRI está caído.
-- Alertar por métrica cuando una emisión no se transmite en <5 min.
-
-**Archivos afectados:** `ComprobanteService.emitirFactura`, `RetrySchedulerService`, `facturacion.cola_envio` (nuevo estado `INMEDIATO`).
+**Archivos afectados:**
+- `billing-service/src/main/java/.../application/service/ComprobanteService.java` — nuevo path síncrono.
+- `billing-service/src/main/java/.../application/service/EnvioSriService.java` — extraído `procesarEmisionInmediata`; corregido `buildXmlFromComprobante`.
+- `billing-service/src/main/java/.../infrastructure/config/SriTimeoutProperties.java` — nueva.
+- `billing-service/src/main/java/.../infrastructure/config/BillingMetricsConfig.java` — nuevas métricas.
+- `billing-service/src/main/resources/application.yml` — nueva property `sri.timeout.envio-seconds`.
+- `billing-service/src/test/java/.../unit/EnvioSriServiceTest.java` — nuevo.
+- `billing-service/src/test/java/.../infrastructure/adapter/in/web/EmisionInmediataTimeoutIT.java` — nuevo.
 
 ---
 

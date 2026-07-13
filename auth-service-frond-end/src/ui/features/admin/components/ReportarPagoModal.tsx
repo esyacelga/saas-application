@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2, Info, Paperclip, X } from 'lucide-react'
@@ -54,6 +54,13 @@ export function ReportarPagoModal({
       idPlanDestino: idPlanDestinoInicial ?? undefined,
     },
   })
+
+  // Sincronizar idPlanDestino cuando cambia el prop (el modal se reutiliza sin remount)
+  useEffect(() => {
+    if (open && idPlanDestinoInicial != null) {
+      setValue('idPlanDestino', idPlanDestinoInicial, { shouldValidate: false })
+    }
+  }, [open, idPlanDestinoInicial, setValue])
 
   const today = new Date().toISOString().slice(0, 10)
 

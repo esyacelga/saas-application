@@ -99,8 +99,26 @@ public class AprobarPagoService implements AprobarPagoUseCase {
                             nueva.setTipoCambio(pago.isActivacionProgramada()
                                     ? CompaniaPlan.TipoCambio.UPGRADE
                                     : CompaniaPlan.TipoCambio.NUEVO);
-                            return companiaPlanRepository.save(nueva);
+                            // Activación inmediata: reemplazar la suscripción vigente para no
+                            // violar ux_compania_plan_vigente (único parcial sobre ACTIVO/EN_GRACIA).
+                            // En activación programada no se toca: el SubscriptionJobService lo hará
+                            // al llegar la fecha_inicio.
+                            if (pago.isActivacionProgramada()) {
+                                return companiaPlanRepository.save(nueva);
+                            }
+                            return reemplazarActivoPrevio(pago.getIdCompania())
+                                    .then(companiaPlanRepository.save(nueva));
                         }));
+    }
+
+    private Mono<Void> reemplazarActivoPrevio(Long idCompania) {
+        return companiaPlanRepository.findActivoByIdCompania(idCompania)
+                .flatMap(previo -> {
+                    previo.setEstado(CompaniaPlan.Estado.REEMPLAZADA);
+                    return companiaPlanRepository.save(previo)
+                            .doOnSuccess(s -> log.debug("Plan {} pasó a REEMPLAZADA por aprobación de pago", s.getId()));
+                })
+                .then();
     }
 
     private Mono<LocalDate> resolverFechaInicio(PagoPendienteValidacion pago) {

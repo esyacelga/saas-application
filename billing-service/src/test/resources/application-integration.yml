@@ -44,6 +44,10 @@ sri:
     autorizacion: http://localhost/autorizacion?wsdl
   storage:
     base-path: ./target/test-storage/sri
+  timeout:
+    # G2: en IT usamos 15s por default (mismo que prod); tests puntuales lo
+    # sobrescriben con @DynamicPropertySource.
+    envio-seconds: 15
 
 facturacion:
   cert:

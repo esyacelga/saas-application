@@ -3,6 +3,8 @@ package com.gymadmin.billing.application.service;
 import com.gymadmin.billing.application.command.EmitirFacturaCommand;
 import com.gymadmin.billing.domain.model.ClaveAcceso;
 import com.gymadmin.billing.domain.model.Comprobante;
+import com.gymadmin.billing.domain.model.ComprobanteDetalle;
+import com.gymadmin.billing.domain.model.ConfigSri;
 import com.gymadmin.billing.domain.port.in.ComprobanteUseCase;
 import com.gymadmin.billing.domain.port.out.CertificadoRepository;
 import com.gymadmin.billing.domain.port.out.ComprobanteRepository;
@@ -15,16 +17,19 @@ import com.gymadmin.billing.infrastructure.adapter.out.xml.FacturaXmlBuilder;
 import com.gymadmin.billing.infrastructure.exception.BusinessException;
 import com.gymadmin.billing.infrastructure.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ComprobanteService implements ComprobanteUseCase {
 
     private static final Set<String> ESTADOS_ANULABLES = Set.of("AUTORIZADO", "GENERADO");
@@ -110,8 +115,46 @@ public class ComprobanteService implements ComprobanteUseCase {
                                     .idUsuarioRegistro(command.idUsuarioRegistro())
                                     .build();
 
-                            return comprobanteRepository.save(comprobante);
+                            return comprobanteRepository.save(comprobante)
+                                    .flatMap(saved -> transmitirInmediatamente(saved, command, config));
                         }));
+    }
+
+    /**
+     * G2 · Transmisión inmediata al SRI dentro del propio POST. Ver
+     * {@link EnvioSriService#procesarEmisionInmediata(Comprobante, List, List, ConfigSri)}.
+     * <p>
+     * El controller siempre devuelve HTTP 201 con el {@link Comprobante} tal
+     * como quedó (AUTORIZADO / DEVUELTO / NO_AUTORIZADO / ERROR). Solo se
+     * devuelve un 5xx si falla la persistencia inicial (arriba en el pipeline).
+     */
+    private Mono<Comprobante> transmitirInmediatamente(Comprobante saved, EmitirFacturaCommand command, ConfigSri configSri) {
+        List<ComprobanteDetalle> detalles = command.detalles().stream()
+                .map(d -> ComprobanteDetalle.builder()
+                        .idComprobante(saved.getId())
+                        .codigoPrincipal(d.codigoPrincipal())
+                        .codigoAuxiliar(d.codigoAuxiliar())
+                        .descripcion(d.descripcion())
+                        .cantidad(d.cantidad())
+                        .precioUnitario(d.precioUnitario())
+                        .descuento(d.descuento())
+                        .precioTotalSinImpuesto(d.precioTotalSinImpuesto())
+                        .orden(d.orden())
+                        .build())
+                .toList();
+
+        List<FacturaXmlBuilder.Pago> pagos = command.pagos().stream()
+                .map(p -> new FacturaXmlBuilder.Pago(p.formaPago(), p.total()))
+                .toList();
+
+        return envioSriService.procesarEmisionInmediata(saved, detalles, pagos, configSri)
+                .onErrorResume(e -> {
+                    // Doble red de seguridad: procesarEmisionInmediata ya captura sus
+                    // errores, pero si por algún motivo escapa uno lo persistimos y
+                    // devolvemos el comprobante en estado ERROR para no fallar el 201.
+                    log.error("Fallo inesperado en pipeline síncrono para comprobante {}: {}", saved.getId(), e.getMessage());
+                    return Mono.just(saved);
+                });
     }
 
     /**

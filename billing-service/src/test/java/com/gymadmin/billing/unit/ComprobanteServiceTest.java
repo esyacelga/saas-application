@@ -5,6 +5,7 @@ import com.gymadmin.billing.application.service.CatalogoSriService;
 import com.gymadmin.billing.application.service.ComprobanteService;
 import com.gymadmin.billing.application.service.EnvioSriService;
 import com.gymadmin.billing.domain.model.Comprobante;
+import com.gymadmin.billing.domain.model.ComprobanteDetalle;
 import com.gymadmin.billing.domain.model.ConfigSri;
 import com.gymadmin.billing.domain.port.out.CertificadoRepository;
 import com.gymadmin.billing.domain.port.out.ComprobanteRepository;
@@ -24,17 +25,21 @@ import reactor.test.StepVerifier;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@DisplayName("ComprobanteService.emitirFactura — reserva atómica del secuencial (G5)")
+@DisplayName("ComprobanteService.emitirFactura — reserva secuencial (G5) + transmisión inmediata (G2)")
 class ComprobanteServiceTest {
 
     private ComprobanteRepository comprobanteRepository;
@@ -68,6 +73,15 @@ class ComprobanteServiceTest {
         when(catalogoSriService.existeTipoIdentificacion(anyString())).thenReturn(Mono.just(true));
         when(catalogoSriService.existeFormaPago(anyString())).thenReturn(Mono.just(true));
 
+        // Default para G2: la transmisión inmediata devuelve el comprobante ya
+        // AUTORIZADO. Los tests que necesitan otro camino sobrescriben este stub.
+        when(envioSriService.procesarEmisionInmediata(any(Comprobante.class), anyList(), anyList(), any(ConfigSri.class)))
+                .thenAnswer(inv -> {
+                    Comprobante c = inv.getArgument(0, Comprobante.class);
+                    c.setEstado("AUTORIZADO");
+                    return Mono.just(c);
+                });
+
         service = new ComprobanteService(
                 comprobanteRepository,
                 configSriRepository,
@@ -96,8 +110,15 @@ class ComprobanteServiceTest {
         when(configSriRepository.findByEmpresa(1, 1)).thenReturn(Mono.just(config));
         when(secuencialRepository.reservarSiguiente(1, 1, "001", "001", "01"))
                 .thenReturn(Mono.just(42));
-        when(comprobanteRepository.save(any(Comprobante.class)))
-                .thenAnswer(inv -> Mono.just(inv.getArgument(0, Comprobante.class)));
+        // Capturamos el estado inicial (GENERADO) antes de que la transmisión
+        // inmediata (G2) mute el objeto a AUTORIZADO/ERROR/etc.
+        AtomicReferenceEstado estadoInicial = new AtomicReferenceEstado();
+        when(comprobanteRepository.save(any(Comprobante.class))).thenAnswer(inv -> {
+            Comprobante c = inv.getArgument(0, Comprobante.class);
+            c.setId(100L);
+            estadoInicial.value = c.getEstado();
+            return Mono.just(c);
+        });
 
         EmitirFacturaCommand command = buildCommand();
 
@@ -114,10 +135,16 @@ class ComprobanteServiceTest {
         Comprobante saved = captor.getValue();
         assertThat(saved.getSecuencial()).isEqualTo("000000042");
         assertThat(saved.getTipoComprobante()).isEqualTo("01");
-        assertThat(saved.getEstado()).isEqualTo("GENERADO");
+        // El comprobante se persiste inicialmente como GENERADO (antes de G2)
+        assertThat(estadoInicial.value).isEqualTo("GENERADO");
         // La clave de acceso (49 dígitos) debe contener el secuencial formateado
         assertThat(saved.getClaveAcceso()).hasSize(49);
         assertThat(saved.getClaveAcceso()).contains("000000042");
+    }
+
+    /** Contenedor no-atómico, solo para escribir desde un lambda de Mockito. */
+    private static final class AtomicReferenceEstado {
+        String value;
     }
 
     @Test
@@ -134,8 +161,7 @@ class ComprobanteServiceTest {
         when(configSriRepository.findByEmpresa(anyInt(), anyInt())).thenReturn(Mono.just(config));
         when(secuencialRepository.reservarSiguiente(anyInt(), anyInt(), anyString(), anyString(), anyString()))
                 .thenReturn(Mono.just(1));
-        when(comprobanteRepository.save(any(Comprobante.class)))
-                .thenAnswer(inv -> Mono.just(inv.getArgument(0, Comprobante.class)));
+        stubSaveWithId(comprobanteRepository, 101L);
 
         // Act
         StepVerifier.create(service.emitirFactura(buildCommand())).expectNextCount(1).verifyComplete();
@@ -154,8 +180,97 @@ class ComprobanteServiceTest {
                 .verify();
 
         // No debe reservar secuencial si no hay config
-        verify(secuencialRepository, org.mockito.Mockito.never())
+        verify(secuencialRepository, never())
                 .reservarSiguiente(anyInt(), anyInt(), anyString(), anyString(), eq("01"));
+        // Ni intentar transmitir
+        verify(envioSriService, never())
+                .procesarEmisionInmediata(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("G2 · dispara la transmisión inmediata pasando detalles y pagos del command (sin releer BD)")
+    void emitirFactura_disparaTransmisionInmediata_conDatosDelCommand() {
+        ConfigSri config = ConfigSri.builder().idCompania(1).idSucursal(1).ruc("1234567890001").ambiente("1").build();
+        when(configSriRepository.findByEmpresa(anyInt(), anyInt())).thenReturn(Mono.just(config));
+        when(secuencialRepository.reservarSiguiente(anyInt(), anyInt(), anyString(), anyString(), anyString()))
+                .thenReturn(Mono.just(7));
+        stubSaveWithId(comprobanteRepository, 200L);
+
+        StepVerifier.create(service.emitirFactura(buildCommand())).expectNextCount(1).verifyComplete();
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<ComprobanteDetalle>> detallesCaptor = ArgumentCaptor.forClass((Class) List.class);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<FacturaXmlBuilder.Pago>> pagosCaptor = ArgumentCaptor.forClass((Class) List.class);
+
+        verify(envioSriService, times(1)).procesarEmisionInmediata(
+                any(Comprobante.class),
+                detallesCaptor.capture(),
+                pagosCaptor.capture(),
+                eq(config));
+
+        assertThat(detallesCaptor.getValue())
+                .hasSize(1)
+                .allSatisfy(d -> {
+                    assertThat(d.getCodigoPrincipal()).isEqualTo("PROD001");
+                    assertThat(d.getDescripcion()).isEqualTo("Membresía mensual");
+                    assertThat(d.getPrecioTotalSinImpuesto()).isEqualByComparingTo("50.00");
+                    // El detalle apunta al ID del comprobante recién persistido
+                    assertThat(d.getIdComprobante()).isEqualTo(200L);
+                });
+
+        assertThat(pagosCaptor.getValue())
+                .hasSize(1)
+                .allSatisfy(p -> {
+                    assertThat(p.formaPago()).isEqualTo("01");
+                    assertThat(p.total()).isEqualByComparingTo("50.00");
+                });
+    }
+
+    @Test
+    @DisplayName("G2 · devuelve el comprobante en estado AUTORIZADO cuando la transmisión inmediata tiene éxito")
+    void emitirFactura_transmisionInmediataAutorizada_devuelveAutorizado() {
+        ConfigSri config = ConfigSri.builder().idCompania(1).idSucursal(1).ruc("1234567890001").ambiente("1").build();
+        when(configSriRepository.findByEmpresa(anyInt(), anyInt())).thenReturn(Mono.just(config));
+        when(secuencialRepository.reservarSiguiente(anyInt(), anyInt(), anyString(), anyString(), anyString()))
+                .thenReturn(Mono.just(1));
+        stubSaveWithId(comprobanteRepository, 300L);
+        // El stub por defecto ya devuelve AUTORIZADO
+
+        StepVerifier.create(service.emitirFactura(buildCommand()))
+                .assertNext(c -> assertThat(c.getEstado()).isEqualTo("AUTORIZADO"))
+                .verifyComplete();
+    }
+
+    @Test
+    @DisplayName("G2 · devuelve el comprobante en estado ERROR cuando la transmisión inmediata falla (fallback resiliente)")
+    void emitirFactura_transmisionInmediataFalla_devuelveEstadoTransitorio() {
+        ConfigSri config = ConfigSri.builder().idCompania(1).idSucursal(1).ruc("1234567890001").ambiente("1").build();
+        when(configSriRepository.findByEmpresa(anyInt(), anyInt())).thenReturn(Mono.just(config));
+        when(secuencialRepository.reservarSiguiente(anyInt(), anyInt(), anyString(), anyString(), anyString()))
+                .thenReturn(Mono.just(1));
+        stubSaveWithId(comprobanteRepository, 400L);
+
+        // Emisión inmediata: el pipeline síncrono deja el comprobante en ERROR
+        when(envioSriService.procesarEmisionInmediata(any(Comprobante.class), anyList(), anyList(), any(ConfigSri.class)))
+                .thenAnswer(inv -> {
+                    Comprobante c = inv.getArgument(0, Comprobante.class);
+                    c.setEstado("ERROR");
+                    return Mono.just(c);
+                });
+
+        StepVerifier.create(service.emitirFactura(buildCommand()))
+                .assertNext(c -> assertThat(c.getEstado()).isEqualTo("ERROR"))
+                .verifyComplete();
+    }
+
+    private static void stubSaveWithId(ComprobanteRepository repo, long id) {
+        AtomicLong assigned = new AtomicLong(id);
+        when(repo.save(any(Comprobante.class))).thenAnswer(inv -> {
+            Comprobante c = inv.getArgument(0, Comprobante.class);
+            c.setId(assigned.get());
+            return Mono.just(c);
+        });
     }
 
     private EmitirFacturaCommand buildCommand() {

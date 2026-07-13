@@ -11,9 +11,21 @@ Facturación electrónica SRI Ecuador. Todos los endpoints requieren `Authorizat
 ### POST /api/v1/comprobantes/facturas
 **Auth:** Bearer JWT (`tipo: staff`)  
 **Permission:** Requiere autenticación  
-**Description:** Emitir factura electrónica en estado `GENERADO`.
+**Description:** Emitir factura electrónica **y transmitirla inmediatamente al SRI** dentro del mismo request.
 
 > **Nota (G5, Fase 0):** El servidor asigna automáticamente el siguiente `secuencial` disponible para la combinación (`id_compania`, `id_sucursal`, `cod_establecimiento`, `cod_punto_emision`, `tipo_comprobante = "01"`), reservándolo atómicamente contra `facturacion.secuenciales`. El campo `secuencial` en el request está **deprecated** y será eliminado en la próxima versión mayor. Si el cliente lo envía, el servidor lo ignora y registra un `WARN` en logs.
+
+> **G2, Fase 1 — Transmisión inmediata (activo desde 2026-01-01):** El request **puede tardar hasta ~15 segundos** (default `sri.timeout.envio-seconds = 15`). Después de persistir el comprobante en estado `GENERADO`, el servidor dispara síncronamente el pipeline **firmar XML → enviar al SRI RECEPCION → consultar AUTORIZACION → generar RIDE**. El body de la respuesta 201 incluye el `estado` final:
+>
+> - `AUTORIZADO` — El SRI aceptó y autorizó el comprobante (happy path). `numero_autorizacion` viene poblado.
+> - `DEVUELTO` — El SRI rechazó en RECEPCION. Se encoló para reintento con backoff `{1, 5, 15, 60, 240}` min.
+> - `NO_AUTORIZADO` — El SRI rechazó en AUTORIZACION. Se encoló para reintento con backoff.
+> - `ERROR` — Timeout de `sri.timeout.envio-seconds` o error de red. Se encoló para reintento **inmediato** (el scheduler lo procesa en su próxima pasada, dentro de 60 s).
+> - `GENERADO` — Estado inicial. **Nunca debe verse** en la respuesta si la transmisión inmediata está activa; si aparece indica un bug.
+>
+> El core-service (u otro cliente) **debe** guardar el `id` del comprobante y considerar los estados `DEVUELTO`, `NO_AUTORIZADO` y `ERROR` como transitorios — el reintento asíncrono los llevará a `AUTORIZADO` sin intervención (salvo agotar `max_intentos = 5`). Ver [flows/sri-submission-retry.md](../flows/sri-submission-retry.md) para detalles.
+>
+> El servicio **siempre devuelve HTTP 201** cuando la factura queda persistida (aun cuando el SRI la rechace). Solo devuelve 5xx si falla el `INSERT` inicial.
 
 **Request body:**
 ```json
@@ -66,7 +78,7 @@ Facturación electrónica SRI Ecuador. Todos los endpoints requieren `Authorizat
 
 Los catálogos SRI se cargan en memoria al arranque del servicio; nuevas tarifas o formas de pago publicadas por el SRI requieren solo actualizar el seed (`09_insert_seed_sri.sql`) y reiniciar el servicio.
 
-**Response 201:**
+**Response 201 (happy path — G2 autorizado):**
 ```json
 {
   "id": 1,
@@ -74,7 +86,7 @@ Los catálogos SRI se cargan en memoria al arranque del servicio; nuevas tarifas
   "id_sucursal": 1,
   "tipo_comprobante": "01",
   "clave_acceso": "0207202601021001001000000001123456789X",
-  "numero_autorizacion": null,
+  "numero_autorizacion": "0207202601021001001000000001123456789",
   "cod_establecimiento": "001",
   "cod_punto_emision": "001",
   "secuencial": "000000001",
@@ -89,14 +101,27 @@ Los catálogos SRI se cargan en memoria al arranque del servicio; nuevas tarifas
   "total_iva": 4.96,
   "total": 38.00,
   "moneda": "DOLAR",
-  "estado": "GENERADO",
-  "fecha_autorizacion": null,
+  "estado": "AUTORIZADO",
+  "fecha_autorizacion": "2026-07-02T14:30:12Z",
   "xml_firmado_path": null,
   "xml_autorizado_path": null,
-  "ride_pdf_path": null,
+  "ride_pdf_path": "blob://ride_...",
   "created_at": "2026-07-02T14:30:00Z"
 }
 ```
+
+**Response 201 (fallback — pipeline síncrono cayó por timeout):**
+```json
+{
+  "id": 1,
+  "estado": "ERROR",
+  "numero_autorizacion": null,
+  "fecha_autorizacion": null,
+  "ride_pdf_path": null,
+  "...": "resto de campos igual"
+}
+```
+En este caso el reintento se dispara automáticamente en la próxima pasada del scheduler (dentro de 60 s). Consultar `GET /api/v1/comprobantes/{id}` para ver el estado final.
 
 El campo `secuencial` en la respuesta viene siempre formateado a **9 dígitos con padding a la izquierda** (ej. `"000000042"`). Corresponde al valor reservado atómicamente desde `facturacion.secuenciales`.
 
@@ -107,6 +132,8 @@ El campo `secuencial` en la respuesta viene siempre formateado a **9 dígitos co
 - `422` — validación semántica contra catálogo SRI falla (G6):
   - `Tipo de identificación no reconocido: {codigo}` — el `tipo_id_receptor` no está en `sri.tipos_identificacion_comprador`.
   - `Forma de pago no reconocida: {codigo}` — alguna `forma_pago` no está en `sri.formas_pago`.
+
+> **Los rechazos del SRI (DEVUELTO / NO_AUTORIZADO / timeout ERROR) NO se traducen a 4xx/5xx.** La respuesta sigue siendo 201 con el `estado` en el body, porque el comprobante quedó persistido y entrará al ciclo de reintentos.
 
 ---
 

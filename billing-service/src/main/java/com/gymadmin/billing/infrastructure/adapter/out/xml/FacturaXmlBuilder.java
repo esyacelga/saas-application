@@ -22,11 +22,21 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
- * Builds SRI Ecuador factura XML (version 2.1.0) using DOM API exclusively.
+ * Builds SRI Ecuador factura XML (version 2.24) using DOM API exclusively.
  * No string concatenation or JAXB.
+ * <p>
+ * La versión se declara en la constante {@link #XML_VERSION}. Ver
+ * {@code docs/billing-service/pendientes/adr/001-version-xml-sri.md} para el
+ * ADR que justifica la elección de v2.24 sobre v2.1.0 / v2.2.0 / v2.30 / v2.32.
  */
 @Component
 public class FacturaXmlBuilder {
+
+    /**
+     * Versión de la ficha técnica SRI declarada en el atributo {@code version}
+     * del elemento raíz {@code <factura>}. Ver ADR 001.
+     */
+    static final String XML_VERSION = "2.24";
 
     private static final DateTimeFormatter FECHA_FACTURA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -64,7 +74,7 @@ public class FacturaXmlBuilder {
 
             Element factura = doc.createElement("factura");
             factura.setAttribute("id", "comprobante");
-            factura.setAttribute("version", "2.1.0");
+            factura.setAttribute("version", XML_VERSION);
             doc.appendChild(factura);
 
             factura.appendChild(buildInfoTributaria(doc, comprobante, configSri));
