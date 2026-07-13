@@ -105,6 +105,17 @@ Fase 0 (Fundamentos)              Fase 1 (Pipeline SRI)
 
 ---
 
+## Pendientes transversales (no ligados a una fase)
+
+- **Test IT end-to-end contra SRI de pruebas** — enviar factura real a `celcer.sri.gob.ec` para validar el pipeline completo con certificado real. Ver [it-end-to-end-sri-pruebas.md](it-end-to-end-sri-pruebas.md) para el checklist de 7 prerrequisitos (certificado P12, RUC, BD operacional, receptor, red).
+- **Bug auth Postgres local** — todos los IT actuales fallan con `password authentication failed for user "administrador"`. Afecta el desarrollo de nuevos IT y bloquea la ejecución del end-to-end pendiente.
+- **JDK mismatch `pom.xml`** — declara `<java.version>25</java.version>` pero el runner local es JDK 21. Workaround: pasar `-Djava.version=21` a todo `mvn`. Decidir con el equipo si bajar el pom o subir el JDK.
+- **`TODO(G6-follow)` tarifa IVA hardcoded** — `FacturaXmlBuilder` y `NotaCreditoXmlBuilder` hardcodean IVA 15% por línea. Se resuelve cuando los DTOs expongan `codigoTarifaIva` por detalle.
+- **`TODO(G9)` `tipoPago="20"` hardcoded en `AtsXmlBuilder`** — se resuelve en Fase 3 · G9 al rediseñar el ATS con formas de pago reales.
+- **`TODO(G3-followup)` cierre APROBADA→EJECUTADA** — cuando una NC de Flujo B queda pendiente y autoriza después vía scheduler G2, la anulación no cierra automáticamente. Requiere un job o hook.
+
+---
+
 ## Estado global
 
 | GAP | Fase | Estado | Detalle |

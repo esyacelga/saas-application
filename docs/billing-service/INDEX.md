@@ -32,9 +32,11 @@ Facturación electrónica SRI Ecuador. Emisión, firma digital y autorización d
 
 | Documento | Prioridad | Descripción |
 |-----------|-----------|-------------|
-| [roadmap-sri-2026.md](pendientes/roadmap-sri-2026.md) | 🔴 Alta | 📋 **División en 6 fases con dependencias.** Punto de entrada para arrancar el desarrollo. Cada fase apunta al detalle del GAP en gap-analysis. |
-| [anulacion-sri.md](pendientes/anulacion-sri.md) | 🔴 Alta | 📋 Anulación fiscal SRI + notas de crédito. Hoy el endpoint `POST /comprobantes/{id}/anular` solo hace UPDATE local; falta cumplir normativa Ecuador (ventana día 7, consumidor final, catálogo de motivos, NC tipo 04, workflow de aprobación). BD ya modeló las 3 tablas necesarias. |
-| [gap-analysis-sri-2026.md](pendientes/gap-analysis-sri-2026.md) | 🔴 Alta | 📋 Cruce completo de brechas entre normativa SRI 2025-2026 y estado actual del código. 13 GAPs identificados: ficha técnica v2.1.0 vs v2.32, transmisión inmediata desde 2026-01-01, notas de crédito/débito/retención sin código, secuencial no atómico, catálogos SRI sin usar, ATS incompleto, bancarización sin validar. |
+| [roadmap-sri-2026.md](pendientes/roadmap-sri-2026.md) | 🔴 Alta | 📋 **División en 6 fases con dependencias.** Fases 0, 1 y 2 ya completadas. Cada fase apunta al detalle del GAP en gap-analysis. |
+| [it-end-to-end-sri-pruebas.md](pendientes/it-end-to-end-sri-pruebas.md) | 🟡 Media | 📋 Test IT que envía factura real al ambiente de pruebas del SRI (`celcer.sri.gob.ec`). Incluye checklist de prerrequisitos: certificado P12 real, RUC válido, BD operacional, receptor válido, red. Para retomar en próxima sesión. |
+| [anulacion-sri.md](pendientes/anulacion-sri.md) | ✅ | ✅ IMPLEMENTADO 2026-07-13 — histórico del diseño de G3. Ver [api/anulaciones.md](api/anulaciones.md) y [flows/anulacion-nc.md](flows/anulacion-nc.md). |
+| [gap-analysis-sri-2026.md](pendientes/gap-analysis-sri-2026.md) | 🔴 Alta | 📋 Cruce completo de brechas entre normativa SRI 2025-2026 y estado actual del código. 13 GAPs identificados; G1–G6 resueltos, resto pendiente. |
+| [adr/001-version-xml-sri.md](pendientes/adr/001-version-xml-sri.md) | — | ADR de la decisión de subir el XML de factura a v2.24 (mínima que oficializa el código IVA 15%). |
 
 ---
 
