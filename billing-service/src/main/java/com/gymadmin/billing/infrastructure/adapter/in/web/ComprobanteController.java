@@ -11,6 +11,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -27,6 +29,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/comprobantes")
 public class ComprobanteController {
+
+    private static final Logger log = LoggerFactory.getLogger(ComprobanteController.class);
 
     private final ComprobanteUseCase comprobanteUseCase;
 
@@ -47,13 +51,19 @@ public class ComprobanteController {
         return extractPrincipal()
                 .flatMap(principal -> {
                     Integer idCompania = toIntegerSafe(principal.getIdCompania());
+                    if (request.secuencial() != null && !request.secuencial().isBlank()) {
+                        log.warn("Cliente envió 'secuencial' deprecado (G5); se ignora. Combinación: {}:{}:{}:{}",
+                                idCompania,
+                                request.idSucursal(),
+                                request.codEstablecimiento(),
+                                request.codPuntoEmision());
+                    }
                     EmitirFacturaCommand command = new EmitirFacturaCommand(
                             idCompania,
                             request.idSucursal(),
                             LocalDate.now(),
                             request.codEstablecimiento(),
                             request.codPuntoEmision(),
-                            request.secuencial(),
                             request.codigoNumerico(),
                             request.tipoIdReceptor(),
                             request.idReceptor(),

@@ -13,13 +13,14 @@ Facturación electrónica SRI Ecuador. Todos los endpoints requieren `Authorizat
 **Permission:** Requiere autenticación  
 **Description:** Emitir factura electrónica en estado `GENERADO`.
 
+> **Nota (G5, Fase 0):** El servidor asigna automáticamente el siguiente `secuencial` disponible para la combinación (`id_compania`, `id_sucursal`, `cod_establecimiento`, `cod_punto_emision`, `tipo_comprobante = "01"`), reservándolo atómicamente contra `facturacion.secuenciales`. El campo `secuencial` en el request está **deprecated** y será eliminado en la próxima versión mayor. Si el cliente lo envía, el servidor lo ignora y registra un `WARN` en logs.
+
 **Request body:**
 ```json
 {
   "id_sucursal": 1,
   "cod_establecimiento": "001",
   "cod_punto_emision": "001",
-  "secuencial": "000000001",
   "codigo_numerico": "123456789",
   "tipo_id_receptor": "05",
   "id_receptor": "1712345678",
@@ -51,12 +52,19 @@ Facturación electrónica SRI Ecuador. Todos los endpoints requieren `Authorizat
 ```
 
 **Campo obligatorio/opcional:**
-- `id_sucursal`, `cod_establecimiento`, `cod_punto_emision`, `secuencial`, `codigo_numerico` — obligatorios
+- `id_sucursal`, `cod_establecimiento`, `cod_punto_emision`, `codigo_numerico` — obligatorios
+- `secuencial` — **DEPRECATED (G5)**. Ignorado por el servidor. Será eliminado en la próxima versión mayor.
 - `tipo_id_receptor`, `id_receptor`, `razon_social_receptor` — obligatorios
 - `email_receptor`, `direccion_receptor`, `telefono_receptor` — opcionales
 - `id_membresia`, `id_venta` — opcionales (origen del comprobante)
 - `detalles` — array no vacío, cada detalle: `codigo_principal`, `descripcion`, `cantidad`, `precio_unitario` obligatorios; `codigo_auxiliar`, `descuento` opcionales
 - `pagos` — array no vacío, cada pago: `forma_pago`, `total` obligatorios; `plazo`, `unidad_tiempo` opcionales
+
+**Validaciones semánticas (G6, Fase 0):**
+- `tipo_id_receptor` debe existir en el catálogo `sri.tipos_identificacion_comprador` (códigos vigentes: `04` RUC, `05` CEDULA, `06` PASAPORTE, `07` CONSUMIDOR_FINAL, `08` ID_EXTERIOR).
+- Cada `pagos[].forma_pago` debe existir en el catálogo `sri.formas_pago` (códigos vigentes: `01`, `15`, `16`, `17`, `18`, `19`, `20`, `21`).
+
+Los catálogos SRI se cargan en memoria al arranque del servicio; nuevas tarifas o formas de pago publicadas por el SRI requieren solo actualizar el seed (`09_insert_seed_sri.sql`) y reiniciar el servicio.
 
 **Response 201:**
 ```json
@@ -90,10 +98,15 @@ Facturación electrónica SRI Ecuador. Todos los endpoints requieren `Authorizat
 }
 ```
 
+El campo `secuencial` en la respuesta viene siempre formateado a **9 dígitos con padding a la izquierda** (ej. `"000000042"`). Corresponde al valor reservado atómicamente desde `facturacion.secuenciales`.
+
 **Errores:**
 - `400` — campos requeridos faltantes o formato inválido (validación @NotNull, @NotBlank, @Pattern)
 - `401` — no autenticado
 - `404` — configuración SRI no encontrada para la empresa
+- `422` — validación semántica contra catálogo SRI falla (G6):
+  - `Tipo de identificación no reconocido: {codigo}` — el `tipo_id_receptor` no está en `sri.tipos_identificacion_comprador`.
+  - `Forma de pago no reconocida: {codigo}` — alguna `forma_pago` no está en `sri.formas_pago`.
 
 ---
 

@@ -82,8 +82,9 @@ class EmitirFacturaIT extends IntegrationTestBase {
     void emitirFactura_happyPath_creaComprobante() {
         String bearer = staffBearer();
         String codigoNumerico = randomDigits(9);
-        String secuencial = randomDigits(9);
 
+        // Desde G5: el servidor asigna el secuencial reservándolo atómicamente contra
+        // facturacion.secuenciales. El request ya no lo envía.
         String requestJson = """
                 {
                   "tipo_id_receptor": "05",
@@ -95,7 +96,6 @@ class EmitirFacturaIT extends IntegrationTestBase {
                   "cod_establecimiento": "001",
                   "cod_punto_emision": "001",
                   "codigo_numerico": "%s",
-                  "secuencial": "%s",
                   "id_sucursal": %d,
                   "detalles": [
                     {
@@ -110,7 +110,7 @@ class EmitirFacturaIT extends IntegrationTestBase {
                     { "forma_pago": "01", "total": 50.00 }
                   ]
                 }
-                """.formatted(codigoNumerico, secuencial, ID_SUCURSAL);
+                """.formatted(codigoNumerico, ID_SUCURSAL);
 
         webTestClient.post()
                 .uri("/api/v1/comprobantes/facturas")
@@ -129,7 +129,9 @@ class EmitirFacturaIT extends IntegrationTestBase {
                 .jsonPath("$.id_sucursal").isEqualTo(ID_SUCURSAL)
                 .jsonPath("$.cod_establecimiento").isEqualTo("001")
                 .jsonPath("$.cod_punto_emision").isEqualTo("001")
-                .jsonPath("$.secuencial").isEqualTo(secuencial)
+                .jsonPath("$.secuencial").value(v -> assertThat(v.toString())
+                        .as("El servidor debe asignar un secuencial de 9 dígitos")
+                        .matches("\\d{9}"))
                 .jsonPath("$.tipo_id_receptor").isEqualTo("05")
                 .jsonPath("$.id_receptor").isEqualTo("1712345678")
                 .jsonPath("$.razon_social_receptor").isEqualTo("Cliente de Prueba")
@@ -142,10 +144,83 @@ class EmitirFacturaIT extends IntegrationTestBase {
                 .thenConsumeWhile(c -> true)
                 .consumeRecordedWith(items -> assertThat(items)
                         .as("Debe existir al menos un comprobante GENERADO para la empresa de test")
-                        .anyMatch(c -> secuencial.equals(c.getSecuencial())
-                                && "GENERADO".equals(c.getEstado())
-                                && ID_COMPANIA == c.getIdCompania()))
+                        .anyMatch(c -> "GENERADO".equals(c.getEstado())
+                                && ID_COMPANIA == c.getIdCompania()
+                                && c.getSecuencial() != null
+                                && c.getSecuencial().matches("\\d{9}")))
                 .verifyComplete();
+    }
+
+    @Test
+    @DisplayName("rechaza con 422 cuando el tipo_id_receptor no existe en sri.tipos_identificacion_comprador (G6)")
+    void emitirFactura_tipoIdReceptorInvalido_devuelve422() {
+        String bearer = staffBearer();
+        String codigoNumerico = randomDigits(9);
+        String requestJson = """
+                {
+                  "tipo_id_receptor": "99",
+                  "id_receptor": "1712345678",
+                  "razon_social_receptor": "Cliente Test",
+                  "cod_establecimiento": "001",
+                  "cod_punto_emision": "001",
+                  "codigo_numerico": "%s",
+                  "id_sucursal": %d,
+                  "detalles": [
+                    { "codigo_principal": "PROD001", "descripcion": "Membresía", "cantidad": 1.0, "precio_unitario": 50.00, "descuento": 0.00 }
+                  ],
+                  "pagos": [
+                    { "forma_pago": "01", "total": 50.00 }
+                  ]
+                }
+                """.formatted(codigoNumerico, ID_SUCURSAL);
+
+        webTestClient.post()
+                .uri("/api/v1/comprobantes/facturas")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + bearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestJson)
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY)
+                .expectBody()
+                .jsonPath("$.message").value(v -> assertThat(v.toString())
+                        .as("mensaje debe indicar el tipo de identificación no reconocido")
+                        .contains("Tipo de identificación"));
+    }
+
+    @Test
+    @DisplayName("rechaza con 422 cuando alguna forma_pago no existe en sri.formas_pago (G6)")
+    void emitirFactura_formaPagoInvalida_devuelve422() {
+        String bearer = staffBearer();
+        String codigoNumerico = randomDigits(9);
+        String requestJson = """
+                {
+                  "tipo_id_receptor": "05",
+                  "id_receptor": "1712345678",
+                  "razon_social_receptor": "Cliente Test",
+                  "cod_establecimiento": "001",
+                  "cod_punto_emision": "001",
+                  "codigo_numerico": "%s",
+                  "id_sucursal": %d,
+                  "detalles": [
+                    { "codigo_principal": "PROD001", "descripcion": "Membresía", "cantidad": 1.0, "precio_unitario": 50.00, "descuento": 0.00 }
+                  ],
+                  "pagos": [
+                    { "forma_pago": "99", "total": 50.00 }
+                  ]
+                }
+                """.formatted(codigoNumerico, ID_SUCURSAL);
+
+        webTestClient.post()
+                .uri("/api/v1/comprobantes/facturas")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + bearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestJson)
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY)
+                .expectBody()
+                .jsonPath("$.message").value(v -> assertThat(v.toString())
+                        .as("mensaje debe indicar la forma de pago no reconocida")
+                        .contains("Forma de pago"));
     }
 
     private String staffBearer() {

@@ -109,8 +109,8 @@ Fase 0 (Fundamentos)              Fase 1 (Pipeline SRI)
 
 | GAP | Fase | Estado | Detalle |
 |-----|:----:|--------|---------|
-| G5 Secuencial atómico | 0 | 📋 Pendiente | [gap-analysis §G5](gap-analysis-sri-2026.md#g5--secuencial-no-se-reserva-atómicamente) |
-| G6 Catálogos SRI | 0 | 📋 Pendiente | [gap-analysis §G6](gap-analysis-sri-2026.md#g6--catálogos-sri-no-consultables-desde-código) |
+| G5 Secuencial atómico | 0 | ✅ Completado | [gap-analysis §G5](gap-analysis-sri-2026.md#g5--secuencial-no-se-reserva-atómicamente) |
+| G6 Catálogos SRI | 0 | ✅ Completado | [gap-analysis §G6](gap-analysis-sri-2026.md#g6--catálogos-sri-no-consultables-desde-código) |
 | G2 Transmisión inmediata | 1 | 📋 Pendiente | [gap-analysis §G2](gap-analysis-sri-2026.md#g2--transmisión-inmediata-obligatoria-desde-2026-01-01) |
 | G1 XML v2.1.0 → v2.2.0 | 1 | 📋 Pendiente | [gap-analysis §G1](gap-analysis-sri-2026.md#g1--versión-de-la-ficha-técnica-xml-v210-vs-v232) |
 | G4 Notas de crédito | 2 | 📋 Pendiente | [gap-analysis §G4](gap-analysis-sri-2026.md#g4--notas-de-crédito-tipo-04) |

@@ -25,8 +25,12 @@ public record EmitirFacturaRequest(
         @NotNull @Size(min = 9, max = 9)
         @Pattern(regexp = "\\d{9}", message = "Debe tener exactamente 9 dígitos numéricos")
         String codigoNumerico,
-        @NotNull @Size(min = 9, max = 9)
-        @Pattern(regexp = "\\d{9}", message = "Debe tener exactamente 9 dígitos numéricos")
+        /**
+         * Ignorado desde G5; el servidor lo asigna reservándolo atómicamente
+         * contra {@code facturacion.secuenciales}. Será eliminado en la próxima
+         * versión mayor.
+         */
+        @Deprecated(since = "Fase 0 G5", forRemoval = true)
         String secuencial,
         @NotNull Integer idSucursal,
         Integer idMembresia,

@@ -57,11 +57,14 @@ Content-Type: application/json
 - `id_sucursal` (Integer) — ID de la sucursal en `core.sucursales`. Billing valida que pertenezca a la empresa del JWT.
 - `cod_establecimiento` (String, 3 dígitos) — Código SRI del establecimiento, ej. `"001"`.
 - `cod_punto_emision` (String, 3 dígitos) — Código SRI del punto de emisión, ej. `"001"`.
-- `secuencial` (String, 9 dígitos) — Número secuencial para este tipo de comprobante. **Core debe reservar atomicamente via lock en BD.**
 - `codigo_numerico` (String, 9 dígitos) — Parte variable de la clave de acceso. **Recomendación:** generar determinísticamente (hash del `id_membresia` + fecha) para garantizar idempotencia en reintentos.
 - `tipo_id_receptor`, `id_receptor`, `razon_social_receptor` — Del cliente (miembro).
 - `detalles` (Array) — Líneas de la membresía/venta. Cada detalle: `codigo_principal`, `descripcion`, `cantidad`, `precio_unitario` (obligatorios); `descuento`, `codigo_auxiliar` (opcionales).
 - `pagos` (Array) — Formas de pago. Cada pago: `forma_pago` (string SRI, ej. `"19"` tarjeta crédito), `total` (Decimal).
+
+**Campos deprecated:**
+
+- `secuencial` (String, 9 dígitos) — **DEPRECATED desde G5.** Ver la sección [Breaking change — G5 (reserva atómica del secuencial)](#breaking-change--g5-reserva-atómica-del-secuencial) más abajo.
 
 **Campos opcionales:**
 
@@ -169,13 +172,43 @@ Ver [comprobantes.md](comprobantes.md) para el contrato completo de estas operac
 
 - [ ] Cliente HTTP reactivo (`WebClient`) en `core-service`, apuntando a `${BILLING_SERVICE_URL}` (env var).
 - [ ] Propagación del JWT del staff en header `Authorization: Bearer <token>`.
-- [ ] Generación atómica del `secuencial` (ej. stored procedure + lock en `core.membresias` por sucursal).
+- [ ] **No** reservar el `secuencial` en `core-service`: desde **G5** lo asigna `billing-service` (ver breaking change abajo).
 - [ ] Generación determinística del `codigo_numerico` (hash o secuencia).
 - [ ] Construcción del body según DTO `EmitirFacturaRequest` — todos los fields en **snake_case** en JSON (Jackson configura así).
 - [ ] Guardar `id_comprobante` (respuesta 201) en la fila de origen (`core.membresias` o `core.ventas`).
 - [ ] Manejo de códigos 400/404/422 sin fallar la operación original (venta/membresía).
 - [ ] Reintentos con backoff exponencial para 5xx (usar patrón outbox o queue).
 - [ ] (Opcional) Test de integración end-to-end: vender membresía en core → verificar que factura se creó en billing con estado `GENERADO`.
+
+---
+
+## Breaking change — G5 (reserva atómica del secuencial)
+
+**Cuándo:** Fase 0 del [roadmap SRI 2026](../pendientes/roadmap-sri-2026.md).
+
+**Qué cambia:**
+
+- `billing-service` asigna el `secuencial` reservándolo atómicamente contra la tabla `facturacion.secuenciales` (`INSERT ... ON CONFLICT ... DO UPDATE ... RETURNING`). Esto elimina el riesgo de dos requests concurrentes con el mismo secuencial y claves de acceso duplicadas ante el SRI.
+- `core-service` **debe dejar de enviar** el campo `secuencial` en el body de `POST /api/v1/comprobantes/facturas`.
+- La combinación de reserva es `(id_compania, id_sucursal, cod_establecimiento, cod_punto_emision, tipo_comprobante)`; por tipo `"01"` (factura) el contador arranca en 1 y se incrementa por cada emisión.
+
+**Compatibilidad temporal:**
+
+- El campo `secuencial` se mantiene en `EmitirFacturaRequest` como `@Deprecated(since = "Fase 0 G5", forRemoval = true)` sin validaciones (`@NotNull`, `@Size`, `@Pattern` retiradas).
+- Si `core-service` (u otro cliente) todavía envía el campo, `billing-service` **lo ignora** y emite un `WARN` en logs con la combinación `id_compania:id_sucursal:cod_establecimiento:cod_punto_emision` para facilitar la detección de clientes rezagados.
+- La respuesta 201 sigue devolviendo `secuencial` (asignado por el servidor, con padding a 9 dígitos, ej. `"000000042"`).
+
+**Timeline:**
+
+1. **Hoy (Fase 0, G5 desplegado):** el servidor asigna y logea WARN si el cliente envía el campo. `core-service` sigue funcionando con o sin el campo.
+2. **Próxima release del cliente:** `core-service` deja de enviar `secuencial`.
+3. **Próxima versión mayor de `billing-service`:** el campo se **elimina** del DTO `EmitirFacturaRequest`. Enviarlo generará `400 Bad Request` por campo desconocido si Jackson está configurado en modo estricto (o simplemente se ignorará silenciosamente).
+
+**Acción requerida en `core-service`:**
+
+- Retirar del payload el campo `secuencial`.
+- Retirar cualquier lógica local de reserva/lock del secuencial (por ejemplo un stored procedure o un `SELECT ... FOR UPDATE` en `core.membresias`).
+- Continuar generando el `codigo_numerico` determinísticamente para preservar la idempotencia del `POST`.
 
 ---
 

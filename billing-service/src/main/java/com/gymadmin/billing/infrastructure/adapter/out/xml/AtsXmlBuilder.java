@@ -90,7 +90,14 @@ public class AtsXmlBuilder {
         addElement(doc, detalle, "tpIdCliente", safe(c.getTipoIdReceptor()));
         addElement(doc, detalle, "idCliente", safe(c.getIdReceptor()));
         addElement(doc, detalle, "parteRel", "NO");
-        addElement(doc, detalle, "tipoComp", "01");
+        // G6: usar el tipo de comprobante real leído desde el comprobante.
+        // Los valores válidos son los del catálogo sri.tipos_comprobante.
+        addElement(doc, detalle, "tipoComp", safe(c.getTipoComprobante()));
+        // TODO(G9): la forma de pago debe leerse desde facturacion.pagos del
+        // comprobante y consolidarse en el ATS (soporte de múltiples pagos,
+        // NC, ND y retenciones). Se resuelve en la Fase 3 · G9. Hoy no hay
+        // dato disponible en el modelo Comprobante, se mantiene '20' como
+        // placeholder para no bloquear la emisión del ATS.
         addElement(doc, detalle, "tipoPago", "20");
         addElement(doc, detalle, "denoComp", safe(c.getRazonSocialReceptor()));
         addElement(doc, detalle, "mesTot", mesStr);
