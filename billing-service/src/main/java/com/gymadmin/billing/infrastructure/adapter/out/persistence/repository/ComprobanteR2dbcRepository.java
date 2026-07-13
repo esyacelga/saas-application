@@ -32,6 +32,30 @@ public interface ComprobanteR2dbcRepository extends ReactiveCrudRepository<Compr
             """)
     Mono<Long> countByEmpresa(Integer idCompania, Integer idSucursal, String estado);
 
+    @Query("""
+            SELECT * FROM facturacion.comprobantes
+            WHERE id_compania = :idCompania
+              AND tipo_comprobante = :tipoComprobante
+              AND (:idSucursal IS NULL OR id_sucursal = :idSucursal)
+              AND (:estado IS NULL OR estado = :estado)
+              AND (:idComprobanteRef IS NULL OR id_comprobante_ref = :idComprobanteRef)
+            ORDER BY created_at DESC
+            LIMIT :limit OFFSET :offset
+            """)
+    Flux<ComprobanteEntity> findByEmpresaAndTipo(Integer idCompania, Integer idSucursal, String tipoComprobante,
+                                                  String estado, Long idComprobanteRef, int limit, int offset);
+
+    @Query("""
+            SELECT COUNT(*) FROM facturacion.comprobantes
+            WHERE id_compania = :idCompania
+              AND tipo_comprobante = :tipoComprobante
+              AND (:idSucursal IS NULL OR id_sucursal = :idSucursal)
+              AND (:estado IS NULL OR estado = :estado)
+              AND (:idComprobanteRef IS NULL OR id_comprobante_ref = :idComprobanteRef)
+            """)
+    Mono<Long> countByEmpresaAndTipo(Integer idCompania, Integer idSucursal, String tipoComprobante,
+                                      String estado, Long idComprobanteRef);
+
     @Modifying
     @Query("""
             UPDATE facturacion.comprobantes

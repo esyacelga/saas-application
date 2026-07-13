@@ -51,6 +51,7 @@ public class EnvioSriService {
     private final ConfigSriRepository configSriRepository;
     private final SriTimeoutProperties sriTimeoutProperties;
     private final Counter comprobantesEmitidosFactura;
+    private final Counter comprobantesEmitidosNotaCredito;
     private final Counter comprobantesAutorizados;
     private final Counter comprobantesErroresSri;
     private final Counter comprobantesReintentos;
@@ -71,6 +72,7 @@ public class EnvioSriService {
             ConfigSriRepository configSriRepository,
             SriTimeoutProperties sriTimeoutProperties,
             @Qualifier("comprobantesEmitidosFactura") Counter comprobantesEmitidosFactura,
+            @Qualifier("comprobantesEmitidosNotaCredito") Counter comprobantesEmitidosNotaCredito,
             @Qualifier("comprobantesAutorizados") Counter comprobantesAutorizados,
             @Qualifier("comprobantesErroresSri") Counter comprobantesErroresSri,
             @Qualifier("comprobantesReintentos") Counter comprobantesReintentos,
@@ -89,6 +91,7 @@ public class EnvioSriService {
         this.configSriRepository = configSriRepository;
         this.sriTimeoutProperties = sriTimeoutProperties;
         this.comprobantesEmitidosFactura = comprobantesEmitidosFactura;
+        this.comprobantesEmitidosNotaCredito = comprobantesEmitidosNotaCredito;
         this.comprobantesAutorizados = comprobantesAutorizados;
         this.comprobantesErroresSri = comprobantesErroresSri;
         this.comprobantesReintentos = comprobantesReintentos;
@@ -147,13 +150,31 @@ public class EnvioSriService {
             List<FacturaXmlBuilder.Pago> pagos,
             ConfigSri configSri) {
 
+        return procesarEmisionInmediataConXml(comprobante,
+                buildXmlInmediato(comprobante, detalles, pagos, configSri));
+    }
+
+    /**
+     * G2 · Variante que acepta el XML ya construido. Se usa desde flujos que
+     * emiten un tipo de comprobante distinto a factura (ej. Nota de crédito
+     * tipo {@code "04"}), donde el llamador es quien elige el builder correcto
+     * ({@link com.gymadmin.billing.infrastructure.adapter.out.xml.NotaCreditoXmlBuilder}).
+     * <p>
+     * Semántica idéntica a
+     * {@link #procesarEmisionInmediata(Comprobante, List, List, ConfigSri)}:
+     * aplica timeout, encola solo en fallo, nunca lanza.
+     */
+    public Mono<Comprobante> procesarEmisionInmediataConXml(
+            Comprobante comprobante,
+            String xmlSinFirmar) {
+
         Duration timeout = sriTimeoutProperties.getEnvioDuration();
         long startNanos = System.nanoTime();
 
-        return Mono.fromCallable(() -> buildXmlInmediato(comprobante, detalles, pagos, configSri))
-                .flatMap(xmlSinFirmar -> firmarYEnviar(
+        return Mono.just(xmlSinFirmar)
+                .flatMap(xml -> firmarYEnviar(
                         comprobante,
-                        xmlSinFirmar,
+                        xml,
                         comprobante.getIdCompania(),
                         comprobante.getIdSucursal(),
                         timeout,
@@ -201,7 +222,7 @@ public class EnvioSriService {
         .flatMap(tuple -> {
             String xmlFirmado = tuple.getT1();
             Comprobante updated = tuple.getT2();
-            comprobantesEmitidosFactura.increment();
+            incrementarContadorEmision(updated);
             if (encolarSoloEnFallo) {
                 // G2: sintético en memoria (intentos=0). Se persiste solo si falla.
                 ColaEnvio virtual = ColaEnvio.builder()
@@ -576,6 +597,19 @@ public class EnvioSriService {
                 "4",
                 baseImponible.setScale(2, RoundingMode.HALF_UP),
                 valorIva));
+    }
+
+    /**
+     * Selecciona el contador de emisiones correcto según el tipo de comprobante.
+     * Tipo {@code "04"} → NC; cualquier otro (por ahora solo {@code "01"}) →
+     * factura. G4 · agregado con notas de crédito.
+     */
+    private void incrementarContadorEmision(Comprobante comprobante) {
+        if ("04".equals(comprobante.getTipoComprobante())) {
+            comprobantesEmitidosNotaCredito.increment();
+        } else {
+            comprobantesEmitidosFactura.increment();
+        }
     }
 
     private String resolveRecepcionEndpoint(String ambiente) {

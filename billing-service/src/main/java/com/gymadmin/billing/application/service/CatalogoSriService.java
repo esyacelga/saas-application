@@ -11,6 +11,7 @@ import com.gymadmin.billing.infrastructure.exception.BusinessException;
 import com.gymadmin.billing.infrastructure.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
@@ -101,6 +102,17 @@ public class CatalogoSriService {
         return cachedLookup(cacheMotivoAnulacionNc, codigo, catalogoSriRepository::findMotivoAnulacionNc)
                 .switchIfEmpty(Mono.error(new NotFoundException(
                         "Motivo de anulación no reconocido: " + codigo)));
+    }
+
+    /**
+     * Lista completa del catálogo {@code sri.motivos_anulacion_nc}. Se usa
+     * desde el endpoint público {@code GET /api/v1/sri/motivos-anulacion} para
+     * poblar dropdowns en la UI. No cachea porque el catálogo es de 5 filas y
+     * la latencia de un SELECT es despreciable comparada con introducir un
+     * segundo cache paralelo.
+     */
+    public Flux<MotivoAnulacionNcSri> listarMotivosAnulacion() {
+        return catalogoSriRepository.listMotivosAnulacionNc();
     }
 
     /**

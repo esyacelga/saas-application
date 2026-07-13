@@ -10,6 +10,7 @@ import com.gymadmin.billing.domain.port.out.CatalogoSriRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
@@ -62,6 +63,12 @@ public class CatalogoSriPersistenceAdapter implements CatalogoSriRepository {
             SELECT id, codigo, descripcion
               FROM sri.motivos_anulacion_nc
              WHERE codigo = :codigo
+            """;
+
+    private static final String SQL_LIST_MOTIVOS_ANULACION_NC = """
+            SELECT id, codigo, descripcion
+              FROM sri.motivos_anulacion_nc
+             ORDER BY id
             """;
 
     private final DatabaseClient databaseClient;
@@ -137,6 +144,17 @@ public class CatalogoSriPersistenceAdapter implements CatalogoSriRepository {
                         row.get("descripcion", String.class)
                 ))
                 .one();
+    }
+
+    @Override
+    public Flux<MotivoAnulacionNcSri> listMotivosAnulacionNc() {
+        return databaseClient.sql(SQL_LIST_MOTIVOS_ANULACION_NC)
+                .map(row -> new MotivoAnulacionNcSri(
+                        row.get("id", Integer.class),
+                        row.get("codigo", String.class),
+                        row.get("descripcion", String.class)
+                ))
+                .all();
     }
 
     /**

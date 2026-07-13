@@ -53,6 +53,19 @@ public class ComprobantePersistenceAdapter implements ComprobanteRepository {
     }
 
     @Override
+    public Flux<Comprobante> findByEmpresaAndTipo(Integer idCompania, Integer idSucursal, String tipoComprobante,
+                                                   String estado, Long idComprobanteRef, int offset, int limit) {
+        return repository.findByEmpresaAndTipo(idCompania, idSucursal, tipoComprobante, estado, idComprobanteRef, limit, offset)
+                .map(this::toDomain);
+    }
+
+    @Override
+    public Mono<Long> countByEmpresaAndTipo(Integer idCompania, Integer idSucursal, String tipoComprobante,
+                                             String estado, Long idComprobanteRef) {
+        return repository.countByEmpresaAndTipo(idCompania, idSucursal, tipoComprobante, estado, idComprobanteRef);
+    }
+
+    @Override
     public Mono<Comprobante> updateEstado(Long id, String estado, String xmlFirmadoPath,
                                           String xmlAutorizadoPath, String ridePdfPath,
                                           OffsetDateTime fechaAutorizacion, String numeroAutorizacion) {

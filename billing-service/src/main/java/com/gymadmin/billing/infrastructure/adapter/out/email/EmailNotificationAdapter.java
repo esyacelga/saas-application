@@ -1,5 +1,6 @@
 package com.gymadmin.billing.infrastructure.adapter.out.email;
 
+import com.gymadmin.billing.domain.model.Anulacion;
 import com.gymadmin.billing.domain.model.Comprobante;
 import com.gymadmin.billing.domain.port.out.EmailNotificationPort;
 import jakarta.mail.internet.MimeMessage;
@@ -156,6 +157,140 @@ public class EmailNotificationAdapter implements EmailNotificationPort {
                 Atentamente,
                 Sistema de Facturación Electrónica
                 """.formatted(razonSocial, rucEmpresa, fechaVencimiento);
+    }
+
+    // ------------------------------------------------------------------
+    // G3 · Anulación fiscal — notificaciones al solicitante y receptor
+    // ------------------------------------------------------------------
+
+    @Override
+    public Mono<Void> enviarSolicitudAprobada(Anulacion anulacion, Comprobante comprobanteOriginal) {
+        if (!emailEnabled) {
+            return Mono.empty();
+        }
+        return Mono.<Void>fromRunnable(() -> sendSimpleText(
+                        resolveSolicitanteEmail(comprobanteOriginal),
+                        "Anulación aprobada · comprobante " + numeroDe(comprobanteOriginal),
+                        buildAprobacionBody(anulacion, comprobanteOriginal)))
+                .subscribeOn(Schedulers.boundedElastic())
+                .onErrorResume(e -> {
+                    log.warn("Fallo al notificar aprobación de anulación {}: {}", anulacion.getId(), e.getMessage());
+                    return Mono.empty();
+                });
+    }
+
+    @Override
+    public Mono<Void> enviarSolicitudRechazada(Anulacion anulacion, Comprobante comprobanteOriginal) {
+        if (!emailEnabled) {
+            return Mono.empty();
+        }
+        return Mono.<Void>fromRunnable(() -> sendSimpleText(
+                        resolveSolicitanteEmail(comprobanteOriginal),
+                        "Anulación rechazada · comprobante " + numeroDe(comprobanteOriginal),
+                        buildRechazoBody(anulacion, comprobanteOriginal)))
+                .subscribeOn(Schedulers.boundedElastic())
+                .onErrorResume(e -> {
+                    log.warn("Fallo al notificar rechazo de anulación {}: {}", anulacion.getId(), e.getMessage());
+                    return Mono.empty();
+                });
+    }
+
+    @Override
+    public Mono<Void> enviarNotaCreditoAceptacion(Comprobante notaCredito, Comprobante facturaOriginal) {
+        if (!emailEnabled) {
+            return Mono.empty();
+        }
+        String destino = notaCredito.getEmailReceptor();
+        if (destino == null || destino.isBlank()) {
+            return Mono.empty();
+        }
+        return Mono.<Void>fromRunnable(() -> sendSimpleText(
+                        destino,
+                        "Nota de crédito emitida · aceptación pendiente",
+                        buildNcAceptacionBody(notaCredito, facturaOriginal)))
+                .subscribeOn(Schedulers.boundedElastic())
+                .onErrorResume(e -> {
+                    log.warn("Fallo al notificar NC {} al receptor: {}", notaCredito.getId(), e.getMessage());
+                    return Mono.empty();
+                });
+    }
+
+    private void sendSimpleText(String to, String subject, String htmlBody) {
+        if (to == null || to.isBlank()) {
+            log.info("Email destino vacío — se omite envío de '{}'", subject);
+            return;
+        }
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
+            helper.setFrom(from);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(htmlBody, true);
+            mailSender.send(message);
+            log.info("Email '{}' enviado a {}", subject, to);
+        } catch (Exception e) {
+            log.error("Error al enviar email '{}' a {}: {}", subject, to, e.getMessage());
+            throw new RuntimeException("Error al enviar email", e);
+        }
+    }
+
+    private String resolveSolicitanteEmail(Comprobante comprobante) {
+        // El solicitante hoy no expone email en el JWT; se cae al del receptor
+        // como best-effort. Se logueará si no hay ninguno.
+        return comprobante != null ? comprobante.getEmailReceptor() : null;
+    }
+
+    private String numeroDe(Comprobante c) {
+        if (c == null) return "";
+        return String.format("%s-%s-%s",
+                safe(c.getCodEstablecimiento()),
+                safe(c.getCodPuntoEmision()),
+                safe(c.getSecuencial()));
+    }
+
+    private String buildAprobacionBody(Anulacion a, Comprobante c) {
+        return """
+                <!DOCTYPE html>
+                <html><body style="font-family: Arial, sans-serif; color: #333;">
+                  <h2>Anulación aprobada</h2>
+                  <p>Su solicitud de anulación del comprobante <strong>%s</strong> fue aprobada.</p>
+                  <p><strong>Motivo:</strong> %s</p>
+                  <hr/>
+                  <p style="font-size: 12px; color: #888;">Mensaje automático.</p>
+                </body></html>
+                """.formatted(numeroDe(c), safe(a.getMotivo()));
+    }
+
+    private String buildRechazoBody(Anulacion a, Comprobante c) {
+        return """
+                <!DOCTYPE html>
+                <html><body style="font-family: Arial, sans-serif; color: #333;">
+                  <h2>Anulación rechazada</h2>
+                  <p>Su solicitud de anulación del comprobante <strong>%s</strong> fue rechazada.</p>
+                  <p><strong>Motivo:</strong> %s</p>
+                  <p><strong>Observación:</strong> %s</p>
+                  <hr/>
+                  <p style="font-size: 12px; color: #888;">Mensaje automático.</p>
+                </body></html>
+                """.formatted(numeroDe(c), safe(a.getMotivo()), safe(a.getObservacionResolucion()));
+    }
+
+    private String buildNcAceptacionBody(Comprobante nc, Comprobante factura) {
+        return """
+                <!DOCTYPE html>
+                <html><body style="font-family: Arial, sans-serif; color: #333;">
+                  <h2>Nota de crédito emitida</h2>
+                  <p>Estimado/a <strong>%s</strong>,</p>
+                  <p>Se ha emitido a su favor una nota de crédito <strong>%s</strong> sobre la factura <strong>%s</strong>.</p>
+                  <p>Según normativa SRI Ecuador, dispone de 5 días hábiles para aceptarla en el portal del SRI.</p>
+                  <hr/>
+                  <p style="font-size: 12px; color: #888;">Mensaje automático.</p>
+                </body></html>
+                """.formatted(
+                safe(nc.getRazonSocialReceptor()),
+                numeroDe(nc),
+                numeroDe(factura));
     }
 
     private String safe(String value) {

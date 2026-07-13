@@ -113,7 +113,7 @@ Fase 0 (Fundamentos)              Fase 1 (Pipeline SRI)
 | G6 Catálogos SRI | 0 | ✅ Completado | [gap-analysis §G6](gap-analysis-sri-2026.md#g6--catálogos-sri-no-consultables-desde-código) |
 | G2 Transmisión inmediata | 1 | ✅ Completado | [gap-analysis §G2](gap-analysis-sri-2026.md#g2--transmisión-inmediata-obligatoria-desde-2026-01-01) · [flows/sri-submission-retry.md](../flows/sri-submission-retry.md) |
 | G1 XML v2.1.0 → v2.24 | 1 | ✅ Completado | [gap-analysis §G1](gap-analysis-sri-2026.md#g1--versión-de-la-ficha-técnica-xml-v210-vs-v232) · [ADR 001](adr/001-version-xml-sri.md) |
-| G4 Notas de crédito | 2 | 📋 Pendiente | [gap-analysis §G4](gap-analysis-sri-2026.md#g4--notas-de-crédito-tipo-04) |
+| G4 Notas de crédito | 2 | ✅ Completado | [gap-analysis §G4](gap-analysis-sri-2026.md#g4--notas-de-crédito-tipo-04) · [api/notas-credito.md](../api/notas-credito.md) |
 | G3 Anulación fiscal | 2 | 📋 Diseño listo | [anulacion-sri.md](anulacion-sri.md) |
 | G10 Bancarización USD 500 | 3 | 📋 Pendiente | [gap-analysis §G10](gap-analysis-sri-2026.md#g10--sin-validación-de-bancarización-sobre-usd-500) |
 | G9 ATS completo | 3 | 📋 Pendiente | [gap-analysis §G9](gap-analysis-sri-2026.md#g9--ats-mensual-solo-incluye-tipo-01) |

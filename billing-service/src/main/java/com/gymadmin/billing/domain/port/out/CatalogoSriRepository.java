@@ -6,6 +6,7 @@ import com.gymadmin.billing.domain.model.sri.TarifaIvaSri;
 import com.gymadmin.billing.domain.model.sri.TipoComprobanteSri;
 import com.gymadmin.billing.domain.model.sri.TipoIdentificacionSri;
 import com.gymadmin.billing.domain.model.sri.TipoImpuestoSri;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
@@ -28,4 +29,10 @@ public interface CatalogoSriRepository {
     Mono<TarifaIvaSri> findTarifaIva(String codigo);
 
     Mono<MotivoAnulacionNcSri> findMotivoAnulacionNc(String codigo);
+
+    /**
+     * Lista todos los motivos de anulación de NC. El catálogo es pequeño y
+     * estático (5 códigos oficiales SRI); no requiere paginación.
+     */
+    Flux<MotivoAnulacionNcSri> listMotivosAnulacionNc();
 }

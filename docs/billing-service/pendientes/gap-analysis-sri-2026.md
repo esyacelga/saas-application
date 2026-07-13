@@ -17,7 +17,7 @@ Este documento **no rediseña** la solución. Solo lista los GAPs cruzados contr
 | G1 | Ficha técnica del XML es v2.1.0; SRI publicó v2.32 (nov-2025) — ✅ resuelto: subido a v2.24 (ver [ADR 001](adr/001-version-xml-sri.md)) | 🔴 Alta | Sí |
 | G2 | Transmisión inmediata obligatoria desde 2026-01-01 — ✅ resuelto: pipeline síncrono con timeout de 15 s dentro del POST; la cola queda como fallback (ver [flows/sri-submission-retry.md](../flows/sri-submission-retry.md)) | 🔴 Alta | Sí |
 | G3 | Anulación fiscal — ya cubierto en [anulacion-sri.md](anulacion-sri.md) | 🔴 Alta | Sí |
-| G4 | Notas de crédito (tipo 04) — sin código Java, aunque tablas y catálogo ya están en BD | 🔴 Alta | Sí (dependencia de G3) |
+| G4 | Notas de crédito (tipo 04) — ✅ resuelto: `NotaCreditoService`, `NotaCreditoXmlBuilder` v1.1.0, `POST /api/v1/notas-credito` reutiliza el pipeline síncrono G2 (ver [api/notas-credito.md](../api/notas-credito.md)) | 🔴 Alta | Sí (dependencia de G3) |
 | G5 | Secuencial NO se reserva atómicamente contra BD; lo provee el cliente en el request | 🔴 Alta | Sí (riesgo de duplicados) |
 | G6 | Catálogos SRI en BD sin usar; código tiene tarifa IVA, tipo comprobante, forma de pago hardcoded | 🟡 Media | No |
 | G7 | Notas de débito (tipo 05) — sin tabla, sin código; el gym la necesita para cobrar mora | 🟡 Media | No hoy, sí a futuro |
@@ -109,19 +109,32 @@ Recordatorio corto: el endpoint actual solo hace `UPDATE estado='ANULADO'` local
 
 ### G4 — Notas de crédito (tipo 04)
 
-**Situación:**
-- BD tiene la tabla `facturacion.notas_credito_referencias` con FK a factura original y motivo.
-- `sri.tipos_comprobante` tiene el tipo `04` con versión `1.1.0`.
-- `sri.motivos_anulacion_nc` viene con 5 motivos sembrados (DEVOLUCION, DESCUENTO, ANULACION, ERROR_PRECIO, ERROR_CALIDAD).
-- **Código Java: cero implementación.** No hay entity `NotaCredito`, controller, DTO, builder XML ni ruta en `SriSoapAdapter`.
+> **Estado:** ✅ **Resuelto en 2026-07-13 (Fase 2).** Ver [api/notas-credito.md](../api/notas-credito.md) para el contrato REST y ejemplos.
 
-**Bloqueo:** sin NC no se puede corregir facturas ya autorizadas fuera del día 7 (que es la única alternativa fiscal legal).
+**Solución implementada:**
+- **Dominio:** `NotaCreditoReferencia` (record de dominio) + `NotaCreditoReferenciaRepository` (port out).
+- **Persistencia:** `NotaCreditoReferenciaPersistenceAdapter` con `DatabaseClient` sobre `facturacion.notas_credito_referencias` (mismo patrón que `SecuencialPersistenceAdapter`).
+- **XML:** `NotaCreditoXmlBuilder` genera la ficha técnica NC **v1.1.0** con la API DOM (mismo patrón que `FacturaXmlBuilder`).
+- **Caso de uso:** `NotaCreditoService.emitirNotaCredito` valida la factura original (existe, misma compañía, tipo `01`, estado `AUTORIZADO`, `valorModificacion` ≤ total), consulta el motivo contra `sri.motivos_anulacion_nc`, reserva secuencial `04` atómico, persiste la NC en `facturacion.comprobantes` con `id_comprobante_ref` apuntando a la factura y la fila de referencia denormalizada, y dispara el pipeline síncrono G2.
+- **Pipeline G2:** se añadió `EnvioSriService.procesarEmisionInmediataConXml(comprobante, xmlSinFirmar)` — extrae la lógica común (firma → RECEPCION → AUTORIZACION) y acepta el XML ya construido. `procesarEmisionInmediata` (factura) ahora delega en ella. Cambio mínimo, retrocompatible con `ComprobanteService`.
+- **API:** `POST /api/v1/notas-credito`, `GET /api/v1/notas-credito/{id}`, `GET /api/v1/notas-credito` — mismos JWT + multi-tenancy enforcement que factura.
+- **Métrica:** `billing.comprobantes.emitidos{tipo=NOTA_CREDITO}` se incrementa por NC firmada (el bean ya existía en `BillingMetricsConfig`).
 
-**Qué hacer:**
-- Crear entity `NotaCreditoEntity`, repo R2DBC, use case `EmitirNotaCreditoUseCase`, XML builder v1.1.0, controller `POST /notas-credito`.
-- Reutilizar `SriSoapAdapter`: el mismo webservice acepta tipo 04.
-- Reutilizar `XadesBesSignatureAdapter`.
-- Escribir en `facturacion.notas_credito_referencias` al momento de emitir la NC.
+**Archivos afectados:**
+- `billing-service/src/main/java/.../domain/model/NotaCreditoReferencia.java` — nuevo.
+- `billing-service/src/main/java/.../domain/port/out/NotaCreditoReferenciaRepository.java` — nuevo.
+- `billing-service/src/main/java/.../domain/port/in/NotaCreditoUseCase.java` — nuevo.
+- `billing-service/src/main/java/.../application/command/EmitirNotaCreditoCommand.java` — nuevo.
+- `billing-service/src/main/java/.../application/service/NotaCreditoService.java` — nuevo.
+- `billing-service/src/main/java/.../application/service/EnvioSriService.java` — modificado: nueva variante `procesarEmisionInmediataConXml`, contador seleccionado por tipo de comprobante.
+- `billing-service/src/main/java/.../infrastructure/adapter/out/persistence/adapter/NotaCreditoReferenciaPersistenceAdapter.java` — nuevo.
+- `billing-service/src/main/java/.../infrastructure/adapter/out/xml/NotaCreditoXmlBuilder.java` — nuevo.
+- `billing-service/src/main/java/.../infrastructure/adapter/in/web/NotaCreditoController.java` — nuevo.
+- `billing-service/src/main/java/.../infrastructure/adapter/in/web/dto/EmitirNotaCreditoRequest.java` — nuevo.
+- `billing-service/src/main/java/.../domain/port/out/ComprobanteRepository.java` — ampliado: `findByEmpresaAndTipo`, `countByEmpresaAndTipo`.
+- `billing-service/src/main/java/.../infrastructure/adapter/out/persistence/repository/ComprobanteR2dbcRepository.java` — query nueva por tipo + `id_comprobante_ref`.
+- `billing-service/src/test/java/.../unit/NotaCreditoServiceTest.java` — 12 casos unitarios.
+- `billing-service/src/test/java/.../infrastructure/adapter/in/web/EmitirNotaCreditoIT.java` — 5 casos de integración.
 
 ---
 

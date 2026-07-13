@@ -9,6 +9,7 @@ Facturación electrónica SRI Ecuador. Emisión, firma digital y autorización d
 | Documento | Base URL | Contenido |
 |-----------|----------|-----------|
 | [comprobantes.md](api/comprobantes.md) | `/api/v1/comprobantes` | CRUD de facturas y comprobantes: emisión, envío SRI, descargas (XML, RIDE), anulación |
+| [notas-credito.md](api/notas-credito.md) | `/api/v1/notas-credito` | G4 · Emisión y consulta de notas de crédito electrónicas (tipo `04`) sobre facturas ya autorizadas |
 | [admin.md](api/admin.md) | `/api/v1/admin` | Diagnóstico: ping SRI, estado de certificados, auditoría de emisión |
 | [reportes.md](api/reportes.md) | `/api/v1/reportes` | ATS mensual (XML SRI), resumen de ventas por período |
 | [integracion.md](api/integracion.md) | — | 📋 **Propuesto:** Cómo core-service debe consumir billing-service; flujo de emisión de factura asíncrono; JWT y multi-tenancy; manejo de errores; checklist de implementación |

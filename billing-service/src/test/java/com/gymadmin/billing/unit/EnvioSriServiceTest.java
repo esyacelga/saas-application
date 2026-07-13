@@ -86,6 +86,7 @@ class EnvioSriServiceTest {
 
         meterRegistry = new SimpleMeterRegistry();
         Counter emitidos = Counter.builder("test.emitidos").register(meterRegistry);
+        Counter emitidosNc = Counter.builder("test.emitidos_nc").register(meterRegistry);
         Counter autorizados = Counter.builder("test.autorizados").register(meterRegistry);
         Counter erroresSri = Counter.builder("test.errores").register(meterRegistry);
         Counter reintentos = Counter.builder("test.reintentos").register(meterRegistry);
@@ -143,7 +144,7 @@ class EnvioSriServiceTest {
                 emailNotificationPort,
                 configSriRepository,
                 sriTimeoutProperties,
-                emitidos, autorizados, erroresSri, reintentos, duracion, timeouts
+                emitidos, emitidosNc, autorizados, erroresSri, reintentos, duracion, timeouts
         );
     }
 

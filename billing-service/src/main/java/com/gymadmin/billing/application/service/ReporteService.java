@@ -20,6 +20,12 @@ public class ReporteService implements ReporteUseCase {
     private final ConfigSriRepository configSriRepository;
     private final AtsXmlBuilder atsXmlBuilder;
 
+    // TODO(G9 · Fase 3): incluir notas de crédito (tipo 04) y anulaciones en el
+    // ATS mensual. Hoy `findAutorizadosPorMes` filtra `tipo_comprobante = '01'`
+    // y `AtsXmlBuilder` hardcodea `tipoComp='01'`. Con G3 (anulación fiscal)
+    // ya se emiten NC y se registran ANULADO en `facturacion.comprobantes`;
+    // el ATS debe reportarlos para evitar cruces automáticos del SRI. Ver
+    // docs/billing-service/pendientes/gap-analysis-sri-2026.md §G9.
     @Override
     public Mono<byte[]> generarAts(Integer idCompania, Integer anio, Integer mes) {
         return configSriRepository.findFirstByCompania(idCompania)

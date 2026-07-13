@@ -1,9 +1,13 @@
 package com.gymadmin.billing.infrastructure.adapter.in.web;
 
 import com.gymadmin.billing.application.command.EmitirFacturaCommand;
+import com.gymadmin.billing.application.command.SolicitarAnulacionCommand;
+import com.gymadmin.billing.domain.port.in.AnulacionUseCase;
 import com.gymadmin.billing.domain.port.in.ComprobanteUseCase;
+import com.gymadmin.billing.infrastructure.adapter.in.web.dto.AnulacionResponse;
 import com.gymadmin.billing.infrastructure.adapter.in.web.dto.ComprobanteResponse;
 import com.gymadmin.billing.infrastructure.adapter.in.web.dto.EmitirFacturaRequest;
+import com.gymadmin.billing.infrastructure.adapter.in.web.dto.SolicitarAnulacionRequest;
 import com.gymadmin.billing.infrastructure.config.JwtPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -33,9 +37,11 @@ public class ComprobanteController {
     private static final Logger log = LoggerFactory.getLogger(ComprobanteController.class);
 
     private final ComprobanteUseCase comprobanteUseCase;
+    private final AnulacionUseCase anulacionUseCase;
 
-    public ComprobanteController(ComprobanteUseCase comprobanteUseCase) {
+    public ComprobanteController(ComprobanteUseCase comprobanteUseCase, AnulacionUseCase anulacionUseCase) {
         this.comprobanteUseCase = comprobanteUseCase;
+        this.anulacionUseCase = anulacionUseCase;
     }
 
     @Operation(summary = "Emitir factura electrónica", security = @SecurityRequirement(name = "bearerAuth"))
@@ -203,18 +209,59 @@ public class ComprobanteController {
                                 })));
     }
 
-    @Operation(summary = "Anular comprobante", security = @SecurityRequirement(name = "bearerAuth"))
+    @Operation(summary = "Solicitar anulación fiscal SRI del comprobante (G3)",
+            description = "Crea una solicitud de anulación en estado SOLICITADA. La aprobación y ejecución se hacen vía /api/v1/anulaciones/*. " +
+                    "Valida ventana temporal (día 7 mes siguiente), receptor != consumidor final, estado del comprobante y motivo.",
+            security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Comprobante anulado"),
-            @ApiResponse(responseCode = "404", description = "Comprobante no encontrado"),
-            @ApiResponse(responseCode = "422", description = "Estado no permite anulación"),
-            @ApiResponse(responseCode = "401", description = "No autenticado")
+            @ApiResponse(responseCode = "201", description = "Solicitud creada (estado SOLICITADA)"),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+            @ApiResponse(responseCode = "401", description = "No autenticado"),
+            @ApiResponse(responseCode = "404", description = "Comprobante no encontrado o motivo no reconocido"),
+            @ApiResponse(responseCode = "422", description = "Regla fiscal violada (ventana, consumidor final, estado)")
     })
     @PostMapping("/{id}/anular")
-    public Mono<ResponseEntity<ComprobanteResponse>> anularComprobante(@PathVariable Long id) {
+    public Mono<ResponseEntity<AnulacionResponse>> anularComprobante(
+            @PathVariable Long id,
+            @Valid @RequestBody SolicitarAnulacionRequest request) {
         return extractPrincipal()
-                .flatMap(principal -> comprobanteUseCase.anularComprobante(id, toIntegerSafe(principal.getIdCompania())))
-                .map(c -> ResponseEntity.ok(ComprobanteResponse.from(c)));
+                .flatMap(principal -> {
+                    if (!principal.isStaff()) {
+                        return Mono.error(new com.gymadmin.billing.infrastructure.exception.ForbiddenException(
+                                "Solo usuarios staff pueden solicitar anulaciones"));
+                    }
+                    SolicitarAnulacionCommand command = new SolicitarAnulacionCommand(
+                            id,
+                            toIntegerSafe(principal.getIdCompania()),
+                            request.motivo(),
+                            request.codigoMotivoAnulacion(),
+                            request.generarNotaCreditoOrDefault(),
+                            toIntegerSafe(principal.getIdPersona()));
+                    return anulacionUseCase.solicitar(command);
+                })
+                .map(a -> ResponseEntity.status(HttpStatus.CREATED).body(AnulacionResponse.from(a)));
+    }
+
+    @Operation(summary = "Historial de solicitudes de anulación del comprobante (G3)",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Historial (posiblemente vacío)"),
+            @ApiResponse(responseCode = "401", description = "No autenticado")
+    })
+    @GetMapping("/{id}/anulaciones")
+    public Mono<ResponseEntity<Map<String, Object>>> historialAnulaciones(@PathVariable Long id) {
+        return extractPrincipal()
+                .flatMap(principal -> {
+                    Integer idCompania = toIntegerSafe(principal.getIdCompania());
+                    return anulacionUseCase.historialPorComprobante(id, idCompania)
+                            .map(AnulacionResponse::from)
+                            .collectList()
+                            .map(datos -> ResponseEntity.ok(Map.<String, Object>of(
+                                    "id_comprobante", id,
+                                    "total", datos.size(),
+                                    "datos", datos
+                            )));
+                });
     }
 
     @Operation(summary = "Reenviar RIDE por email", security = @SecurityRequirement(name = "bearerAuth"))

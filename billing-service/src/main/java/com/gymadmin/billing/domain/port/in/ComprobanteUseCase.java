@@ -21,7 +21,5 @@ public interface ComprobanteUseCase {
 
     Mono<byte[]> leerRidePdf(Long id, Integer idCompania);
 
-    Mono<Comprobante> anularComprobante(Long id, Integer idCompania);
-
     Mono<Void> reenviarEmail(Long id, Integer idCompania);
 }

@@ -24,7 +24,6 @@ import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,7 +31,6 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ComprobanteService implements ComprobanteUseCase {
 
-    private static final Set<String> ESTADOS_ANULABLES = Set.of("AUTORIZADO", "GENERADO");
     /**
      * Tipo de comprobante SRI para facturas. Es el valor específico de esta
      * operación ({@link #emitirFactura}), no un lookup contra el catálogo
@@ -237,18 +235,6 @@ public class ComprobanteService implements ComprobanteUseCase {
                         return Mono.error(new NotFoundException("RIDE PDF no disponible para el comprobante: " + id));
                     }
                     return fileStoragePort.readFileBytes(comprobante.getRidePdfPath());
-                });
-    }
-
-    @Override
-    public Mono<Comprobante> anularComprobante(Long id, Integer idCompania) {
-        return buscarPorId(id, idCompania)
-                .flatMap(comprobante -> {
-                    if (!ESTADOS_ANULABLES.contains(comprobante.getEstado())) {
-                        return Mono.error(new BusinessException(
-                                "No es posible anular un comprobante en estado: " + comprobante.getEstado()));
-                    }
-                    return comprobanteRepository.updateEstado(id, "ANULADO", null, null, null, null, null);
                 });
     }
 

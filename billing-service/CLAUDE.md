@@ -13,6 +13,7 @@ Antes de confiar en un doc como referencia, verifica su estado en [../docs/STATU
 | Área | Documento | Estado |
 |------|-----------|--------|
 | API — comprobantes (CRUD + emisión + anulación) | [../docs/billing-service/api/comprobantes.md](../docs/billing-service/api/comprobantes.md) | ✅ Refleja el código (verificado contra `ComprobanteController`) |
+| API — notas de crédito (G4, tipo 04) | [../docs/billing-service/api/notas-credito.md](../docs/billing-service/api/notas-credito.md) | ✅ Refleja el código (verificado contra `NotaCreditoController`) |
 | API — administración (ping SRI, certificados, auditoría) | [../docs/billing-service/api/admin.md](../docs/billing-service/api/admin.md) | ✅ Refleja el código (verificado contra `AdminController`) |
 | API — reportes (ATS mensual, resumen de ventas) | [../docs/billing-service/api/reportes.md](../docs/billing-service/api/reportes.md) | ✅ Refleja el código (verificado contra `ReporteController`) |
 | Flujo de SRI — firma, envío y reintentos | [../docs/billing-service/flows/sri-submission-retry.md](../docs/billing-service/flows/sri-submission-retry.md) | ✅ Refleja el código (verificado contra `RetrySchedulerService`, `EnvioSriService`) |

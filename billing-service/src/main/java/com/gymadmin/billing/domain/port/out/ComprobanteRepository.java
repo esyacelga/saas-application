@@ -19,6 +19,21 @@ public interface ComprobanteRepository {
 
     Mono<Long> countByEmpresa(Integer idCompania, Integer idSucursal, String estado);
 
+    /**
+     * Lista comprobantes filtrando por tipo (ej. {@code "04"} para NC) y,
+     * opcionalmente, por comprobante referenciado (id de la factura original).
+     * Preserva la semántica de paginación de {@link #findByEmpresa}.
+     */
+    Flux<Comprobante> findByEmpresaAndTipo(Integer idCompania, Integer idSucursal, String tipoComprobante,
+                                            String estado, Long idComprobanteRef, int offset, int limit);
+
+    /**
+     * Total (para paginación) con los mismos filtros que
+     * {@link #findByEmpresaAndTipo}.
+     */
+    Mono<Long> countByEmpresaAndTipo(Integer idCompania, Integer idSucursal, String tipoComprobante,
+                                      String estado, Long idComprobanteRef);
+
     Mono<Comprobante> updateEstado(Long id, String estado, String xmlFirmadoPath, String xmlAutorizadoPath,
                                    String ridePdfPath, OffsetDateTime fechaAutorizacion, String numeroAutorizacion);
 
