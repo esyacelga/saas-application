@@ -16,7 +16,7 @@ Este documento **no rediseña** la solución. Solo lista los GAPs cruzados contr
 |---|-----|-----------|:------------------:|
 | G1 | Ficha técnica del XML es v2.1.0; SRI publicó v2.32 (nov-2025) — ✅ resuelto: subido a v2.24 (ver [ADR 001](adr/001-version-xml-sri.md)) | 🔴 Alta | Sí |
 | G2 | Transmisión inmediata obligatoria desde 2026-01-01 — ✅ resuelto: pipeline síncrono con timeout de 15 s dentro del POST; la cola queda como fallback (ver [flows/sri-submission-retry.md](../flows/sri-submission-retry.md)) | 🔴 Alta | Sí |
-| G3 | Anulación fiscal — ya cubierto en [anulacion-sri.md](anulacion-sri.md) | 🔴 Alta | Sí |
+| G3 | Anulación fiscal — ✅ resuelto: `AnulacionService` con Flujo A (portal SRI) y Flujo B (dispara G4 NC dentro del pipeline síncrono), autorización por rol, validaciones fiscales (ventana día 7, consumidor final, motivo), ver [api/anulaciones.md](../api/anulaciones.md) · [flows/anulacion-nc.md](../flows/anulacion-nc.md) | 🔴 Alta | Sí |
 | G4 | Notas de crédito (tipo 04) — ✅ resuelto: `NotaCreditoService`, `NotaCreditoXmlBuilder` v1.1.0, `POST /api/v1/notas-credito` reutiliza el pipeline síncrono G2 (ver [api/notas-credito.md](../api/notas-credito.md)) | 🔴 Alta | Sí (dependencia de G3) |
 | G5 | Secuencial NO se reserva atómicamente contra BD; lo provee el cliente en el request | 🔴 Alta | Sí (riesgo de duplicados) |
 | G6 | Catálogos SRI en BD sin usar; código tiene tarifa IVA, tipo comprobante, forma de pago hardcoded | 🟡 Media | No |
@@ -101,9 +101,47 @@ Este documento **no rediseña** la solución. Solo lista los GAPs cruzados contr
 
 ### G3 — Anulación fiscal SRI
 
-Cubierto por completo en **[anulacion-sri.md](anulacion-sri.md)**. No se duplica aquí.
+> **Estado:** ✅ **Resuelto en 2026-07-13 (Fase 2).** Ver [api/anulaciones.md](../api/anulaciones.md) para el contrato REST y [flows/anulacion-nc.md](../flows/anulacion-nc.md) para la máquina de estados y flujos.
 
-Recordatorio corto: el endpoint actual solo hace `UPDATE estado='ANULADO'` local; no valida ventana ni consumidor final, no genera NC ni notifica.
+**Solución implementada:**
+- **Dominio:** `Anulacion` (Lombok `@Data @Builder`), enum `EstadoAnulacion` (`SOLICITADA`/`APROBADA`/`RECHAZADA`/`EJECUTADA`), port entrada `AnulacionUseCase`, port salida `AnulacionRepository`.
+- **Persistencia:** `AnulacionPersistenceAdapter` con `DatabaseClient` sobre `facturacion.anulaciones` (mismo patrón que `NotaCreditoReferenciaPersistenceAdapter`).
+- **Caso de uso:** `AnulacionService` valida (motivo obligatorio, estado ∈ {AUTORIZADO, GENERADO}, `id_receptor != '9999999999999'`, ventana `hoy ≤ día 7 mes+1`, motivo del catálogo `sri.motivos_anulacion_nc` si viene), persiste `SOLICITADA`, y expone `aprobar / rechazar / confirmarSri / buscarPorId / historialPorComprobante / listar`.
+- **Flujo B con G4:** al aprobar con `generar_nota_credito=true` dispara `NotaCreditoService.emitirNotaCredito` copiando detalles y total de la factura original. Si la NC llega a AUTORIZADO en el mismo request → anulación `EJECUTADA` + comprobante original `ANULADO`. Si queda transitoria, la anulación permanece `APROBADA` con `id_comprobante_nc` poblado.
+- **Flag Flujo B sin DDL nuevo:** el campo `generar_nota_credito` no existe en la tabla; se persiste embebido en `observacion_resolucion` con el prefijo interno `[FLUJO_B][MOTIVO=<codigo>]`. El servicio strippea la metadata antes de mapear a DTO. Documentado en `AnulacionService`.
+- **REST:** `POST /api/v1/comprobantes/{id}/anular` cambia a request con body; `AnulacionController` expone `aprobar/rechazar/confirmar-sri/buscarPorId/listar`; `MotivosAnulacionController` expone `GET /api/v1/sri/motivos-anulacion` para el catálogo.
+- **Autorización inline:** solicitar admite cualquier staff con `id_compania` coincidente; aprobar/rechazar/confirmar requieren rol `admin_compania`/`super_admin`/`Dueño` (403 si no).
+- **Notificaciones:** `EmailNotificationPort` extendido con `enviarSolicitudAprobada`, `enviarSolicitudRechazada`, `enviarNotaCreditoAceptacion` — todas best-effort (`onErrorResume → empty`) para no romper el flujo funcional.
+- **`Clock` inyectable:** `ClockConfig` provee un `Clock` en zona `America/Guayaquil` para la validación de ventana temporal; los tests unitarios lo fijan a fechas deterministas.
+
+**Archivos afectados:**
+- `billing-service/src/main/java/.../domain/model/Anulacion.java` — nuevo.
+- `billing-service/src/main/java/.../domain/model/EstadoAnulacion.java` — nuevo.
+- `billing-service/src/main/java/.../domain/port/in/AnulacionUseCase.java` — nuevo.
+- `billing-service/src/main/java/.../domain/port/out/AnulacionRepository.java` — nuevo.
+- `billing-service/src/main/java/.../application/command/{SolicitarAnulacionCommand,AprobarAnulacionCommand,RechazarAnulacionCommand}.java` — nuevos.
+- `billing-service/src/main/java/.../application/service/AnulacionService.java` — nuevo.
+- `billing-service/src/main/java/.../application/service/ReporteService.java` — TODO(G9) para incluir NC/anulaciones en ATS.
+- `billing-service/src/main/java/.../application/service/CatalogoSriService.java` — nuevo método `listarMotivosAnulacion`.
+- `billing-service/src/main/java/.../application/service/ComprobanteService.java` — `anularComprobante` eliminado (delegado al nuevo controller).
+- `billing-service/src/main/java/.../domain/port/in/ComprobanteUseCase.java` — `anularComprobante` eliminado.
+- `billing-service/src/main/java/.../domain/port/out/CatalogoSriRepository.java` — `listMotivosAnulacionNc` agregado.
+- `billing-service/src/main/java/.../domain/port/out/EmailNotificationPort.java` — 3 métodos nuevos G3.
+- `billing-service/src/main/java/.../infrastructure/adapter/out/persistence/adapter/AnulacionPersistenceAdapter.java` — nuevo.
+- `billing-service/src/main/java/.../infrastructure/adapter/out/persistence/adapter/CatalogoSriPersistenceAdapter.java` — `listMotivosAnulacionNc` agregado.
+- `billing-service/src/main/java/.../infrastructure/adapter/out/email/EmailNotificationAdapter.java` — implementación de los 3 métodos G3.
+- `billing-service/src/main/java/.../infrastructure/adapter/in/web/AnulacionController.java` — nuevo.
+- `billing-service/src/main/java/.../infrastructure/adapter/in/web/MotivosAnulacionController.java` — nuevo.
+- `billing-service/src/main/java/.../infrastructure/adapter/in/web/ComprobanteController.java` — `anularComprobante` con body + `GET /{id}/anulaciones` nuevo.
+- `billing-service/src/main/java/.../infrastructure/adapter/in/web/dto/{SolicitarAnulacionRequest,AprobarAnulacionRequest,RechazarAnulacionRequest,AnulacionResponse,MotivoAnulacionResponse}.java` — nuevos.
+- `billing-service/src/main/java/.../infrastructure/config/ClockConfig.java` — nuevo bean `Clock`.
+- `billing-service/src/test/java/.../unit/AnulacionServiceTest.java` — 19 casos unitarios (ventana, consumidor final, estado, motivo, multi-tenant, Flujo A/B, transiciones, strip de metadata).
+- `billing-service/src/test/java/.../infrastructure/adapter/in/web/AnulacionFlujoAIT.java` — Flujo A end-to-end + rol + multi-tenant + historial + motivos.
+- `billing-service/src/test/java/.../infrastructure/adapter/in/web/AnulacionFlujoBIT.java` — Flujo B con NC mockeada AUTORIZADO.
+
+**Pendientes/follow-ups:**
+- **Reintento asíncrono para transiciones APROBADA→EJECUTADA en Flujo B** cuando la NC autorice más tarde (por retry del scheduler): documentado en `flows/anulacion-nc.md §9`. Hoy requiere re-aprobar manualmente.
+- **G9 ATS**: incluir NC (`tipo=04`) y anulaciones en el ATS mensual — bloqueado por diseño de G9.
 
 ---
 

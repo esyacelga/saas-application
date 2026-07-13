@@ -88,7 +88,7 @@ public class AnulacionService implements AnulacionUseCase {
                 .flatMap(this::validarNoConsumidorFinal)
                 .flatMap(this::validarVentanaTemporal)
                 .flatMap(comprobante -> validarMotivoCatalogo(command.codigoMotivo())
-                        .then(persistirSolicitud(command, comprobante)));
+                        .then(Mono.defer(() -> persistirSolicitud(command, comprobante))));
     }
 
     private Mono<Comprobante> findComprobantePorCompania(Long idComprobante, Integer idCompania) {

@@ -1,6 +1,6 @@
 # Anulación fiscal SRI — pendiente por implementar
 
-> **ESTADO:** 📋 **Propuesto — no implementado**
+> **ESTADO:** ✅ **IMPLEMENTADO 2026-07-13** — ver [api/anulaciones.md](../api/anulaciones.md), [flows/anulacion-nc.md](../flows/anulacion-nc.md), y [gap-analysis §G3](gap-analysis-sri-2026.md#g3--anulación-fiscal-sri).
 > **Prioridad:** 🔴 Alta (bloqueo legal para uso productivo con RUC real)
 > **Fecha del análisis:** 2026-07-11
 

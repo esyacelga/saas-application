@@ -10,6 +10,7 @@ Facturación electrónica SRI Ecuador. Emisión, firma digital y autorización d
 |-----------|----------|-----------|
 | [comprobantes.md](api/comprobantes.md) | `/api/v1/comprobantes` | CRUD de facturas y comprobantes: emisión, envío SRI, descargas (XML, RIDE), anulación |
 | [notas-credito.md](api/notas-credito.md) | `/api/v1/notas-credito` | G4 · Emisión y consulta de notas de crédito electrónicas (tipo `04`) sobre facturas ya autorizadas |
+| [anulaciones.md](api/anulaciones.md) | `/api/v1/anulaciones`, `/api/v1/sri/motivos-anulacion` | G3 · Anulación fiscal SRI: máquina de estados (solicitar → aprobar/rechazar → confirmar-sri o NC AUTORIZADA), autorización por rol, catálogo de motivos |
 | [admin.md](api/admin.md) | `/api/v1/admin` | Diagnóstico: ping SRI, estado de certificados, auditoría de emisión |
 | [reportes.md](api/reportes.md) | `/api/v1/reportes` | ATS mensual (XML SRI), resumen de ventas por período |
 | [integracion.md](api/integracion.md) | — | 📋 **Propuesto:** Cómo core-service debe consumir billing-service; flujo de emisión de factura asíncrono; JWT y multi-tenancy; manejo de errores; checklist de implementación |
@@ -21,6 +22,7 @@ Facturación electrónica SRI Ecuador. Emisión, firma digital y autorización d
 | Documento | Descripción |
 |-----------|-------------|
 | [sri-submission-retry.md](flows/sri-submission-retry.md) | Flujo de firma, envío y autorización al SRI; cola de reintentos con backoff exponencial (1, 5, 15, 60, 240 min) y scheduler cada 60 seg |
+| [anulacion-nc.md](flows/anulacion-nc.md) | G3 · Máquina de estados de anulación fiscal (SOLICITADA → APROBADA → EJECUTADA/RECHAZADA), diagramas de Flujo A (portal SRI) y Flujo B (con NC), autorización por rol, notificaciones |
 
 ---
 

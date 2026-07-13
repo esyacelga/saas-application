@@ -308,49 +308,62 @@ El campo `secuencial` en la respuesta viene siempre formateado a **9 dígitos co
 ---
 
 ### POST /api/v1/comprobantes/{id}/anular
-**Auth:** Bearer JWT (`tipo: staff`)  
-**Description:** Anular comprobante. Solo permitido en estados `AUTORIZADO` o `GENERADO`.
+**Auth:** Bearer JWT (`tipo: staff`)
+**Description:** Solicitar anulación fiscal SRI del comprobante (G3, activo desde 2026-07-13). Crea una solicitud en estado `SOLICITADA`; la aprobación y ejecución viven bajo `/api/v1/anulaciones/*`. Ver **[api/anulaciones.md](anulaciones.md)** y **[flows/anulacion-nc.md](../flows/anulacion-nc.md)** para el detalle completo del ciclo.
 
-> ⚠️ **Riesgo fiscal — anulación lógica local, NO ante SRI.** Este endpoint solo actualiza `estado = ANULADO` en la BD del gimnasio. **No** llama al SRI, **no** valida ventana temporal (día 7 del mes siguiente), **no** rechaza facturas a consumidor final, **no** requiere motivo y **no** genera nota de crédito. Su uso en producción puede generar divergencia con el SRI y sanciones tributarias. Ver [pendientes/anulacion-sri.md](../pendientes/anulacion-sri.md) para el rediseño necesario.
+**Cambios respecto a la implementación previa (anulación lógica local):**
+- Ahora requiere **body con motivo** (obligatorio).
+- Valida ventana temporal (día 7 del mes siguiente al de emisión).
+- Rechaza facturas a **consumidor final** (`id_receptor = '9999999999999'`).
+- El estado del comprobante **no cambia** en este POST — pasa a `ANULADO` solo cuando la anulación llega a `EJECUTADA` (via `confirmar-sri` en Flujo A o NC autorizada en Flujo B).
+- Retorna `201` con el `AnulacionResponse`, no con el `ComprobanteResponse`.
 
-**Path param:** `id` — ID del comprobante
+**Path param:** `id` — ID del comprobante a anular.
 
-**Response 200:**
+**Request body:**
 ```json
 {
-  "id": 1,
+  "motivo": "Cliente devolvió el pago con reversa bancaria",
+  "codigo_motivo_anulacion": "DEVOLUCION",
+  "generar_nota_credito": false
+}
+```
+
+- `motivo` — **obligatorio**, 5 a 500 caracteres.
+- `codigo_motivo_anulacion` — opcional para Flujo A, **obligatorio para Flujo B**. Consultar `GET /api/v1/sri/motivos-anulacion` para la lista.
+- `generar_nota_credito` — opcional, default `false`. `true` selecciona el Flujo B (emisión de NC al aprobar).
+
+**Response 201:**
+```json
+{
+  "id": 42,
   "id_compania": 2,
   "id_sucursal": 1,
-  "tipo_comprobante": "01",
-  "clave_acceso": "0207202601021001001000000001123456789X",
-  "numero_autorizacion": "0207202601021001001000000001123456789",
-  "cod_establecimiento": "001",
-  "cod_punto_emision": "001",
-  "secuencial": "000000001",
-  "fecha_emision": "2026-07-02",
-  "ambiente": "1",
-  "tipo_id_receptor": "05",
-  "id_receptor": "1712345678",
-  "razon_social_receptor": "Juan Carlos Pérez",
-  "email_receptor": "juan@email.com",
-  "subtotal_sin_impuesto": 33.04,
-  "total_descuento": 0.00,
-  "total_iva": 4.96,
-  "total": 38.00,
-  "moneda": "DOLAR",
-  "estado": "ANULADO",
-  "fecha_autorizacion": "2026-07-02T14:35:00Z",
-  "xml_firmado_path": "blob://...",
-  "xml_autorizado_path": "blob://...",
-  "ride_pdf_path": "blob://...",
-  "created_at": "2026-07-02T14:30:00Z"
+  "id_comprobante": 152,
+  "motivo": "Cliente devolvió el pago con reversa bancaria",
+  "estado": "SOLICITADA",
+  "id_comprobante_nc": null,
+  "id_usuario_solicita": 999,
+  "id_usuario_aprueba": null,
+  "fecha_solicitud": "2026-07-13T18:30:00Z",
+  "fecha_resolucion": null,
+  "observacion_resolucion": null,
+  "link_resource": "/api/v1/anulaciones/42"
 }
 ```
 
 **Errores:**
-- `401` — no autenticado
-- `404` — comprobante no encontrado
-- `422` — estado del comprobante no permite anulación (solo `AUTORIZADO` y `GENERADO` son anulables)
+- `400` — body inválido (motivo vacío o fuera de rango).
+- `401` — no autenticado.
+- `403` — usuario no es staff.
+- `404` — comprobante no encontrado (o pertenece a otra compañía) o `codigo_motivo_anulacion` no reconocido.
+- `422` — reglas fiscales violadas: estado del comprobante, consumidor final, ventana temporal.
+
+---
+
+### GET /api/v1/comprobantes/{id}/anulaciones
+**Auth:** Bearer JWT (`tipo: staff`)
+**Description:** Historial de solicitudes de anulación del comprobante (G3). Ver **[api/anulaciones.md](anulaciones.md)** para el esquema completo del response.
 
 ---
 

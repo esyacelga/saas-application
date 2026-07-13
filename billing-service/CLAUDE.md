@@ -12,11 +12,13 @@ Antes de confiar en un doc como referencia, verifica su estado en [../docs/STATU
 
 | Área | Documento | Estado |
 |------|-----------|--------|
-| API — comprobantes (CRUD + emisión + anulación) | [../docs/billing-service/api/comprobantes.md](../docs/billing-service/api/comprobantes.md) | ✅ Refleja el código (verificado contra `ComprobanteController`) |
+| API — comprobantes (CRUD + emisión + solicitud de anulación) | [../docs/billing-service/api/comprobantes.md](../docs/billing-service/api/comprobantes.md) | ✅ Refleja el código (verificado contra `ComprobanteController`) |
 | API — notas de crédito (G4, tipo 04) | [../docs/billing-service/api/notas-credito.md](../docs/billing-service/api/notas-credito.md) | ✅ Refleja el código (verificado contra `NotaCreditoController`) |
+| API — anulaciones fiscales (G3, máquina de estados) | [../docs/billing-service/api/anulaciones.md](../docs/billing-service/api/anulaciones.md) | ✅ Refleja el código (verificado contra `AnulacionController`, `MotivosAnulacionController`) |
 | API — administración (ping SRI, certificados, auditoría) | [../docs/billing-service/api/admin.md](../docs/billing-service/api/admin.md) | ✅ Refleja el código (verificado contra `AdminController`) |
 | API — reportes (ATS mensual, resumen de ventas) | [../docs/billing-service/api/reportes.md](../docs/billing-service/api/reportes.md) | ✅ Refleja el código (verificado contra `ReporteController`) |
 | Flujo de SRI — firma, envío y reintentos | [../docs/billing-service/flows/sri-submission-retry.md](../docs/billing-service/flows/sri-submission-retry.md) | ✅ Refleja el código (verificado contra `RetrySchedulerService`, `EnvioSriService`) |
+| Flujo de anulación fiscal + NC (G3) | [../docs/billing-service/flows/anulacion-nc.md](../docs/billing-service/flows/anulacion-nc.md) | ✅ Refleja el código (verificado contra `AnulacionService`) |
 | Especificación de dominio | [../docs/gym-administrator/specs/billing-service.md](../docs/gym-administrator/specs/billing-service.md) | 🟡 Índice — ligeramente desalineado con cambios recientes de estado |
 
 Fuente de verdad del enrutamiento: los `@RestController` bajo `infrastructure/adapter/in/web/` (`ComprobanteController`, `AdminController`, `ReporteController`).
@@ -142,7 +144,7 @@ See [../docs/billing-service/flows/sri-submission-retry.md](../docs/billing-serv
 
 **Terminal states:**
 - `AUTORIZADO` — Accepted by SRI; invoice is valid and can be delivered to customer
-- `ANULADO` — Manually canceled
+- `ANULADO` — Canceled via G3 anulación fiscal (either after `POST /anulaciones/{id}/confirmar-sri` for Flujo A or after the NC in Flujo B reaches AUTORIZADO)
 
 **Transient states with automatic retry:**
 - `DEVUELTO` — SRI rejected at RECEPCION step; scheduled for resubmission
@@ -150,6 +152,39 @@ See [../docs/billing-service/flows/sri-submission-retry.md](../docs/billing-serv
 - `ERROR` — Exception during submission; scheduled for resubmission
 
 Backoff delays: **1, 5, 15, 60, 240 minutes**. Max retries: **5**. After max retries, invoice enters `ERROR` state and row in `cola_envio` is marked `FALLIDO_DEFINITIVO` (requires manual intervention).
+
+## Anulación fiscal SRI (G3) — máquina de estados
+
+Ver [../docs/billing-service/flows/anulacion-nc.md](../docs/billing-service/flows/anulacion-nc.md) para diagramas y detalles.
+
+Tabla: `facturacion.anulaciones` — enum `EstadoAnulacion`:
+
+```
+SOLICITADA ─aprobar─→ APROBADA ─confirmar-sri (Flujo A)──→ EJECUTADA
+    │                    │
+    │                    └─NC AUTORIZADO (Flujo B)────────→ EJECUTADA
+    │
+    └─rechazar─→ RECHAZADA
+```
+
+**Endpoints (`AnulacionController` + `MotivosAnulacionController`):**
+- `POST /api/v1/comprobantes/{id}/anular` — con body `{motivo, codigo_motivo_anulacion?, generar_nota_credito?}`, crea `SOLICITADA`. Reemplaza el viejo endpoint sin body.
+- `POST /api/v1/anulaciones/{id}/aprobar` — rol `admin_compania`/`super_admin`/`Dueño`.
+- `POST /api/v1/anulaciones/{id}/rechazar` — mismo rol; observación obligatoria.
+- `POST /api/v1/anulaciones/{id}/confirmar-sri` — mismo rol; solo Flujo A.
+- `GET /api/v1/comprobantes/{id}/anulaciones` — historial.
+- `GET /api/v1/anulaciones` — listado paginado con filtros.
+- `GET /api/v1/sri/motivos-anulacion` — catálogo `sri.motivos_anulacion_nc`.
+
+**Validaciones fiscales al solicitar:** motivo obligatorio, estado ∈ {AUTORIZADO, GENERADO}, `id_receptor != '9999999999999'` (consumidor final), ventana `hoy ≤ día 7 mes+1` (`Clock` inyectable en `America/Guayaquil`).
+
+**Persistencia del flag Flujo B:** el DDL no expone columna `generar_nota_credito`; se codifica dentro de `observacion_resolucion` con el prefijo interno `[FLUJO_B][MOTIVO=<codigo>]` y se strippea al leer. Ver `AnulacionService.combineMetadata` / `stripFlagObservacion`.
+
+## Notas de crédito electrónicas (G4)
+
+Ver [../docs/billing-service/api/notas-credito.md](../docs/billing-service/api/notas-credito.md).
+
+Endpoint principal: `POST /api/v1/notas-credito` con `EmitirNotaCreditoRequest`. `NotaCreditoService` valida la factura original (tipo `01`, estado `AUTORIZADO`, misma compañía, `valorModificacion ≤ total`), reserva secuencial atómico tipo `04`, persiste referencia en `facturacion.notas_credito_referencias`, y dispara el pipeline síncrono G2 (`EnvioSriService.procesarEmisionInmediataConXml`). El flujo B de G3 llama internamente a `NotaCreditoUseCase.emitirNotaCredito` copiando detalles y total de la factura original.
 
 ## Error Handling
 
