@@ -58,16 +58,8 @@ class AnulacionFlujoAIT extends IntegrationTestBase {
     @BeforeEach
     void limpiar() {
         // Limpiar anulaciones y comprobantes de la compañía de test para aislar corridas.
-        databaseClient.sql("DELETE FROM facturacion.anulaciones WHERE id_compania = :idCompania")
-                .bind("idCompania", ID_COMPANIA).then().block();
-        databaseClient.sql("DELETE FROM facturacion.anulaciones WHERE id_compania = :idCompania")
-                .bind("idCompania", ID_COMPANIA + 1).then().block();
-        databaseClient.sql("DELETE FROM facturacion.notas_credito_referencias WHERE id_compania = :idCompania")
-                .bind("idCompania", ID_COMPANIA).then().block();
-        databaseClient.sql("DELETE FROM facturacion.comprobantes WHERE id_compania = :idCompania")
-                .bind("idCompania", ID_COMPANIA).then().block();
-        databaseClient.sql("DELETE FROM facturacion.comprobantes WHERE id_compania = :idCompania")
-                .bind("idCompania", ID_COMPANIA + 1).then().block();
+        limpiarComprobantes(databaseClient);
+        limpiarComprobantes(databaseClient, ID_COMPANIA + 1);
         databaseClient.sql("DELETE FROM facturacion.config_sri WHERE id_compania = :idCompania AND id_sucursal = :idSucursal")
                 .bind("idCompania", ID_COMPANIA).bind("idSucursal", ID_SUCURSAL).then().block();
 

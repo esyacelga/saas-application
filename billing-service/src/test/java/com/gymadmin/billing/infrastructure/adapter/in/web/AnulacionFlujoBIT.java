@@ -79,12 +79,7 @@ class AnulacionFlujoBIT extends IntegrationTestBase {
 
     @BeforeEach
     void setup() {
-        databaseClient.sql("DELETE FROM facturacion.anulaciones WHERE id_compania = :idCompania")
-                .bind("idCompania", ID_COMPANIA).then().block();
-        databaseClient.sql("DELETE FROM facturacion.notas_credito_referencias WHERE id_compania = :idCompania")
-                .bind("idCompania", ID_COMPANIA).then().block();
-        databaseClient.sql("DELETE FROM facturacion.comprobantes WHERE id_compania = :idCompania")
-                .bind("idCompania", ID_COMPANIA).then().block();
+        limpiarComprobantes(databaseClient);
         databaseClient.sql("DELETE FROM facturacion.config_sri WHERE id_compania = :idCompania AND id_sucursal = :idSucursal")
                 .bind("idCompania", ID_COMPANIA).bind("idSucursal", ID_SUCURSAL).then().block();
 
@@ -247,6 +242,8 @@ class AnulacionFlujoBIT extends IntegrationTestBase {
         // Insertar un detalle: la NC lo va a copiar.
         ComprobanteDetalleEntity detalle = ComprobanteDetalleEntity.builder()
                 .idComprobante(idFactura)
+                .idCompania(ID_COMPANIA)
+                .idSucursal(ID_SUCURSAL)
                 .codigoPrincipal("MEM-MENSUAL")
                 .descripcion("Membresía mensual")
                 .cantidad(new BigDecimal("1.000000"))

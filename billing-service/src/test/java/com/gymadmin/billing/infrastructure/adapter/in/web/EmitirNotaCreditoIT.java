@@ -75,10 +75,7 @@ class EmitirNotaCreditoIT extends IntegrationTestBase {
     @BeforeEach
     void seedConfigSri() {
         // Limpieza de comprobantes y NC de la compañía de test para aislar corridas.
-        databaseClient.sql("DELETE FROM facturacion.notas_credito_referencias WHERE id_compania = :idCompania")
-                .bind("idCompania", ID_COMPANIA).then().block();
-        databaseClient.sql("DELETE FROM facturacion.comprobantes WHERE id_compania = :idCompania")
-                .bind("idCompania", ID_COMPANIA).then().block();
+        limpiarComprobantes(databaseClient);
         databaseClient.sql("DELETE FROM facturacion.config_sri WHERE id_compania = :idCompania AND id_sucursal = :idSucursal")
                 .bind("idCompania", ID_COMPANIA)
                 .bind("idSucursal", ID_SUCURSAL).then().block();
