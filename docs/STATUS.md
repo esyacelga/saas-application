@@ -55,7 +55,7 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 | core-service | 8083 | ✅ presente (66 archivos Java) | **Implementado** |
 | attendance-service | 8084 | ✅ presente (51 archivos Java) | **Implementado** |
 | billing-service | 8086 | ✅ presente | **Implementado — Fases SRI 0-3 completas** (6 controllers, 23 endpoints; ciclo de vida completo: emisión síncrona v2.24, NC tipo 04, anulación fiscal con workflow, bancarización > USD 500, ATS validado contra XSD oficial). Ver [roadmap](billing-service/pendientes/roadmap-sri-2026.md) |
-| finance-service | — | ❌ no existe | 📋 Solo especificación |
+| finance-service | 8085 | ✅ presente | **Implementado** (5 controllers, 13 endpoints + `/actuator/health`; ingresos/egresos inmutables, categorías con soft-delete, reportes resumen/mensual/proyección; `AccessControlService` centralizado). Ver [docs/finance-service/](finance-service/INDEX.md) (en construcción 2026-07-14). |
 | marketing-service | — | ❌ no existe | 📋 Solo especificación |
 | inventory-service | — | ❌ no existe | 📋 Solo especificación |
 
@@ -71,7 +71,8 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 | Componente | Estado |
 |------------|--------|
 | Migraciones Liquibase (`gym-administrator/db/`) | ✅ Implementadas — **69 tablas, 12 schemas** (consolidadas en `202605_GYM-001/` desde 2026-07-10, commit `e5ff46f`) |
-| Schemas `finanzas`, `marketing`, `inventario` | ✅ Tablas creadas en BD, pero 📋 sin servicio que las use aún |
+| Schemas `finanzas` | ✅ Tablas creadas en BD y **consumidas por `finance-service`** (verificado 2026-07-14): `categorias_ingreso`, `ingresos` (inmutables), `categorias_egreso`, `egresos` (soft-delete). |
+| Schemas `marketing`, `inventario` | ✅ Tablas creadas en BD, pero 📋 sin servicio que las use aún |
 | Schemas `sri`, `facturacion` (billing) | ✅ Tablas creadas en BD (6 + 17 tablas) y consumidas por `billing-service`. **Extendido 2026-07-13** (story `202607_GYM-002`, Fase 3 · G10): columna `bancarizada` en `sri.formas_pago` marcando los códigos 16-20 del catálogo SRI. |
 
 ---
@@ -106,6 +107,17 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 | Documento | Estado |
 |-----------|--------|
 | clientes.md | ✅ Refleja el código actual — verificado contra `ClienteController` (se añadió el endpoint `/clientes/plataforma` que faltaba). El README del servicio omite varios endpoints que sí existen; usar este doc como referencia de API. |
+
+### docs/finance-service/api/
+| Documento | Estado |
+|-----------|--------|
+| INDEX.md | ✅ Creado 2026-07-14 — índice del servicio con convenciones (JWT roles, multi-tenancy, defaulteo de sucursal, snake_case, timezone America/Guayaquil, mapping de errores HTTP) y las 6 reglas de negocio RN-01 a RN-06. |
+| categorias-ingreso.md, categorias-egreso.md | ✅ Refleja el código 2026-07-14 — 3 endpoints cada uno (GET listar, POST crear, PUT desactivar). Incluye RN-04: la desactivación devuelve 409 si hay registros activos referenciando la categoría. |
+| ingresos.md | ✅ Refleja el código 2026-07-14 — 2 endpoints (GET paginado con filtros `desde`/`hasta`/`idCategoria`, POST registrar). Destaca **RN-01 inmutabilidad** (no hay PUT ni DELETE) y el permiso especial `isRecepcion()` para POST. |
+| egresos.md | ✅ Refleja el código 2026-07-14 — 2 endpoints análogos a ingresos, sin permiso especial de recepción. |
+| reportes.md | ✅ Refleja el código 2026-07-14 — 3 endpoints (`/resumen` por rango, `/mensual` por año, `/proyeccion` basada en últimos N meses). Permiso `requireFinanzasReportes`. |
+
+**Total endpoints:** 13 · **Total controllers:** 5.
 
 ### docs/billing-service/api/
 | Documento | Estado |
@@ -157,7 +169,8 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 |-----------|--------|
 | auth-service.md, platform-service.md, core-service.md, attendance-service.md | 🟡 Spec de diseño de un servicio ya implementado — el código es la verdad, la spec puede haber divergido |
 | billing-service.md | 🟡 Corregida 2026-07-11 — Sección 9 tenía la tabla de endpoints con 13 rutas (`/api/v1/{comprobantes,admin,reportes}`). **Desactualizada 2026-07-14:** hoy el servicio expone 23 endpoints (6 controllers, incluye `NotaCreditoController`, `AnulacionController`, `MotivosAnulacionController` de Fases 2-3). Revisar y sincronizar cuando se retome la spec. |
-| finance-service.md, marketing-service.md, inventory-service.md | 📋 Planeado — sin implementar |
+| finance-service.md | 🟡 Spec de diseño **desactualizada** — el servicio ya está implementado (verificado 2026-07-14: 5 controllers, 13 endpoints), pero el encabezado de la spec aún dice "Planeado — sin implementar". El código es la fuente de verdad; ver [docs/finance-service/](../../finance-service/INDEX.md) para API real. |
+| marketing-service.md, inventory-service.md | 📋 Planeado — sin implementar |
 
 ### docs/gym-administrator/architecture/
 | Documento | Estado |

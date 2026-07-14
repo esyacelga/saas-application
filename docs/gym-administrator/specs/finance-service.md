@@ -1,6 +1,6 @@
 # Finance Service — Especificación de Desarrollo
 
-> **ESTADO:** 📋 Planeado — sin implementar. Este servicio NO existe en el código todavía; es una especificación de diseño futura. Ver [../../STATUS.md](../../STATUS.md).
+> **ESTADO:** 🟡 **Spec de diseño histórica — el servicio ya está implementado (verificado 2026-07-14).** El código en `finance-service/` es la fuente de verdad. Ver [docs/finance-service/](../../finance-service/INDEX.md) para la API real (5 controllers, 13 endpoints). Esta spec puede haber divergido del código actual; úsala como referencia de intención de diseño, no como descripción de comportamiento vigente.
 
 > **Servicio:** finance-service  
 > **Esquemas BD:** `finanzas`  
