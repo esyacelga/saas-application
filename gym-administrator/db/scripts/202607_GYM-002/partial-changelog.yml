@@ -1,0 +1,15 @@
+databaseChangeLog:
+
+  # ── G10 · Bancarización sobre USD 500 ────────────────────────────────────────
+
+  - changeSet:
+      id: GYM-002-1
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/01_add_bancarizada_sri_formas_pago.sql
+            relativeToChangelogFile: true
+            # A diferencia de la baseline, este script lleva dos sentencias
+            # (ALTER + UPDATE del seed), así que Liquibase debe separarlas.
+            splitStatements: true

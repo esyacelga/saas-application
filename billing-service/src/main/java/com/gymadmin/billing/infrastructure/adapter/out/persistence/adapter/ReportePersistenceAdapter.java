@@ -1,5 +1,6 @@
 package com.gymadmin.billing.infrastructure.adapter.out.persistence.adapter;
 
+import com.gymadmin.billing.domain.model.AtsPagoComprobante;
 import com.gymadmin.billing.domain.model.Comprobante;
 import com.gymadmin.billing.domain.model.PeriodoResumen;
 import com.gymadmin.billing.domain.port.out.ReporteRepository;
@@ -27,6 +28,38 @@ public class ReportePersistenceAdapter implements ReporteRepository {
     public Flux<Comprobante> findAutorizadosPorMes(Integer idCompania, Integer anio, Integer mes) {
         return reporteRepository.findAutorizadosPorMes(idCompania, anio, mes)
                 .map(this::toDomain);
+    }
+
+    @Override
+    public Flux<Comprobante> findAnuladosPorMes(Integer idCompania, Integer anio, Integer mes) {
+        return reporteRepository.findAnuladosPorMes(idCompania, anio, mes)
+                .map(this::toDomain);
+    }
+
+    @Override
+    public Flux<AtsPagoComprobante> findFormasPagoAutorizadasPorMes(Integer idCompania, Integer anio, Integer mes) {
+        return databaseClient.sql("""
+                SELECT p.id_comprobante, p.forma_pago
+                  FROM facturacion.comprobante_pagos p
+                  JOIN facturacion.comprobantes c ON c.id = p.id_comprobante
+                 WHERE c.id_compania = :idCompania
+                   AND c.estado = 'AUTORIZADO'
+                   AND EXTRACT(YEAR FROM c.fecha_emision) = :anio
+                   AND EXTRACT(MONTH FROM c.fecha_emision) = :mes
+                """)
+                .bind("idCompania", idCompania)
+                .bind("anio", anio)
+                .bind("mes", mes)
+                .map(row -> new AtsPagoComprobante(
+                        row.get("id_comprobante", Long.class),
+                        // forma_pago es CHAR(2): Postgres lo devuelve con padding si el valor es más corto.
+                        trim(row.get("forma_pago", String.class))
+                ))
+                .all();
+    }
+
+    private String trim(String value) {
+        return value != null ? value.trim() : null;
     }
 
     @Override

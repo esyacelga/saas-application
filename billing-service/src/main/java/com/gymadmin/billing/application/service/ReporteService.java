@@ -20,22 +20,24 @@ public class ReporteService implements ReporteUseCase {
     private final ConfigSriRepository configSriRepository;
     private final AtsXmlBuilder atsXmlBuilder;
 
-    // TODO(G9 · Fase 3): incluir notas de crédito (tipo 04) y anulaciones en el
-    // ATS mensual. Hoy `findAutorizadosPorMes` filtra `tipo_comprobante = '01'`
-    // y `AtsXmlBuilder` hardcodea `tipoComp='01'`. Con G3 (anulación fiscal)
-    // ya se emiten NC y se registran ANULADO en `facturacion.comprobantes`;
-    // el ATS debe reportarlos para evitar cruces automáticos del SRI. Ver
-    // docs/billing-service/pendientes/gap-analysis-sri-2026.md §G9.
+    /**
+     * G9 · ATS mensual. Reúne las tres fuentes que exige el esquema del SRI y delega
+     * el armado en {@link AtsXmlBuilder}: las ventas autorizadas (facturas y notas de
+     * crédito, que el builder agrupa por cliente y tipo), sus formas de pago (relación
+     * 1:N, va en el nodo {@code formasDePago}) y los comprobantes anulados (nodo
+     * {@code anulados}, separado de las ventas).
+     */
     @Override
     public Mono<byte[]> generarAts(Integer idCompania, Integer anio, Integer mes) {
         return configSriRepository.findFirstByCompania(idCompania)
                 .switchIfEmpty(Mono.error(new NotFoundException(
                         "Configuración SRI no encontrada para la empresa " + idCompania)))
-                .flatMap(configSri ->
-                        reporteRepository.findAutorizadosPorMes(idCompania, anio, mes)
-                                .collectList()
-                                .flatMap(comprobantes -> atsXmlBuilder.buildAts(configSri, comprobantes, anio, mes))
-                );
+                .flatMap(configSri -> Mono.zip(
+                        reporteRepository.findAutorizadosPorMes(idCompania, anio, mes).collectList(),
+                        reporteRepository.findFormasPagoAutorizadasPorMes(idCompania, anio, mes).collectList(),
+                        reporteRepository.findAnuladosPorMes(idCompania, anio, mes).collectList()
+                ).flatMap(t -> atsXmlBuilder.buildAts(
+                        configSri, t.getT1(), t.getT2(), t.getT3(), anio, mes)));
     }
 
     @Override

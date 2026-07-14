@@ -38,6 +38,9 @@ public class ComprobanteService implements ComprobanteUseCase {
      */
     private static final String TIPO_COMPROBANTE_FACTURA = "01";
 
+    /** G10 · Umbral sobre el cual el SRI exige bancarizar el excedente. */
+    private static final BigDecimal UMBRAL_BANCARIZACION = new BigDecimal("500.00");
+
     private final ComprobanteRepository comprobanteRepository;
     private final ConfigSriRepository configSriRepository;
     private final CertificadoRepository certificadoRepository;
@@ -183,9 +186,50 @@ public class ComprobanteService implements ComprobanteUseCase {
                                 ? Mono.<Void>empty()
                                 : Mono.error(new BusinessException(
                                         "Forma de pago no reconocida: " + codigo))))
-                .then();
+                .then()
+                // Solo tiene sentido evaluar el flag `bancarizada` de códigos que existen.
+                .then(validarBancarizacion(command));
 
         return Mono.when(validTipoId, validFormasPago);
+    }
+
+    /**
+     * G10 · Bancarización. Si el total del comprobante supera
+     * {@value #UMBRAL_BANCARIZACION} USD, el SRI exige que el <strong>excedente</strong>
+     * sobre ese umbral se pague por un medio que utilice el sistema financiero
+     * ({@code sri.formas_pago.bancarizada}).
+     * <p>
+     * Se valida el excedente y no el total, de modo que un pago mixto sigue siendo
+     * legal: en una factura de USD 600 se pueden pagar 100 en efectivo siempre que
+     * al menos 500 vayan por un medio bancarizado. Emitir con un excedente no
+     * bancarizado autorizaría en el SRI pero abriría una glosa en el cruce automático.
+     */
+    private Mono<Void> validarBancarizacion(EmitirFacturaCommand command) {
+        // Mismo cálculo que usa emitirFactura para el total del comprobante.
+        BigDecimal total = command.pagos().stream()
+                .map(EmitirFacturaCommand.PagoItem::total)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        if (total.compareTo(UMBRAL_BANCARIZACION) <= 0) {
+            return Mono.empty();
+        }
+
+        BigDecimal excedente = total.subtract(UMBRAL_BANCARIZACION);
+
+        return Flux.fromIterable(command.pagos())
+                .filterWhen(pago -> catalogoSriService.esBancarizada(pago.formaPago()))
+                .map(EmitirFacturaCommand.PagoItem::total)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .flatMap(bancarizado -> bancarizado.compareTo(excedente) >= 0
+                        ? Mono.<Void>empty()
+                        : Mono.<Void>error(new BusinessException(
+                                ("El total de %s USD supera los %s USD: al menos %s USD deben pagarse "
+                                        + "con una forma de pago bancarizada (códigos 16, 17, 18, 19, 20). "
+                                        + "Bancarizado actualmente: %s USD.")
+                                        .formatted(total.toPlainString(),
+                                                UMBRAL_BANCARIZACION.toPlainString(),
+                                                excedente.toPlainString(),
+                                                bancarizado.toPlainString()))));
     }
 
     @Override

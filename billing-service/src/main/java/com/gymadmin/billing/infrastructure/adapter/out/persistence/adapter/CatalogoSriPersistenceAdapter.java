@@ -42,7 +42,7 @@ public class CatalogoSriPersistenceAdapter implements CatalogoSriRepository {
             """;
 
     private static final String SQL_FORMA_PAGO = """
-            SELECT codigo, nombre, activo
+            SELECT codigo, nombre, activo, bancarizada
               FROM sri.formas_pago
              WHERE codigo = :codigo
             """;
@@ -104,7 +104,8 @@ public class CatalogoSriPersistenceAdapter implements CatalogoSriRepository {
                 .map(row -> new FormaPagoSri(
                         trim(row.get("codigo", String.class)),
                         row.get("nombre", String.class),
-                        Boolean.TRUE.equals(row.get("activo", Boolean.class))
+                        Boolean.TRUE.equals(row.get("activo", Boolean.class)),
+                        Boolean.TRUE.equals(row.get("bancarizada", Boolean.class))
                 ))
                 .one();
     }

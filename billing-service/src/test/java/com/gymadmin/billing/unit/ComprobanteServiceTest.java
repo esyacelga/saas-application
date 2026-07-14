@@ -15,6 +15,7 @@ import com.gymadmin.billing.domain.port.out.FileStoragePort;
 import com.gymadmin.billing.domain.port.out.SecuencialRepository;
 import com.gymadmin.billing.domain.port.out.XmlSignaturePort;
 import com.gymadmin.billing.infrastructure.adapter.out.xml.FacturaXmlBuilder;
+import com.gymadmin.billing.infrastructure.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -72,6 +73,10 @@ class ComprobanteServiceTest {
         // otro comportamiento pueden reemplazar estos stubs.
         when(catalogoSriService.existeTipoIdentificacion(anyString())).thenReturn(Mono.just(true));
         when(catalogoSriService.existeFormaPago(anyString())).thenReturn(Mono.just(true));
+        // G10: por defecto ninguna forma de pago es bancarizada. Solo importa en los
+        // tests de bancarización, que stubean los códigos 16-20 explícitamente; el
+        // resto emite por debajo del umbral de USD 500 y nunca consulta este flag.
+        when(catalogoSriService.esBancarizada(anyString())).thenReturn(Mono.just(false));
 
         // Default para G2: la transmisión inmediata devuelve el comprobante ya
         // AUTORIZADO. Los tests que necesitan otro camino sobrescriben este stub.
@@ -303,5 +308,131 @@ class ComprobanteServiceTest {
                 null,
                 999
         );
+    }
+
+    /**
+     * Igual que {@link #buildCommand()} pero con los pagos indicados. El total del
+     * comprobante es la suma de los pagos, así que esto controla el monto emitido.
+     */
+    private EmitirFacturaCommand buildCommandConPagos(EmitirFacturaCommand.PagoItem... pagos) {
+        EmitirFacturaCommand base = buildCommand();
+        return new EmitirFacturaCommand(
+                base.idCompania(),
+                base.idSucursal(),
+                base.fechaEmision(),
+                base.codEstablecimiento(),
+                base.codPuntoEmision(),
+                base.codigoNumerico(),
+                base.tipoIdReceptor(),
+                base.idReceptor(),
+                base.razonSocialReceptor(),
+                base.emailReceptor(),
+                base.direccionReceptor(),
+                base.telefonoReceptor(),
+                base.detalles(),
+                List.of(pagos),
+                base.formaPago(),
+                base.idMembresia(),
+                base.idVenta(),
+                base.idUsuarioRegistro()
+        );
+    }
+
+    /** Stubs mínimos para que emitirFactura llegue hasta la validación de catálogos. */
+    private void stubEmisionOk() {
+        ConfigSri config = ConfigSri.builder()
+                .idCompania(1).idSucursal(1).ruc("1234567890001").ambiente("1").build();
+        when(configSriRepository.findByEmpresa(1, 1)).thenReturn(Mono.just(config));
+        when(secuencialRepository.reservarSiguiente(1, 1, "001", "001", "01"))
+                .thenReturn(Mono.just(42));
+        when(comprobanteRepository.save(any(Comprobante.class))).thenAnswer(inv -> {
+            Comprobante c = inv.getArgument(0, Comprobante.class);
+            c.setId(100L);
+            return Mono.just(c);
+        });
+    }
+
+    // ─── G10 · Bancarización sobre USD 500 ───────────────────────────────────────
+
+    @Test
+    @DisplayName("G10: total ≤ 500 en efectivo emite normalmente (la regla no aplica)")
+    void bancarizacion_bajoUmbral_noAplica() {
+        stubEmisionOk();
+        // Exactamente el umbral: la norma exige bancarizar lo que lo *supera*.
+        EmitirFacturaCommand command = buildCommandConPagos(
+                new EmitirFacturaCommand.PagoItem("01", new BigDecimal("500.00")));
+
+        StepVerifier.create(service.emitirFactura(command))
+                .assertNext(c -> assertThat(c.getId()).isEqualTo(100L))
+                .verifyComplete();
+    }
+
+    @Test
+    @DisplayName("G10: total > 500 pagado 100% en efectivo es rechazado")
+    void bancarizacion_sobreUmbralSinBancarizar_falla() {
+        stubEmisionOk();
+        EmitirFacturaCommand command = buildCommandConPagos(
+                new EmitirFacturaCommand.PagoItem("01", new BigDecimal("600.00")));
+
+        StepVerifier.create(service.emitirFactura(command))
+                .expectErrorSatisfies(e -> {
+                    assertThat(e).isInstanceOf(BusinessException.class);
+                    assertThat(e.getMessage()).contains("bancarizada");
+                })
+                .verify();
+
+        verify(comprobanteRepository, never()).save(any(Comprobante.class));
+    }
+
+    @Test
+    @DisplayName("G10: pago mixto que cubre el excedente con tarjeta es aceptado")
+    void bancarizacion_pagoMixtoQueCubreExcedente_ok() {
+        stubEmisionOk();
+        when(catalogoSriService.esBancarizada("19")).thenReturn(Mono.just(true));
+
+        // Total 600 → excedente 100. La tarjeta aporta 500 ≥ 100.
+        EmitirFacturaCommand command = buildCommandConPagos(
+                new EmitirFacturaCommand.PagoItem("01", new BigDecimal("100.00")),
+                new EmitirFacturaCommand.PagoItem("19", new BigDecimal("500.00")));
+
+        StepVerifier.create(service.emitirFactura(command))
+                .assertNext(c -> assertThat(c.getId()).isEqualTo(100L))
+                .verifyComplete();
+    }
+
+    @Test
+    @DisplayName("G10: pago mixto cuyo tramo bancarizado no cubre el excedente es rechazado")
+    void bancarizacion_pagoMixtoInsuficiente_falla() {
+        stubEmisionOk();
+        when(catalogoSriService.esBancarizada("19")).thenReturn(Mono.just(true));
+
+        // Total 600 → excedente 100, pero solo 50 van por tarjeta.
+        EmitirFacturaCommand command = buildCommandConPagos(
+                new EmitirFacturaCommand.PagoItem("01", new BigDecimal("550.00")),
+                new EmitirFacturaCommand.PagoItem("19", new BigDecimal("50.00")));
+
+        StepVerifier.create(service.emitirFactura(command))
+                .expectErrorSatisfies(e -> {
+                    assertThat(e).isInstanceOf(BusinessException.class);
+                    assertThat(e.getMessage()).contains("100.00");
+                })
+                .verify();
+
+        verify(comprobanteRepository, never()).save(any(Comprobante.class));
+    }
+
+    @Test
+    @DisplayName("G10: una forma no bancarizada (21 endoso) no cuenta para cubrir el excedente")
+    void bancarizacion_formaNoBancarizada_noCuenta() {
+        stubEmisionOk();
+        // 21 ENDOSO_TITULOS quedó marcado como no bancarizado en el catálogo.
+        when(catalogoSriService.esBancarizada("21")).thenReturn(Mono.just(false));
+
+        EmitirFacturaCommand command = buildCommandConPagos(
+                new EmitirFacturaCommand.PagoItem("21", new BigDecimal("600.00")));
+
+        StepVerifier.create(service.emitirFactura(command))
+                .expectError(BusinessException.class)
+                .verify();
     }
 }

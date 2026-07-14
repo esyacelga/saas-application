@@ -68,7 +68,7 @@ class CatalogoSriServiceTest {
     @DisplayName("existeFormaPago — devuelve true si existe, false si no")
     void existeFormaPago_delegaEnHasElement() {
         when(repository.findFormaPago("01"))
-                .thenReturn(Mono.just(new FormaPagoSri("01", "SIN_UTILIZACION_SISTEMA_FINANCIERO", true)));
+                .thenReturn(Mono.just(new FormaPagoSri("01", "SIN_UTILIZACION_SISTEMA_FINANCIERO", true, false)));
         when(repository.findFormaPago("99")).thenReturn(Mono.empty());
 
         StepVerifier.create(service.existeFormaPago("01")).expectNext(true).verifyComplete();
@@ -76,10 +76,25 @@ class CatalogoSriServiceTest {
     }
 
     @Test
+    @DisplayName("esBancarizada — refleja el flag del catálogo; un código inexistente es false")
+    void esBancarizada_reflejaElFlagDelCatalogo() {
+        when(repository.findFormaPago("01"))
+                .thenReturn(Mono.just(new FormaPagoSri("01", "SIN_UTILIZACION_SISTEMA_FINANCIERO", true, false)));
+        when(repository.findFormaPago("19"))
+                .thenReturn(Mono.just(new FormaPagoSri("19", "TARJETA_CREDITO", true, true)));
+        when(repository.findFormaPago("99")).thenReturn(Mono.empty());
+
+        StepVerifier.create(service.esBancarizada("19")).expectNext(true).verifyComplete();
+        StepVerifier.create(service.esBancarizada("01")).expectNext(false).verifyComplete();
+        // Un código inexistente no explota: lo rechaza antes existeFormaPago().
+        StepVerifier.create(service.esBancarizada("99")).expectNext(false).verifyComplete();
+    }
+
+    @Test
     @DisplayName("existeFormaPago — el hit y el miss se cachean; una sola llamada al repo por código")
     void existeFormaPago_cacheaHitYMiss() {
         when(repository.findFormaPago("01"))
-                .thenReturn(Mono.just(new FormaPagoSri("01", "SIN_UTILIZACION_SISTEMA_FINANCIERO", true)));
+                .thenReturn(Mono.just(new FormaPagoSri("01", "SIN_UTILIZACION_SISTEMA_FINANCIERO", true, false)));
         when(repository.findFormaPago("99")).thenReturn(Mono.empty());
 
         // Hit repetido

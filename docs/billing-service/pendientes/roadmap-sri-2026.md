@@ -71,12 +71,20 @@ Fase 0 (Fundamentos)              Fase 1 (Pipeline SRI)
 
 ---
 
-## Fase 3 · Cumplimiento tributario
+## Fase 3 · Cumplimiento tributario — ✅ Completada 2026-07-13
 
 **Objetivo:** cerrar validaciones de negocio y reportes que auditará el SRI en cruces automáticos.
 **GAPs:** G10 (bancarización sobre USD 500), G9 (ATS completo).
 **Dependencias:** G10 depende de G6 (Fase 0). G9 depende de G4 (Fase 2).
 **Habilita:** contrato REST estable para arrancar Fase 5.
+
+**G10 — Bancarización.** El catálogo `sri.formas_pago` no tenía forma de saber qué códigos usan el sistema financiero (el gap-analysis asumía que G6 lo había dejado, pero no). Se agregó el flag `bancarizada` (story Liquibase `202607_GYM-002`), marcando 16, 17, 18, 19 y 20. La regla vive en `ComprobanteService.validarBancarizacion()`: si el total supera USD 500, las formas bancarizadas deben cubrir **el excedente** sobre ese umbral (no el total), lo que permite pagos mixtos legítimos —en una factura de 600 se pueden pagar 100 en efectivo si 500 van por tarjeta—. Devuelve `422` si no se cumple.
+
+> ⚠️ **Ojo con los códigos:** el gap-analysis §G10 los lista mal (dice 16=transferencia, 17=giro, 18=tarjeta débito). El catálogo real del SRI —y el seed de la BD— dice **16=tarjeta débito, 17=dinero electrónico, 18=tarjeta prepago, 19=tarjeta crédito, 20=otros con utilización del sistema financiero**. El código **01 es literalmente `SIN_UTILIZACION_SISTEMA_FINANCIERO`**.
+
+**G9 — ATS.** Resultó ser una **reescritura**, no el parche que suponía el gap-analysis. Al contrastar con el [XSD oficial](https://descargas.sri.gob.ec/download/anexos/ats/ats.xsd) se descubrió que el XML que generábamos **no validaba contra el esquema en absoluto**: raíz `<ats>` en vez de `<iva>`, y nombres de campo inventados (`tipoComp`, `numComp`, `denoComp`, `tipoPago`, `valRetBien10`…) que no existen en el esquema. `AtsXmlBuilder` se rehízo entero contra el XSD; ver [api/reportes.md](../api/reportes.md) para la estructura. El XSD quedó versionado en `billing-service/src/test/resources/sri/ats.xsd` y `AtsXmlBuilderTest` **valida el XML generado contra él** — sin ese test el error habría vuelto a pasar inadvertido.
+>
+> Correcciones a suposiciones previas: las notas de crédito **no tienen nodo propio**, van en `detalleVentas` distinguidas por `tipoComprobante = 04` y con importes **en positivo** (`monedaType` no admite signo; solo el `totalVentas` global netea). Y `detalleVentas` **agrupa** por cliente+tipo: `numeroComprobantes` es un conteo, no el número de una factura.
 
 ---
 
@@ -107,11 +115,14 @@ Fase 0 (Fundamentos)              Fase 1 (Pipeline SRI)
 
 ## Pendientes transversales (no ligados a una fase)
 
+- **⚠️ Migración `202607_GYM-002` sin aplicar fuera de local** — el flag `sri.formas_pago.bancarizada` (G10) se aplicó **solo a la BD local** (`gym-postgres`, la que usan los IT). No se corrió `./gradlew update` porque `gym-administrator/gradle.properties` apunta a una **base Neon en la nube** (`neondb`), no a la local: aplicar ahí es una escritura sobre un ambiente posiblemente compartido y debe hacerlo/coordinarlo el equipo. Sin esta migración, `billing-service` falla al emitir (la query de `sri.formas_pago` selecciona una columna inexistente).
+
 - **Test IT end-to-end contra SRI de pruebas** — enviar factura real a `celcer.sri.gob.ec` para validar el pipeline completo con certificado real. Ver [it-end-to-end-sri-pruebas.md](it-end-to-end-sri-pruebas.md) para el checklist de 7 prerrequisitos (certificado P12, RUC, BD operacional, receptor, red).
 - ~~**Bug auth Postgres local**~~ — ✅ **Resuelto 2026-07-13.** Causa: `billing-service` tenía la dependencia `dotenv-java` en el `pom.xml` pero nunca escribió la clase `DotEnvInitializer` (los otros 4 servicios sí la tienen). Sin ella nadie cargaba el `.env`, `${DB_USER}`/`${DB_PASSWORD}` de `application-integration.yml` quedaban sin resolver y Postgres recibía credenciales vacías. Se creó `DotEnvInitializer` y se registró en `IntegrationTestBase` vía `@ContextConfiguration(initializers = ...)`. Los 115 tests pasan.
+- **`AnulacionFlujoBIT` es flaky** — falla de forma intermitente al arrancar su contexto con `PostgresqlAuthenticationFailure` / `Failed to obtain R2DBC Connection`, y pasa al reintentar (verificado: 3/3 en verde tras un fallo, y la suite completa `fulltest` pasa 126/126). No es el bug de `DotEnvInitializer` —ese quedó resuelto— ni agotamiento de conexiones (Postgres tiene 100 y se usan ~13). Sospecha: carrera al levantar el pool durante el arranque del contexto. Reintentar si aparece en CI; investigar si se vuelve frecuente.
 - **JDK mismatch `pom.xml`** — declara `<java.version>25</java.version>` pero el runner local es JDK 21. Workaround: pasar `-Djava.version=21` a todo `mvn`. **Importante:** el override requiere `mvn clean`; sin él, quedan `.class` de una corrida previa compilados a class file 69 y surefire aborta con "compiled by a more recent version of the Java Runtime". Decidir con el equipo si bajar el pom o subir el JDK.
 - **`TODO(G6-follow)` tarifa IVA hardcoded** — `FacturaXmlBuilder` y `NotaCreditoXmlBuilder` hardcodean IVA 15% por línea. Se resuelve cuando los DTOs expongan `codigoTarifaIva` por detalle.
-- **`TODO(G9)` `tipoPago="20"` hardcoded en `AtsXmlBuilder`** — se resuelve en Fase 3 · G9 al rediseñar el ATS con formas de pago reales.
+- ~~**`TODO(G9)` `tipoPago="20"` hardcoded en `AtsXmlBuilder`**~~ — ✅ **Resuelto 2026-07-13 (G9).** El campo `tipoPago` **no existe** en el esquema del SRI: las formas de pago van en un nodo `formasDePago` con N `formaPago`, que ahora se leen de `facturacion.comprobante_pagos`. El hardcode desapareció junto con el campo.
 - **`TODO(G3-followup)` cierre APROBADA→EJECUTADA** — cuando una NC de Flujo B queda pendiente y autoriza después vía scheduler G2, la anulación no cierra automáticamente. Requiere un job o hook.
 
 ---
@@ -126,8 +137,8 @@ Fase 0 (Fundamentos)              Fase 1 (Pipeline SRI)
 | G1 XML v2.1.0 → v2.24 | 1 | ✅ Completado | [gap-analysis §G1](gap-analysis-sri-2026.md#g1--versión-de-la-ficha-técnica-xml-v210-vs-v232) · [ADR 001](adr/001-version-xml-sri.md) |
 | G4 Notas de crédito | 2 | ✅ Completado | [gap-analysis §G4](gap-analysis-sri-2026.md#g4--notas-de-crédito-tipo-04) · [api/notas-credito.md](../api/notas-credito.md) |
 | G3 Anulación fiscal | 2 | ✅ Completado | [anulacion-sri.md](anulacion-sri.md) · [api/anulaciones.md](../api/anulaciones.md) · [flows/anulacion-nc.md](../flows/anulacion-nc.md) |
-| G10 Bancarización USD 500 | 3 | 📋 Pendiente | [gap-analysis §G10](gap-analysis-sri-2026.md#g10--sin-validación-de-bancarización-sobre-usd-500) |
-| G9 ATS completo | 3 | 📋 Pendiente | [gap-analysis §G9](gap-analysis-sri-2026.md#g9--ats-mensual-solo-incluye-tipo-01) |
+| G10 Bancarización USD 500 | 3 | ✅ Completado | [gap-analysis §G10](gap-analysis-sri-2026.md#g10--sin-validación-de-bancarización-sobre-usd-500) · flag `sri.formas_pago.bancarizada` (story `202607_GYM-002`) |
+| G9 ATS completo | 3 | ✅ Completado | [gap-analysis §G9](gap-analysis-sri-2026.md#g9--ats-mensual-solo-incluye-tipo-01) · [api/reportes.md](../api/reportes.md) · XML validado contra el XSD oficial |
 | G7 Notas de débito | 4 | 📋 Opcional | [gap-analysis §G7](gap-analysis-sri-2026.md#g7--notas-de-débito-tipo-05) |
 | G8 Retenciones | 4 | 📋 Opcional | [gap-analysis §G8](gap-analysis-sri-2026.md#g8--retenciones-tipo-07) |
 | G13 Guías de remisión | 4 | 📋 Opcional | [gap-analysis §G13](gap-analysis-sri-2026.md#g13--guías-de-remisión-tipo-06) |

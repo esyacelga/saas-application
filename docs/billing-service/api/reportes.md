@@ -19,7 +19,22 @@ Reportes y estadísticas de facturación electrónica. Todos los endpoints requi
 **Response 200:**
 - `Content-Type: application/xml`
 - `Content-Disposition: attachment; filename="ATS_{anio}_{mes:02}.xml"` (ej: `ATS_2026_07.xml`)
-- Body: XML ATS conforme al esquema del SRI, agregando comprobantes `AUTORIZADO` del período.
+- Body: XML ATS conforme al [esquema oficial del SRI](https://descargas.sri.gob.ec/download/anexos/ats/ats.xsd).
+
+**Estructura del XML (G9 — implementado 2026-07-13):**
+
+La raíz es `<iva>` (no `<ats>`) y `codigoOperativo` es la constante `IVA`. Puntos que no son obvios y conviene tener presentes al leer el XML:
+
+| Nodo | Contenido |
+|------|-----------|
+| `ventas` → `detalleVentas` | **Agrupado** por (tipo de identificación, identificación, tipo de comprobante). `numeroComprobantes` es un **conteo** de comprobantes del grupo, no el número de una factura; los importes van sumados. |
+| `detalleVentas` (tipo `04`) | Las **notas de crédito** no tienen nodo propio: van aquí, distinguidas por `tipoComprobante = 04`. Sus importes se reportan en **positivo** (el tipo `monedaType` del XSD no admite signo); es el tipo de comprobante el que le indica al SRI que resta. |
+| `totalVentas` | Total del período **neteado**: las notas de crédito restan. Este campo sí admite negativos (`totalVentasType`). |
+| `formasDePago` → `formaPago` | Códigos distintos de forma de pago usados por el grupo, leídos de `facturacion.comprobante_pagos`. Un comprobante puede tener varios (pago mixto). |
+| `ventasEstablecimiento` → `ventaEst` | Total neteado por código de establecimiento. |
+| `anulados` → `detalleAnulados` | Comprobantes `ANULADO` del período, **fuera** del nodo de ventas. Se emite una entrada por comprobante (`secuencialInicio` = `secuencialFin`). |
+
+El XML generado se valida contra el XSD oficial en `AtsXmlBuilderTest` (el XSD está versionado en `billing-service/src/test/resources/sri/ats.xsd`).
 
 **Errores:**
 - `401` — no autenticado

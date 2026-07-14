@@ -186,6 +186,25 @@ Ver [../docs/billing-service/api/notas-credito.md](../docs/billing-service/api/n
 
 Endpoint principal: `POST /api/v1/notas-credito` con `EmitirNotaCreditoRequest`. `NotaCreditoService` valida la factura original (tipo `01`, estado `AUTORIZADO`, misma compañía, `valorModificacion ≤ total`), reserva secuencial atómico tipo `04`, persiste referencia en `facturacion.notas_credito_referencias`, y dispara el pipeline síncrono G2 (`EnvioSriService.procesarEmisionInmediataConXml`). El flujo B de G3 llama internamente a `NotaCreditoUseCase.emitirNotaCredito` copiando detalles y total de la factura original.
 
+## Bancarización sobre USD 500 (G10)
+
+Si el total de una factura supera **USD 500**, el SRI exige que el **excedente** sobre ese umbral se pague con una forma de pago que use el sistema financiero. `ComprobanteService.validarBancarizacion()` lo valida y lanza `BusinessException` (422) si no se cumple.
+
+Se valida el **excedente**, no el total: una factura de USD 600 puede pagar 100 en efectivo mientras al menos 500 vayan por medio bancarizado. El flag vive en `sri.formas_pago.bancarizada` (migración `202607_GYM-002`) y se consulta vía `CatalogoSriService.esBancarizada()` (cacheado).
+
+**Códigos bancarizados: 16, 17, 18, 19, 20.** Ojo — el catálogo real es `16=tarjeta débito, 17=dinero electrónico, 18=tarjeta prepago, 19=tarjeta crédito, 20=otros con utilización del sistema financiero`; el código `01` es literalmente `SIN_UTILIZACION_SISTEMA_FINANCIERO`. (El gap-analysis §G10 los lista mal.)
+
+## ATS mensual (G9)
+
+`AtsXmlBuilder` genera el XML del Anexo Transaccional Simplificado siguiendo el [XSD oficial del SRI](https://descargas.sri.gob.ec/download/anexos/ats/ats.xsd), versionado en `src/test/resources/sri/ats.xsd`. **`AtsXmlBuilderTest` valida el XML generado contra ese XSD** — mantener esa validación al tocar el builder; la implementación anterior emitía campos que no existían en el esquema y nadie lo notó por no tener este test.
+
+Puntos del esquema que no son obvios:
+- La raíz es **`<iva>`**, no `<ats>`; `codigoOperativo` es la constante `IVA`.
+- `detalleVentas` **agrupa** por (tipo id, identificación, tipo de comprobante). `numeroComprobantes` es un **conteo**, no el número de una factura.
+- Las **notas de crédito no tienen nodo propio**: van en `detalleVentas` con `tipoComprobante = 04` y sus importes **en positivo** (`monedaType` no admite signo negativo). Solo el `totalVentas` global netea (ahí sí resta).
+- Las formas de pago van en `formasDePago` → N `formaPago` (leídas de `facturacion.comprobante_pagos`). **No existe el campo `tipoPago`.**
+- Los **anulados** van en el nodo `anulados`, fuera de las ventas.
+
 ## Error Handling
 
 `GlobalExceptionHandler` (implements `ErrorWebExceptionHandler`) maps custom exceptions to HTTP status codes. Throw the right type from service/adapter layers:

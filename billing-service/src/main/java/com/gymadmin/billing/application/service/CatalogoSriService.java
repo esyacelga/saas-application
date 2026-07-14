@@ -75,6 +75,18 @@ public class CatalogoSriService {
     }
 
     /**
+     * {@code true} si la forma de pago utiliza el sistema financiero
+     * ({@code sri.formas_pago.bancarizada}). Un código inexistente devuelve
+     * {@code false}: la validación de existencia es responsabilidad de
+     * {@link #existeFormaPago(String)}, que corre antes en la misma cadena.
+     */
+    public Mono<Boolean> esBancarizada(String codigo) {
+        return cachedLookup(cacheFormaPago, codigo, catalogoSriRepository::findFormaPago)
+                .map(FormaPagoSri::bancarizada)
+                .defaultIfEmpty(false);
+    }
+
+    /**
      * Devuelve la tarifa IVA vigente a la {@code fechaEmision} indicada.
      * Falla con {@link BusinessException} si el código no existe o si la tarifa
      * existe pero no está vigente en esa fecha (típicamente el código 2 IVA 12%
