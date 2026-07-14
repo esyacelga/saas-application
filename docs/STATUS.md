@@ -2,7 +2,7 @@
 
 > **Propósito:** Fuente única de verdad sobre **qué está construido hoy** vs. **qué es solo diseño**. Antes de implementar o de confiar en un documento como referencia, consulta aquí su estado.
 >
-> Última verificación contra el código: **2026-07-10**
+> Última verificación contra el código: **2026-07-10** (general) · **2026-07-14** (billing-service, tras cierre de Fase 3 SRI 2026).
 
 ---
 
@@ -54,7 +54,7 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 | platform-service | 8081 | ✅ presente (148 archivos Java) | **Implementado** |
 | core-service | 8083 | ✅ presente (66 archivos Java) | **Implementado** |
 | attendance-service | 8084 | ✅ presente (51 archivos Java) | **Implementado** |
-| billing-service | 8086 | ✅ presente (~85% implementado) | **Implementado** (3 controllers, 13 endpoints documentados) |
+| billing-service | 8086 | ✅ presente | **Implementado — Fases SRI 0-3 completas** (6 controllers, 23 endpoints; ciclo de vida completo: emisión síncrona v2.24, NC tipo 04, anulación fiscal con workflow, bancarización > USD 500, ATS validado contra XSD oficial). Ver [roadmap](billing-service/pendientes/roadmap-sri-2026.md) |
 | finance-service | — | ❌ no existe | 📋 Solo especificación |
 | marketing-service | — | ❌ no existe | 📋 Solo especificación |
 | inventory-service | — | ❌ no existe | 📋 Solo especificación |
@@ -72,7 +72,7 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 |------------|--------|
 | Migraciones Liquibase (`gym-administrator/db/`) | ✅ Implementadas — **69 tablas, 12 schemas** (consolidadas en `202605_GYM-001/` desde 2026-07-10, commit `e5ff46f`) |
 | Schemas `finanzas`, `marketing`, `inventario` | ✅ Tablas creadas en BD, pero 📋 sin servicio que las use aún |
-| Schemas `sri`, `facturacion` (billing) | ✅ Tablas creadas en BD (6 + 17 tablas) y consumidas por `billing-service` (~85% implementado) |
+| Schemas `sri`, `facturacion` (billing) | ✅ Tablas creadas en BD (6 + 17 tablas) y consumidas por `billing-service`. **Extendido 2026-07-13** (story `202607_GYM-002`, Fase 3 · G10): columna `bancarizada` en `sri.formas_pago` marcando los códigos 16-20 del catálogo SRI. |
 
 ---
 
@@ -110,8 +110,25 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 ### docs/billing-service/api/
 | Documento | Estado |
 |-----------|--------|
-| comprobantes.md, admin.md, reportes.md | ✅ Refleja el código actual (verificado 2026-07-11 contra `ComprobanteController`, `AdminController`, `ReporteController`). Total: 13 endpoints documentados (8+3+2). |
-| integracion.md | 📋 Propuesto 2026-07-11 — Contrato de integración para que `core-service` consuma `billing-service` al vender membresías. Describe flujo asíncrono, JWT multi-tenancy, manejo de errores, idempotencia, y checklist de implementación. |
+| comprobantes.md | ✅ Refleja el código actual (reverificado 2026-07-14 contra `ComprobanteController`). 9 endpoints — incluye `POST /{id}/anular` rediseñado (Fase 2 · G3) con body de motivo y `GET /{id}/anulaciones`. |
+| notas-credito.md | ✅ Refleja el código actual 2026-07-14 (Fase 2 · G4). 3 endpoints sobre `NotaCreditoController`: `POST /notas-credito`, `GET /notas-credito/{id}`, `GET /notas-credito`. Reutiliza el pipeline síncrono de G2. |
+| anulaciones.md | ✅ Refleja el código actual 2026-07-14 (Fase 2 · G3). 6 endpoints (5 `AnulacionController` + 1 `MotivosAnulacionController`): aprobar, rechazar, confirmar-sri, listar, detalle y catálogo de motivos. |
+| admin.md | ✅ Refleja el código actual (verificado 2026-07-11 contra `AdminController`). 3 endpoints. |
+| reportes.md | ✅ Refleja el código actual (verificado 2026-07-11 contra `ReporteController`). 2 endpoints — el generador ATS fue reescrito 2026-07-13 (Fase 3 · G9) contra el XSD oficial del SRI. |
+| integracion.md | 📋 Propuesto 2026-07-11 — Contrato de integración para que `core-service` consuma `billing-service` al vender membresías. **Nota post-G2 (2026-07-13):** el flujo original describía emisión asíncrona; hoy el `POST /facturas` es síncrono (~15s con timeout) y devuelve el estado final en el response. Actualizar cuando core-service consuma. |
+
+**Total endpoints:** 23 · **Total controllers:** 6.
+
+### docs/billing-service/flows/
+| Documento | Estado |
+|-----------|--------|
+| sri-submission-retry.md | ✅ Refleja el código actual (reescrito 2026-07-13 tras Fase 1 · G2). Documenta el pipeline síncrono `POST → firma → envío → autorización` con timeout 15s y `facturacion.cola_envio` como fallback (backoff `{1, 5, 15, 60, 240}` min via `RetrySchedulerService`). |
+| anulacion-nc.md | ✅ Refleja el código actual 2026-07-13 (Fase 2 · G3). Máquina de estados SOLICITADA→APROBADA→EJECUTADA/RECHAZADA, con Flujo A (portal SRI manual) y Flujo B (con NC automática reutilizando G4). |
+
+### docs/billing-service/pendientes/adr/
+| Documento | Estado |
+|-----------|--------|
+| 001-version-xml-sri.md | ✅ Vigente 2026-07-13 (Fase 1 · G1). Decide subir de XML v2.1.0 a v2.24 — mínima que oficializa el código de tarifa 4 (IVA 15%). |
 
 ### docs/billing-service/pendientes/
 | Documento | Estado |
@@ -139,7 +156,7 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 | Documento | Estado |
 |-----------|--------|
 | auth-service.md, platform-service.md, core-service.md, attendance-service.md | 🟡 Spec de diseño de un servicio ya implementado — el código es la verdad, la spec puede haber divergido |
-| billing-service.md | ✅ Corregida 2026-07-11 — Sección 9 actualizada con tabla de endpoints reales (`/api/v1/{comprobantes,admin,reportes}`) enlazados a la doc de API. Removed payload nested (spec antigua); ver [docs/billing-service/api/integracion.md](../../billing-service/api/integracion.md) para el contrato real de integración propuesto. |
+| billing-service.md | 🟡 Corregida 2026-07-11 — Sección 9 tenía la tabla de endpoints con 13 rutas (`/api/v1/{comprobantes,admin,reportes}`). **Desactualizada 2026-07-14:** hoy el servicio expone 23 endpoints (6 controllers, incluye `NotaCreditoController`, `AnulacionController`, `MotivosAnulacionController` de Fases 2-3). Revisar y sincronizar cuando se retome la spec. |
 | finance-service.md, marketing-service.md, inventory-service.md | 📋 Planeado — sin implementar |
 
 ### docs/gym-administrator/architecture/

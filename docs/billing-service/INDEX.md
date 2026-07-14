@@ -13,7 +13,7 @@ Facturación electrónica SRI Ecuador. Emisión, firma digital y autorización d
 | [anulaciones.md](api/anulaciones.md) | `/api/v1/anulaciones`, `/api/v1/sri/motivos-anulacion` | G3 · Anulación fiscal SRI: máquina de estados (solicitar → aprobar/rechazar → confirmar-sri o NC AUTORIZADA), autorización por rol, catálogo de motivos |
 | [admin.md](api/admin.md) | `/api/v1/admin` | Diagnóstico: ping SRI, estado de certificados, auditoría de emisión |
 | [reportes.md](api/reportes.md) | `/api/v1/reportes` | ATS mensual (XML SRI), resumen de ventas por período |
-| [integracion.md](api/integracion.md) | — | 📋 **Propuesto:** Cómo core-service debe consumir billing-service; flujo de emisión de factura asíncrono; JWT y multi-tenancy; manejo de errores; checklist de implementación |
+| [integracion.md](api/integracion.md) | — | 📋 **Propuesto** (falta implementarse en `core-service`): Cómo core-service debe consumir billing-service; JWT y multi-tenancy; manejo de errores; checklist. ⚠️ Doc parcialmente desactualizado por G2 — el flujo real hoy es síncrono (POST devuelve el estado final, no `GENERADO`). Ver nota inline. |
 
 ---
 

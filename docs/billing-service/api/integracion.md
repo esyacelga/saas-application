@@ -1,6 +1,8 @@
 # Integración core-service → billing-service — contrato propuesto
 
-> **ESTADO:** 📋 **Propuesto — no implementado.** Este documento describe el contrato HTTP que `core-service` debe usar para emitir facturas a través de `billing-service` cuando se venda una membresía o registre otra transacción facturable. Los endpoints existen y funcionan en `billing-service`; falta el código en `core-service` que los consuma.
+> **ESTADO:** 📋 **Propuesto — no implementado en core-service.** Este documento describe el contrato HTTP que `core-service` debe usar para emitir facturas a través de `billing-service` cuando se venda una membresía o registre otra transacción facturable. Los endpoints existen y funcionan en `billing-service`; falta el código en `core-service` que los consuma.
+>
+> ⚠️ **Nota post-Fase 1 G2 (2026-07-13):** las secciones históricas de este doc describen la emisión como asíncrona (POST retorna `GENERADO` y luego el estado avanza vía scheduler). Con G2 el pipeline es **síncrono** dentro del POST: la respuesta llega con el estado final (`AUTORIZADO` en el caso feliz, `DEVUELTO`/`ERROR` si no) tras firma + envío + autorización a `celcer.sri.gob.ec`, con timeout configurable (`sri.timeout.envio-seconds`, default 15). La cola de reintentos solo actúa como fallback ante error de red o timeout, no como camino principal. El campo `secuencial` del request quedó `@Deprecated` en Fase 0 G5 (el servidor lo asigna). Actualizar este doc cuando se implemente la integración real en core-service.
 
 ---
 
