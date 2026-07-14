@@ -138,6 +138,25 @@ No centralized `AccessControlService` — controllers validate permissions inlin
 
 Controllers extract claims via `ReactiveSecurityContextHolder` and check `tipo == "staff"` and `id_compania` matches the invoice's company. Platform tokens are rejected for most endpoints.
 
+## Module gating (billing feature-flag por compañía)
+
+Además de la autenticación JWT y del check de rol/compañía en cada controller, un `WebFilter` global (`ModuloGatingFilter`, registrado en `SecurityConfig` con `addFilterAfter(..., SecurityWebFiltersOrder.AUTHENTICATION)`) consulta a **platform-service** si la compañía tiene el módulo `FACTURACION` incluido en su plan actual.
+
+- **Endpoint consumido:** `GET {platform.base-url}/api/v1/modulos/check?id_compania={id}&codigo=FACTURACION`. Es público en platform-service (no envía JWT). El código consultado es una constante (`FACTURACION`, mayúsculas exactas) definida en `billing.gating.modulo-codigo`.
+- **Paths protegidos** (prefijos): `/api/v1/comprobantes`, `/api/v1/notas-credito`, `/api/v1/anulaciones`, `/api/v1/reportes`. Todo lo demás (actuator, swagger, `/api/v1/sri/motivos-anulacion`) pasa transparente.
+- **Bypass:** principales con `tipo=plataforma` o `rol_plataforma=super_admin` pasan sin consultar (soporte/administración interna). Si el path está fuera de scope o `billing.gating.enabled=false`, tampoco se llama a platform-service.
+- **Cache local:** Caffeine, `id_compania → Boolean`, TTL **600 s (10 min) por defecto** (configurable vía `BILLING_GATING_CACHE_TTL_SECONDS`), max 10 000 entradas. Se cachea el resultado 200 (true) y 403 (false). El 402 y los errores de red **no** se cachean. Cambios de plan en Platform tardan hasta el TTL en propagarse por pod (no hay invalidación explícita).
+- **Comportamiento por status HTTP de platform-service:**
+  | Status platform | Respuesta del filter | Body |
+  |---|---|---|
+  | 200 | pasa la cadena | — |
+  | 403 | 403 al cliente | `{"permitido":false,"razon":"modulo_no_incluido"}` |
+  | 402 | 402 al cliente | `{"permitido":false,"razon":"plan_vencido_o_suspendido"}` |
+  | otros / timeout / error de red | **503 (fail-closed)** | `{"permitido":false,"razon":"gate_unavailable"}` |
+  | staff sin `id_compania` en el JWT | 403 | `{"permitido":false,"razon":"id_compania_missing"}` |
+- **Feature flag:** `BILLING_GATING_ENABLED=false` desactiva el filter (útil en tests de integración locales y rollout gradual).
+- **Config relacionada:** `PLATFORM_SERVICE_URL` (default `http://localhost:8081`), `billing.gating.webclient.connect-timeout-ms` (2 s), `read-timeout-ms` (3 s).
+
 ## Invoice State Machine
 
 See [../docs/billing-service/flows/sri-submission-retry.md](../docs/billing-service/flows/sri-submission-retry.md) for complete state diagram and retry logic.

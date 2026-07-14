@@ -60,7 +60,7 @@ application/service/    → Use case implementations + infrastructure services
 infrastructure/
   adapter/in/web/       → @RestController classes + DTOs
   adapter/out/persistence/ → R2DBC repositories, entity mappers
-  config/               → Security, Redis, Cloudinary, R2DBC auditing
+  config/               → Security, Cloudinary, R2DBC auditing
 ```
 
 All controllers return `Mono<T>` / `Flux<T>`. Never mix blocking calls into reactive chains.
@@ -95,7 +95,7 @@ ReactiveSecurityContextHolder.getContext()
 
 **Error handling** — `GlobalExceptionHandler` maps domain exceptions (`NotFoundException`, `ConflictException`, `ForbiddenException`, etc.) to HTTP responses. Throw these from services; do not return error `Mono`s with generic `RuntimeException`.
 
-**Redis caching** — Module check results are cached in Redis (TTL: `MODULE_CHECK_CACHE_TTL_SECONDS`, default 300s). Redis is required at startup.
+**Module check cache** — Redis was removed for Cloud Run deployment without external dependencies (see [docs/REDIS_REMOVAL.md](../docs/REDIS_REMOVAL.md) if it exists, and the stub at `infrastructure/adapter/out/cache/RedisModuloCheckCache.java`). The `ModuloCheckCache` port is currently implemented as a no-op stub: `get` returns `Mono.empty()`, `put`/`evict` do nothing, and `invalidateByCompania` returns `0`. Consequence: every call to `/api/v1/modulos/check` hits Postgres directly (small join over `saas.plan_caracteristicas × saas.caracteristicas`). Consumers that need caching (e.g. billing-service's `ModuloGatingFilter`) implement their own in-JVM cache (Caffeine). Redis is **not required** to start the service.
 
 **Scheduled job** — `SubscriptionJobService` runs daily at 00:05 (`SUBSCRIPTION_JOB_CRON`) to check and update subscription states. Controlled by `@EnableScheduling`.
 

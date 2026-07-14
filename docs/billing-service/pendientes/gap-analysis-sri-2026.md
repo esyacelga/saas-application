@@ -264,7 +264,11 @@ Bajar la prioridad si el gym no cobra mora electrónicamente.
 
 ### G10 — Sin validación de bancarización sobre USD 500
 
-**Situación:** el DTO `PagoItem` acepta cualquier código de `formaPago` sin validar contra el total. La regla SRI dice: **si `total > USD 500`, la forma de pago debe ser bancarizada** (códigos 16 transferencia, 17 giro, 18 tarjeta débito, 19 tarjeta crédito, 20 otros con utilización sistema financiero).
+> ✅ **Implementado 2026-07-13 (Fase 3 · G10).** Ver el [roadmap](roadmap-sri-2026.md#fase-3--cumplimiento-tributario--completada-2026-07-13).
+>
+> 🔴 **Los códigos listados abajo estaban MAL.** El catálogo real (fuente de verdad: el seed [`09_insert_seed_sri.sql`](../../../gym-administrator/db/scripts/202605_GYM-001/ddl-facturacion/09_insert_seed_sri.sql)) es: **16 = tarjeta de débito, 17 = dinero electrónico, 18 = tarjeta prepago, 19 = tarjeta de crédito, 20 = otros con utilización del sistema financiero** (ahí cae la transferencia bancaria). Y el **01 es literalmente `SIN_UTILIZACION_SISTEMA_FINANCIERO`**. No te guíes por el texto original de abajo. El flag autoritativo es la columna `sri.formas_pago.bancarizada` (story `202607_GYM-002`).
+
+**Situación:** el DTO `PagoItem` acepta cualquier código de `formaPago` sin validar contra el total. La regla SRI dice: **si `total > USD 500`, la forma de pago debe ser bancarizada** (~~códigos 16 transferencia, 17 giro, 18 tarjeta débito, 19 tarjeta crédito, 20 otros con utilización sistema financiero~~ — **códigos incorrectos, ver aviso arriba**).
 
 **Riesgo:** el SRI puede autorizar la factura pero luego observar el pago en cruces automáticos → glosa y multa.
 
@@ -288,9 +292,11 @@ Bajar la prioridad si el gym no cobra mora electrónicamente.
 
 ### G12 — Sincronización con `finanzas.ingresos` no existe
 
-**Situación:** cuando una factura llega a `AUTORIZADO` no se escribe fila alguna en `finanzas.ingresos`. Esto es esperado porque `finance-service` aún no existe.
+> ⚠️ **Desactualizado (corregido 2026-07-14): `finance-service` YA EXISTE.** Está implementado (5 controllers, 13 endpoints; ver [docs/finance-service/](../../finance-service/INDEX.md)) y consume el schema `finanzas`. **La dependencia externa que difería este GAP desapareció** — ya no está bloqueado, solo pendiente. El texto original queda abajo como registro.
 
-**Impacto:** cuando `finance-service` arranque necesitará pollear la tabla o consumir un evento. Diseñar el contrato ahora ahorra retrabajo.
+**Situación:** cuando una factura llega a `AUTORIZADO` no se escribe fila alguna en `finanzas.ingresos`. ~~Esto es esperado porque `finance-service` aún no existe.~~
+
+**Impacto:** ~~cuando~~ **ahora que** `finance-service` ~~arranque~~ **existe**, necesitará pollear la tabla o consumir un evento. Diseñar el contrato ahora ahorra retrabajo.
 
 **Qué hacer (diferido):**
 - Decidir: outbox pattern vs. polling con cursor.

@@ -97,12 +97,25 @@ Fase 0 (Fundamentos)              Fase 1 (Pipeline SRI)
 
 ---
 
-## Fase 5 · Rediseño del frontend
+## Fase 5 · Frontend de facturación — 📋 Spec de diseño lista (2026-07-14)
 
-**Objetivo:** rediseñar las pantallas de facturación en `auth-service-frond-end` con el nuevo contrato REST estable.
-**Alcance:** modificar pantallas existentes (emisión, anulación, listado) y crear nuevas (NC, y opcionales ND/retención/guías si Fase 4 se hizo).
+> 🔴 **BLOQUEANTE DE ONBOARDING descubierto 2026-07-14 — va ANTES que las pantallas de emisión.**
+> **Hoy ningún gimnasio puede activar la facturación por sí mismo.** `billing-service` necesita tres filas (`config_sri`, `certificados`, `puntos_emision`) que **solo se pueden crear con SQL a mano**: el `AdminController` expone únicamente 3 endpoints de **lectura**, no existe `ConfigSriUseCase` ni ningún `POST`/`PUT` de configuración. Sin esas filas, `POST /facturas` responde `404`.
+> En un SaaS multi-tenant esto no es una comodidad ausente: **es la condición para que la facturación sea vendible.** Requerimiento completo (wizard de 4 pasos + los 7 endpoints que faltan): [wizard-configuracion-sri.md](wizard-configuracion-sri.md).
+
+> ⚠️ **Corrección al plan original.** Esta fase decía "rediseñar las pantallas existentes (emisión, anulación, listado)". **Esa premisa era falsa:** se verificó contra el código que **no existe ninguna pantalla de facturación** en `auth-service-frond-end`. No hay nada que rediseñar — se construye el módulo entero desde cero, y es bastante más trabajo del que la fase sugería. Hoy los **23 endpoints de billing-service no tienen ningún consumidor** (ni el frontend, ni core-service).
+
+**Objetivo:** construir el módulo de facturación en `auth-service-frond-end` sobre el contrato REST ya estable.
+**Spec de diseño:** ✅ [docs/auth-service-frond-end/facturacion-diseno.md](../../auth-service-frond-end/facturacion-diseno.md) — 6 pantallas, flujos paso a paso, microcopy y traducción de errores SRI a lenguaje humano.
 **Dependencias:** Fase 3 completa (contrato REST congelado); opcionalmente Fase 4.
-**Prerrequisito:** invocar `ui-ux-designer` para especificar los flujos antes de que `frontend-developer` implemente.
+**Siguiente paso:** resolver las **10 preguntas abiertas** de la sección 15 de la spec (varias son bloqueantes y dependen del backend: los permisos `facturacion:*` **no existen** en la BD, y no está claro de dónde saca la UI `cod_establecimiento`/`cod_punto_emision`/`codigo_numerico`). Recién después, `frontend-developer`.
+
+**Decisiones de producto tomadas (2026-07-14):**
+- **Usuario objetivo: recepcionista poco adaptativo a la tecnología.** Es la restricción #1 y subordina todo el diseño. El SRI **nunca** debe bloquear al que atiende el mostrador: si falla, la venta se completa igual, la factura se reintenta sola y el mensaje es *"procesándose"*, nunca un código tributario crudo.
+- **Solo facturación manual.** La automática (emitir al vender una membresía) **es imposible hoy**: `core.membresias` guarda `precioPagado` pero **no guarda la forma de pago**, y el SRI la exige. Habilitarla es un requerimiento que arranca en `core-service`, no en el frontend.
+- **Anulación en un solo paso** para quien tenga permiso de aprobar (el dueño de un gym chico es el mismo que atiende). El workflow `SOLICITADA→APROBADA→EJECUTADA` se conserva en el backend para la auditoría, pero la UI no obliga a recorrerlo de a uno.
+- **Consumidor final soportado**, con aviso claro de que esa factura no podrá anularse con NC.
+- **Reutilización futura (otros SaaS ecuatorianos): no se empaqueta como librería ahora.** Se traza la frontera `src/lib/sri/` (lógica pura: validación cédula/RUC, bancarización, IVA, ventana de anulación — **prohibido importar React/axios/PrimeReact**) vs `src/ui/features/facturacion/`. Extraer al segundo caso de uso, no al primero.
 
 ---
 
@@ -116,6 +129,12 @@ Fase 0 (Fundamentos)              Fase 1 (Pipeline SRI)
 ## Pendientes transversales (no ligados a una fase)
 
 - **⚠️ Migración `202607_GYM-002` sin aplicar fuera de local** — el flag `sri.formas_pago.bancarizada` (G10) se aplicó **solo a la BD local** (`gym-postgres`, la que usan los IT). No se corrió `./gradlew update` porque `gym-administrator/gradle.properties` apunta a una **base Neon en la nube** (`neondb`), no a la local: aplicar ahí es una escritura sobre un ambiente posiblemente compartido y debe hacerlo/coordinarlo el equipo. Sin esta migración, `billing-service` falla al emitir (la query de `sri.formas_pago` selecciona una columna inexistente).
+
+- **🔴 `core.membresias` no guarda la forma de pago** — el modelo tiene `precioPagado` pero **no** `forma_pago`. El SRI **exige** la forma de pago en el XML, y desde G10 se valida bancarización sobre USD 500. Consecuencia: **la facturación automática al vender una membresía es imposible hoy**, y por eso el módulo de frontend (Fase 5) se especificó como 100 % manual. Habilitarla requiere agregar el campo al formulario de venta de `core-service` — es un requerimiento propio, no una tarea de billing.
+
+- **🔴 El XML del reenvío asíncrono miente sobre la forma de pago** — en `EnvioSriService.buildXmlDesdeBD()` (el camino de la cola de reintentos y del `/enviar` manual), el XML **no lee los pagos reales**: sintetiza uno solo con `formaPago="01"` (*sin utilización del sistema financiero* = efectivo) por el total. Una factura pagada con tarjeta se declara al SRI como efectivo si le toca ese camino. **Contradice al ATS** (que sí lee `facturacion.comprobante_pagos`) y **contradice la regla de bancarización de G10** — validamos en la entrada algo que el XML de salida desmiente. El `TODO(G6-follow)` que lo acompaña **está obsoleto**: dice *"cuando exista la tabla `facturacion.comprobante_pagos`"* y esa tabla **ya existe y está poblada** (el `AtsXmlBuilder` la consume). Arreglo corto: leer los pagos reales en vez de fabricarlos. El gap-analysis lo clasificó como 🟡 media / "no bloquea producción", pero esa evaluación es **anterior a G10** y hay que reconsiderarla.
+
+- **G12 ya no está bloqueado** — el [gap-analysis §G12](gap-analysis-sri-2026.md#g12--sincronización-con-finanzasingresos-no-existe) dice *"esto es esperado porque `finance-service` aún no existe"*. **Sí existe** (implementado, 13 endpoints, ver [docs/finance-service/](../../finance-service/INDEX.md)). La dependencia externa que difería G12 a Fase 6 desapareció; queda decidir el contrato (outbox vs polling).
 
 - **Test IT end-to-end contra SRI de pruebas** — enviar factura real a `celcer.sri.gob.ec` para validar el pipeline completo con certificado real. Ver [it-end-to-end-sri-pruebas.md](it-end-to-end-sri-pruebas.md) para el checklist de 7 prerrequisitos (certificado P12, RUC, BD operacional, receptor, red).
 - ~~**Bug auth Postgres local**~~ — ✅ **Resuelto 2026-07-13.** Causa: `billing-service` tenía la dependencia `dotenv-java` en el `pom.xml` pero nunca escribió la clase `DotEnvInitializer` (los otros 4 servicios sí la tienen). Sin ella nadie cargaba el `.env`, `${DB_USER}`/`${DB_PASSWORD}` de `application-integration.yml` quedaban sin resolver y Postgres recibía credenciales vacías. Se creó `DotEnvInitializer` y se registró en `IntegrationTestBase` vía `@ContextConfiguration(initializers = ...)`. Los 115 tests pasan.

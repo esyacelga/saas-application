@@ -47,6 +47,7 @@ Documentos usados para pedir/especificar cambios de API al backend desde la pers
 |-----------|-----------|
 | [design-guidelines.md](design-guidelines.md) | Directrices de diseño: sistema de temas, tipografía, tokens |
 | [api-index.md](api-index.md) | Índice de endpoints consumidos del auth-service |
+| [facturacion-diseno.md](facturacion-diseno.md) | 📋 **Planeado** — Spec de diseño del módulo de Facturación Electrónica SRI (no existe ninguna pantalla hoy). Incluye la frontera `src/lib/sri/` para replicar el módulo en otros SaaS ecuatorianos. |
 | [member-portal-decisiones.md](member-portal-decisiones.md) | Decisiones de producto previas a implementar el portal de miembro |
 
 ## preguntas/ — Notas personales de aprendizaje

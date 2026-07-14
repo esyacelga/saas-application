@@ -82,6 +82,19 @@ info:
     version: '@project.version@'
     description: Facturación Electrónica SRI Ecuador
 
+platform:
+  base-url: ${PLATFORM_SERVICE_URL:http://localhost:8081}
+
+billing:
+  gating:
+    enabled: ${BILLING_GATING_ENABLED:true}
+    modulo-codigo: FACTURACION
+    cache-ttl-seconds: ${BILLING_GATING_CACHE_TTL_SECONDS:600}
+    cache-max-size: 10000
+    webclient:
+      connect-timeout-ms: 2000
+      read-timeout-ms: 3000
+
 logging:
   level:
     com.gymadmin.billing: DEBUG

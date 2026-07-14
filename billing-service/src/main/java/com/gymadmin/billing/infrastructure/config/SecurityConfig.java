@@ -16,9 +16,12 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final ModuloGatingFilter moduloGatingFilter;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          ModuloGatingFilter moduloGatingFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.moduloGatingFilter = moduloGatingFilter;
     }
 
     @Bean
@@ -32,6 +35,7 @@ public class SecurityConfig {
                         .anyExchange().authenticated()
                 )
                 .addFilterAt(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
+                .addFilterAfter(moduloGatingFilter, SecurityWebFiltersOrder.AUTHENTICATION)
                 .build();
     }
 
