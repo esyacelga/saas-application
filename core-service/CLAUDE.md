@@ -13,7 +13,11 @@ Antes de confiar en un doc como referencia, verifica su estado en [../docs/STATU
 | Área | Documento | Estado |
 |------|-----------|--------|
 | API — clientes (CRUD + registro app + plataforma) | [../docs/core-service/api/clientes.md](../docs/core-service/api/clientes.md) | ✅ Refleja el código (verificado contra `ClienteController`) |
-| Índice de docs centralizados | [../docs/core-service/INDEX.md](../docs/core-service/INDEX.md) | 🟡 Índice — el README del servicio omite varios endpoints; usar los docs de `api/` como referencia |
+| API — membresías (venta, validación, anulación) | [../docs/core-service/api/membresias.md](../docs/core-service/api/membresias.md) | ✅ Refleja el código (verificado contra `MembresiaController`) |
+| API — tipos de membresía (catálogo) | [../docs/core-service/api/tipos-membresia.md](../docs/core-service/api/tipos-membresia.md) | ✅ Refleja el código (verificado contra `TipoMembresiaController`) |
+| API — congelamientos (admin y cliente) | [../docs/core-service/api/congelamientos.md](../docs/core-service/api/congelamientos.md) | ✅ Refleja el código (verificado contra `CongelamientoController`) |
+| API — endpoints internos (platform-service) | [../docs/core-service/api/internal.md](../docs/core-service/api/internal.md) | ✅ Refleja el código (verificado contra `InternalCoreController`) |
+| Índice de docs centralizados | [../docs/core-service/INDEX.md](../docs/core-service/INDEX.md) | ✅ Actualizado con 4 nuevos documentos de API |
 
 Fuente de verdad del enrutamiento: los `@RestController` bajo `infrastructure/adapter/in/web/` (`ClienteController`, `MembresiaController`, `TipoMembresiaController`, `CongelamientoController`). El único endpoint público es `GET /api/v1/membresias/validar-acceso`.
 

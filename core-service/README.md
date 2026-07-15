@@ -106,7 +106,7 @@ mvn clean package -DskipTests
 
 ## Endpoints principales
 
-Ver también [../docs/core-service/INDEX.md](../docs/core-service/INDEX.md) para la referencia detallada de la API de clientes.
+Ver también [../docs/core-service/INDEX.md](../docs/core-service/INDEX.md) para la referencia detallada de la API.
 
 Todos los endpoints (excepto `validar-acceso`) requieren header `Authorization: Bearer <token>`.
 
@@ -116,16 +116,26 @@ Todos los endpoints (excepto `validar-acceso`) requieren header `Authorization: 
 | `POST` | `/api/v1/clientes` | Registrar cliente |
 | `GET` | `/api/v1/clientes/{id}` | Detalle de cliente |
 | `PUT` | `/api/v1/clientes/{id}` | Actualizar datos físicos |
+| `DELETE` | `/api/v1/clientes/{id}` | Eliminar cliente (soft delete) |
+| `GET` | `/api/v1/clientes/mi-perfil` | Ver perfil del cliente autenticado |
+| `GET` | `/api/v1/clientes/my-id` | Obtener ID de cliente autenticado |
+| `POST` | `/api/v1/clientes/app` | Registrar cliente desde app móvil |
 | `GET` | `/api/v1/clientes/ci/{ci}` | Buscar persona por cédula |
+| `POST` | `/api/v1/clientes/plataforma` | Registrar cliente desde plataforma |
+| `GET` | `/api/v1/clientes/por-persona/{idPersona}` | Listar clientes de una persona en todos los gimnasios |
+| `PUT` | `/api/v1/clientes/plataforma/{id}` | Actualizar cliente desde plataforma |
 | `GET` | `/api/v1/clientes/{id}/membresias` | Historial de membresías |
 | `POST` | `/api/v1/clientes/{id}/membresias` | Vender membresía |
 | `GET` | `/api/v1/membresias/{id}` | Detalle de membresía |
+| `PATCH` | `/api/v1/membresias/{id}/asistencias-previas` | Actualizar asistencias previas |
 | `PUT` | `/api/v1/membresias/{id}/anular` | Anular membresía |
 | `GET` | `/api/v1/membresias/validar-acceso` | Validar acceso al gym (público) |
 | `POST` | `/api/v1/membresias/{id}/congelar` | Congelar membresía |
-| `PUT` | `/api/v1/congelamientos/{id}/reactivar` | Reactivar congelamiento |
+| `PUT` | `/api/v1/congelamientos/{id}/reactivar` | Reactivar congelamiento (admin) |
+| `PUT` | `/api/v1/mis-congelamientos/{id}/reactivar` | Reactivar mi congelamiento (cliente) |
 | `GET` | `/api/v1/membresias/{id}/congelamientos` | Historial de congelamientos |
 | `GET` | `/api/v1/tipos-membresia` | Listar tipos de membresía |
 | `POST` | `/api/v1/tipos-membresia` | Crear tipo de membresía |
 | `PUT` | `/api/v1/tipos-membresia/{id}` | Actualizar tipo |
 | `PUT` | `/api/v1/tipos-membresia/{id}/desactivar` | Desactivar tipo |
+| `GET` | `/internal/v1/companias/{id}/clientes-activos/count` | Contar clientes activos (interno) |

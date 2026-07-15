@@ -8,7 +8,11 @@ Gestión de clientes y membresías; validación de acceso al gym. Ver [core-serv
 
 | Documento | Base URL | Contenido |
 |-----------|----------|-----------|
-| [clientes.md](api/clientes.md) | `/api/v1/clientes` | API de clientes: registro, historial, membresías, respuestas en snake_case |
+| [clientes.md](api/clientes.md) | `/api/v1/clientes` | CRUD de clientes: registro, búsqueda, perfil, acceso desde plataforma |
+| [membresias.md](api/membresias.md) | `/api/v1/clientes/{id}/membresias` | Venta, validación de acceso, historial, anulación de membresías |
+| [tipos-membresia.md](api/tipos-membresia.md) | `/api/v1/tipos-membresia` | Catálogo de tipos de membresía (calendario y por accesos) |
+| [congelamientos.md](api/congelamientos.md) | `/api/v1/congelamientos` | Congelamiento y reactivación de membresías |
+| [internal.md](api/internal.md) | `/internal/v1` | Endpoints privados: conteo de clientes activos para platform-service |
 
 ---
 

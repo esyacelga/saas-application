@@ -99,6 +99,25 @@ Eliminación lógica de un registro de cliente (`eliminado = true`). Requiere to
 
 ---
 
+## Reglas de acceso por endpoint
+
+| Endpoint | Método | Rol/Permiso |
+|----------|--------|-------------|
+| `/clientes` | GET | `requireGymStaff()` |
+| `/clientes` | POST | `requireRecepcionOrAbove()` |
+| `/clientes/{id}` | GET | `requireGymStaff()` \| `requireCliente()` |
+| `/clientes/{id}` | PUT | `requireRecepcionOrAbove()` |
+| `/clientes/{id}` | DELETE | any JWT (no role check) |
+| `/clientes/mi-perfil` | GET | `requireCliente()` |
+| `/clientes/my-id` | GET | `requireCliente()` |
+| `/clientes/app` | POST | `requireCliente()` |
+| `/clientes/ci/{ci}` | GET | `requireGymStaff()` |
+| `/clientes/plataforma` | POST | any auth (platform service) |
+| `/clientes/por-persona/{idPersona}` | GET | `requireGymStaff()` |
+| `/clientes/plataforma/{id}` | PUT | any auth (platform service) |
+
+---
+
 ## Códigos de error comunes
 
 | Código | Significado                       |
