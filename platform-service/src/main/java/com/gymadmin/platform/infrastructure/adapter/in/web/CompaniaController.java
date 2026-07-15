@@ -116,7 +116,7 @@ public class CompaniaController {
     })
     @PostMapping("/auto-registro")
     public Mono<ResponseEntity<RegistrarGymWizardResponse>> autoRegistro(
-            @Valid @RequestBody RegistrarGymWizardRequest request) {
+            @Valid @RequestBody AutoRegistroRequest request) {
         return companiaUseCase.registrarGymWizard(new CompaniaUseCase.RegistrarGymWizardCommand(
                         request.nombre(),
                         request.ruc(),

@@ -348,7 +348,10 @@ export interface ActualizarAppUsuarioRequest {
 
 export interface AutoRegistroRequest {
   nombre: string
-  ruc: string
+  // El auto-registro público ya no envía RUC/teléfono/WhatsApp: se piden cuando hay
+  // una razón concreta (facturación / activar WhatsApp). Se dejan opcionales por si el
+  // backend los sigue aceptando desde otros orígenes.
+  ruc?: string
   correo?: string
   telefono?: string
   whatsapp?: string

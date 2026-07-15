@@ -140,14 +140,22 @@ public class CompaniaService implements CompaniaUseCase {
         List<UsuarioWizardCommand> adicionales = command.usuariosAdicionales() != null
                 ? command.usuariosAdicionales() : List.of();
 
+        Mono<RegistrarGymWizardResult> registro = Mono.defer(() ->
+                planRepository.findById(command.idPlan())
+                        .switchIfEmpty(Mono.error(new ConflictException("Plan not found or unavailable", "idPlan")))
+                        .flatMap(plan -> ejecutarRegistroWizard(command, plan, adicionales)));
+
+        // El RUC es opcional en el auto-registro público (la columna es nullable).
+        // Solo validamos duplicado cuando efectivamente viene un RUC; con RUC ausente
+        // no hay nada que chocar y varias compañías pueden quedar sin RUC.
+        if (command.ruc() == null || command.ruc().isBlank()) {
+            return registro;
+        }
+
         return companiaRepository.findByRuc(command.ruc())
                 .flatMap(existing -> Mono.<RegistrarGymWizardResult>error(
                         new ConflictException("Company with RUC '" + command.ruc() + "' already exists", "ruc")))
-                .switchIfEmpty(Mono.defer(() ->
-                        planRepository.findById(command.idPlan())
-                                .switchIfEmpty(Mono.error(new ConflictException("Plan not found or unavailable", "idPlan")))
-                                .flatMap(plan -> ejecutarRegistroWizard(command, plan, adicionales))
-                ));
+                .switchIfEmpty(registro);
     }
 
     private Mono<RegistrarGymWizardResult> ejecutarRegistroWizard(

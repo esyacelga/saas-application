@@ -1,4 +1,4 @@
-import { CheckCircle2, LogIn, Settings, CreditCard, Clock } from 'lucide-react'
+import { CheckCircle2, LogIn, Tag, Users, Clock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 interface Props {
@@ -13,8 +13,8 @@ interface Paso {
 
 const PASOS: Paso[] = [
   { icon: <LogIn size={13} style={{ color: '#f97316' }} />, texto: 'Inicia sesión y revisa tu dashboard' },
-  { icon: <Settings size={13} style={{ color: '#f97316' }} />, texto: 'Configura nombre comercial, logo y horarios' },
-  { icon: <CreditCard size={13} style={{ color: '#f97316' }} />, texto: 'Crea tu primer tipo de membresía' },
+  { icon: <Tag size={13} style={{ color: '#f97316' }} />, texto: 'Crea tu primer tipo de membresía' },
+  { icon: <Users size={13} style={{ color: '#f97316' }} />, texto: 'Registra a tus primeros clientes' },
 ]
 
 export function ResumenExito({ nombreGimnasio, planCodigo }: Props) {

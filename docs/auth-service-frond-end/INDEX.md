@@ -48,6 +48,8 @@ Documentos usados para pedir/especificar cambios de API al backend desde la pers
 | [design-guidelines.md](design-guidelines.md) | Directrices de diseño: sistema de temas, tipografía, tokens |
 | [api-index.md](api-index.md) | Índice de endpoints consumidos del auth-service |
 | [facturacion-diseno.md](facturacion-diseno.md) | 📋 **Planeado** — Spec de diseño del módulo de Facturación Electrónica SRI (no existe ninguna pantalla hoy). Incluye la frontera `src/lib/sri/` para replicar el módulo en otros SaaS ecuatorianos. |
+| [registro-quitar-ruc.md](registro-quitar-ruc.md) | ✅ **Implementado (2026-07-14)** — Diseño del adelgazamiento del registro: sacar del Paso 1 el **RUC** (va al wizard de facturación), el **teléfono** y el **WhatsApp**; suavizar el Paso 2. Disclosure progresivo. |
+| [registro-mejoras-implementadas.md](registro-mejoras-implementadas.md) | ✅ **Implementado (2026-07-14)** — Registro de qué se cambió en el auto-registro público (accesibilidad, "(opcional)", pantalla de éxito, `lib/sri/` validadores, validación de cédula, Paso 2 pre-llenado, RUC opcional front+backend+migración `GYM-002-2`). Para consultas futuras. |
 | [member-portal-decisiones.md](member-portal-decisiones.md) | Decisiones de producto previas a implementar el portal de miembro |
 
 ## preguntas/ — Notas personales de aprendizaje

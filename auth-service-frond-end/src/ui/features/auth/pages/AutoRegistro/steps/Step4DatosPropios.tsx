@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PasswordStrength } from '@/ui/features/auth/components/PasswordStrength'
-import type { AutoRegistroStep4Form } from '../../schemas/auto-registro-wizard.schema'
+import type { AutoRegistroStep4Form } from '../../../schemas/auto-registro-wizard.schema'
 
 interface Props {
   form: UseFormReturn<AutoRegistroStep4Form>
@@ -114,7 +114,8 @@ export function Step4DatosPropios({ form, serverError }: Props) {
             />
             <button
               type="button"
-              tabIndex={-1}
+              aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              aria-pressed={showPassword}
               onClick={() => setShowPassword(v => !v)}
               className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
               style={{ color: 'var(--page-muted)' }}
@@ -140,7 +141,8 @@ export function Step4DatosPropios({ form, serverError }: Props) {
             />
             <button
               type="button"
-              tabIndex={-1}
+              aria-label={showConfirm ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              aria-pressed={showConfirm}
               onClick={() => setShowConfirm(v => !v)}
               className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
               style={{ color: 'var(--page-muted)' }}

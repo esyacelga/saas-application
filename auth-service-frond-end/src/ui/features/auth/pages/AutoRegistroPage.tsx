@@ -14,26 +14,26 @@ import { Step3Plan } from './AutoRegistro/steps/Step3Plan'
 import { Step4DatosPropios } from './AutoRegistro/steps/Step4DatosPropios'
 import { ResumenExito } from './AutoRegistro/ResumenExito'
 import {
-  wizardStep1Schema,
-  wizardStep2Schema,
   wizardStep3Schema,
-  type WizardStep1Form,
-  type WizardStep2Form,
   type WizardStep3Form,
 } from '@/ui/features/platform/schemas/registrar-gym-wizard.schema'
 import {
+  autoRegistroStep1Schema,
+  autoRegistroStep2Schema,
   autoRegistroStep4Schema,
+  type AutoRegistroStep1Form,
+  type AutoRegistroStep2Form,
   type AutoRegistroStep4Form,
 } from '../schemas/auto-registro-wizard.schema'
 
 const STEPS = [
   { label: 'Gimnasio' },
-  { label: 'Sede' },
+  { label: 'Local' },
   { label: 'Plan' },
   { label: 'Tus datos' },
 ]
 
-type ServerError = { tipo: 'correo' | 'ci' | 'ruc' | 'idPlan' | 'rate_limit' | 'server' }
+type ServerError = { tipo: 'correo' | 'ci' | 'idPlan' | 'rate_limit' | 'server' }
 
 interface Resultado {
   nombreGimnasio: string
@@ -52,17 +52,17 @@ export function AutoRegistroPage() {
   const [planCodigoSeleccionado, setPlanCodigoSeleccionado] = useState<string | null>(null)
 
   // State acumulado para cada paso
-  const [step1Data, setStep1Data] = useState<WizardStep1Form | null>(null)
-  const [step2Data, setStep2Data] = useState<WizardStep2Form | null>(null)
+  const [step1Data, setStep1Data] = useState<AutoRegistroStep1Form | null>(null)
+  const [step2Data, setStep2Data] = useState<AutoRegistroStep2Form | null>(null)
   const [step3Data, setStep3Data] = useState<WizardStep3Form | null>(null)
 
-  const form1 = useForm<WizardStep1Form>({
-    resolver: zodResolver(wizardStep1Schema),
-    defaultValues: step1Data ?? { nombre: '', ruc: '', correo: '', telefono: '', whatsapp: '' },
+  const form1 = useForm<AutoRegistroStep1Form>({
+    resolver: zodResolver(autoRegistroStep1Schema),
+    defaultValues: step1Data ?? { nombre: '', correo: '' },
   })
 
-  const form2 = useForm<WizardStep2Form>({
-    resolver: zodResolver(wizardStep2Schema),
+  const form2 = useForm<AutoRegistroStep2Form>({
+    resolver: zodResolver(autoRegistroStep2Schema),
     defaultValues: step2Data ?? { nombreSucursal: '', direccionSucursal: '' },
   })
 
@@ -99,6 +99,11 @@ export function AutoRegistroPage() {
 
   const handleStep1 = form1.handleSubmit((data) => {
     setStep1Data(data)
+    // Pre-llenar el nombre del local con el del gimnasio, solo si el usuario no lo tocó.
+    // Un gym de un solo local avanza sin escribir nada; el que tiene varios lo cambia.
+    if (!form2.getValues('nombreSucursal')) {
+      form2.setValue('nombreSucursal', data.nombre)
+    }
     setCurrentStep(2)
   })
 
@@ -121,10 +126,7 @@ export function AutoRegistroPage() {
     try {
       const res = await autoRegistroUseCase.execute({
         nombre: step1Data.nombre,
-        ruc: step1Data.ruc,
         correo: step1Data.correo || undefined,
-        telefono: step1Data.telefono || undefined,
-        whatsapp: step1Data.whatsapp || undefined,
         nombreSucursal: step2Data.nombreSucursal,
         direccionSucursal: step2Data.direccionSucursal || undefined,
         idPlan: step3Data.idPlan,
@@ -146,10 +148,7 @@ export function AutoRegistroPage() {
         const conflicto = err.response?.data?.conflicto as string | undefined
 
         if (status === 409) {
-          if (conflicto === 'ruc') {
-            setServerError({ tipo: 'ruc' })
-            setCurrentStep(1)
-          } else if (conflicto === 'idPlan') {
+          if (conflicto === 'idPlan') {
             setServerError({ tipo: 'idPlan' })
             setCurrentStep(3)
           } else if (conflicto === 'correo') {
@@ -189,15 +188,13 @@ export function AutoRegistroPage() {
       : null
 
   const globalBannerError: string | null =
-    serverError?.tipo === 'ruc'
-      ? 'Ya existe una empresa registrada con ese RUC. Por favor verifica y corrige el dato.'
-      : serverError?.tipo === 'idPlan'
-        ? 'El plan seleccionado no está disponible. Por favor elige otro.'
-        : serverError?.tipo === 'rate_limit'
-          ? 'Demasiados intentos. Espera unos minutos e intenta de nuevo.'
-          : serverError?.tipo === 'server'
-            ? 'Ocurrió un error inesperado. Por favor intenta de nuevo.'
-            : null
+    serverError?.tipo === 'idPlan'
+      ? 'El plan seleccionado no está disponible. Por favor elige otro.'
+      : serverError?.tipo === 'rate_limit'
+        ? 'Demasiados intentos. Espera unos minutos e intenta de nuevo.'
+        : serverError?.tipo === 'server'
+          ? 'Ocurrió un error inesperado. Por favor intenta de nuevo.'
+          : null
 
   const handleNext = () => {
     if (currentStep === 1) { handleStep1(); return }
