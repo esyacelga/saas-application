@@ -1,6 +1,6 @@
 # Registro de gimnasios — mejoras implementadas (2026-07-14)
 
-> **ESTADO:** ✅ **Implementado** (código y migración). La migración a la Neon queda pendiente de que se recorra la base (ver §7).
+> **ESTADO:** ✅ **Implementado** (código + esquema). El cambio de esquema del RUC se plegó en la baseline `GYM-001` (ver §7.3); se aplica al recrear la Neon desde cero.
 > **Origen:** revisión UX del auto-registro público + Pieza 1 de la [restructuración de onboarding](../gym-administrator/requirements/restructuracion-onboarding-facturacion.md).
 > **Alcance:** solo el **auto-registro público** (`AutoRegistroPage`). El registro por operador de plataforma (`RegistrarGymWizard`) **no se tocó** — conserva RUC obligatorio.
 > **Diseño previo:** [registro-quitar-ruc.md](registro-quitar-ruc.md).
@@ -24,8 +24,7 @@ Este documento es el registro de qué se cambió y por qué, para consultas futu
 | Backend | `dto/AutoRegistroRequest.java` | **Nuevo** — DTO propio del auto-registro con `ruc` opcional |
 | Backend | `web/CompaniaController.java` | `/auto-registro` usa el nuevo DTO |
 | Backend | `application/service/CompaniaService.java` | Guard: solo valida duplicado de RUC si viene presente |
-| BD | `202607_GYM-002/ddl/02_alter_table_tenant_companias_ruc_nullable.sql` | **Nuevo** — `ruc` DROP NOT NULL |
-| BD | `202607_GYM-002/partial-changelog.yml` | changeset `GYM-002-2` |
+| BD | `202605_GYM-001/ddl/16_create_table_tenant_companias.sql` | `ruc` nace **nullable** en el `CREATE TABLE` (baseline) |
 
 ---
 
@@ -90,13 +89,16 @@ Ver el diseño y la decisión de producto en [registro-quitar-ruc.md](registro-q
 - **Guard en `CompaniaService.registrarGymWizard`:** solo consulta `findByRuc` (validación de duplicado) **cuando el RUC viene presente**. Con RUC ausente o en blanco, salta directo al registro. Evita una query innecesaria y un posible falso conflicto.
 - **Comportamiento con RUC null:** el `UNIQUE` de Postgres permite varios NULL, así que múltiples gyms sin RUC conviven; dos RUC reales iguales siguen prohibidos.
 
-### 7.3 Base de datos (migración `GYM-002-2`)
+### 7.3 Base de datos (plegado en la baseline `GYM-001`)
 
-- **Script:** `202607_GYM-002/ddl/02_alter_table_tenant_companias_ruc_nullable.sql` — `ALTER TABLE tenant.companias ALTER COLUMN ruc DROP NOT NULL`, envuelto en un bloque `DO $$` idempotente (solo ejecuta si aún es NOT NULL). El `UNIQUE` **no se toca**.
-- **Changeset:** `GYM-002-2` en `202607_GYM-002/partial-changelog.yml`.
-- **Validado contra una BD limpia local** (Postgres Docker, base desechable creada desde cero): el changelog completo (99 changesets) corrió sin errores, `ruc` quedó `is_nullable=YES`, el UNIQUE `companias_ruc_key` intacto, dos INSERT con RUC NULL convivieron y un RUC real duplicado fue rechazado.
+**Decisión (2026-07-14):** como la BD aún está en desarrollo y la Neon se va a recrear desde cero, el cambio de esquema **no** quedó como un `ALTER` incremental en una story aparte, sino que se **plegó dentro de la baseline `GYM-001`**. Esto respeta la invariante del repo (*"cada tabla se define una sola vez en su `CREATE TABLE`, sin `ALTER` correctivos; un gym nuevo se levanta en una pasada"* — ver [gym-administrator/CLAUDE.md](../../gym-administrator/CLAUDE.md)).
 
-> ⚠️ **La migración NO se aplicó a la Neon.** Al intentarlo se detectó que la Neon compartida tenía changesets `GYM-002-1..31` aplicados desde una versión del changelog que **no está en master** (el `partial-changelog.yml` de master solo define `GYM-002-1`). El repo local y la Neon estaban desincronizados. Decisión del usuario (2026-07-14): la Neon **no es definitiva**, se va a **borrar y recorrer** el changelog desde cero. Cuando eso ocurra, `GYM-002-2` se aplicará limpio (ya validado en base limpia). **Borrar/recorrer la Neon es una acción del usuario** — no se ejecutó automáticamente por ser destructiva sobre una base compartida.
+- **`202605_GYM-001/ddl/16_create_table_tenant_companias.sql`:** la columna `ruc` nace como `VARCHAR(20) UNIQUE` (sin `NOT NULL`) directamente en el `CREATE TABLE`, con su `COMMENT` explicativo. El `UNIQUE` se conserva.
+- **Comportamiento con RUC null:** el `UNIQUE` de Postgres permite varios NULL, así que múltiples gyms sin RUC conviven; dos RUC reales iguales siguen prohibidos (constraint `companias_ruc_key`).
+- **La story `202607_GYM-002` se eliminó por completo** (su otro cambio, la columna `bancarizada` de G10, también se plegó: nace en `ddl-facturacion/05_create_table_sri_formas_pago.sql` y se puebla en el seed `09_insert_seed_sri.sql`). El `include` correspondiente se quitó de `main-changelog.yml`.
+- **Validado contra una BD limpia local** (Postgres Docker, base desechable creada desde cero): el changelog completo (**97 changesets**) corrió en una sola pasada sin errores, `ruc` quedó `is_nullable=YES`, el UNIQUE intacto, `bancarizada=TRUE` en las formas de pago 16–20, dos INSERT con RUC NULL convivieron y un RUC real duplicado fue rechazado.
+
+> ℹ️ **Por qué se pudo reescribir la baseline:** normalmente jamás se edita un `CREATE TABLE` ya aplicado en producción. Aquí fue válido **solo porque la Neon no es definitiva y se recrea desde cero** — nadie tiene un estado dependiente de la numeración vieja. Los residuos `GYM-002-1..31` que se vieron antes en la Neon venían de una reorganización previa de changelogs (commit `e5ff46f`), ya no viva en master. Al recrear la Neon, la baseline consolidada se aplica limpia.
 
 ---
 

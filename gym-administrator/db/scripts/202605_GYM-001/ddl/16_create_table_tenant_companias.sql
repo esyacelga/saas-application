@@ -1,7 +1,10 @@
 CREATE TABLE tenant.companias (
   id                     INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   nombre                 VARCHAR(150) NOT NULL,
-  ruc                    VARCHAR(20)  NOT NULL UNIQUE,
+  -- RUC opcional: el auto-registro público no pide datos tributarios (disclosure
+  -- progresivo). El RUC se completa luego en el wizard de facturación. UNIQUE sobre
+  -- columna nullable permite varios NULL e impide RUC reales duplicados.
+  ruc                    VARCHAR(20)  UNIQUE,
   logo_url               VARCHAR(255),
   telefono               VARCHAR(20),
   whatsapp               VARCHAR(20),
@@ -22,6 +25,7 @@ CREATE TABLE tenant.companias (
   modifica_usuario       VARCHAR(150)
 );
 
+COMMENT ON COLUMN tenant.companias.ruc                    IS 'RUC del contribuyente. NULL cuando el gimnasio se registró sin facturar (se completa luego en el wizard de facturación). UNIQUE permite varios NULL e impide RUC reales duplicados.';
 COMMENT ON COLUMN tenant.companias.nombre_comercial       IS 'Nombre comercial del establecimiento para el comprobante electrónico';
 COMMENT ON COLUMN tenant.companias.dir_matriz             IS 'Dirección de la matriz registrada en el SRI';
 COMMENT ON COLUMN tenant.companias.obligado_contabilidad  IS 'TRUE si la empresa está obligada a llevar contabilidad según el SRI';

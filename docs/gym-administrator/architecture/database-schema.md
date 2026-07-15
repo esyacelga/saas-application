@@ -918,7 +918,7 @@ CREATE TABLE saas.config_plataforma (
 CREATE TABLE tenant.companias (
   id                     INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   nombre                 VARCHAR(150) NOT NULL,
-  ruc                    VARCHAR(20)  NOT NULL UNIQUE,
+  ruc                    VARCHAR(20)  UNIQUE,          -- nullable: auto-registro público no pide RUC (se completa en el wizard de facturación)
   logo_url               VARCHAR(255),
   telefono               VARCHAR(20),
   whatsapp               VARCHAR(20),

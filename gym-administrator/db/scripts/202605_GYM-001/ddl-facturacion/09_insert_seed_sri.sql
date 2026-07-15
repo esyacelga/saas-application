@@ -16,15 +16,16 @@ INSERT INTO sri.tipos_identificacion_comprador (codigo, nombre) VALUES
   ('08', 'ID_EXTERIOR');
 
 -- Seed: sri.formas_pago
-INSERT INTO sri.formas_pago (codigo, nombre, activo) VALUES
-  ('01', 'SIN_UTILIZACION_SISTEMA_FINANCIERO',          TRUE),
-  ('15', 'COMPENSACION_DEUDAS',                         TRUE),
-  ('16', 'TARJETA_DEBITO',                              TRUE),
-  ('17', 'DINERO_ELECTRONICO',                          TRUE),
-  ('18', 'TARJETA_PREPAGO',                             TRUE),
-  ('19', 'TARJETA_CREDITO',                             TRUE),
-  ('20', 'OTROS_CON_UTILIZACION_SISTEMA_FINANCIERO',    TRUE),
-  ('21', 'ENDOSO_TITULOS',                              TRUE);
+-- bancarizada = TRUE en 16-20 (medios que utilizan el sistema financiero).
+INSERT INTO sri.formas_pago (codigo, nombre, bancarizada, activo) VALUES
+  ('01', 'SIN_UTILIZACION_SISTEMA_FINANCIERO',       FALSE, TRUE),
+  ('15', 'COMPENSACION_DEUDAS',                      FALSE, TRUE),
+  ('16', 'TARJETA_DEBITO',                           TRUE,  TRUE),
+  ('17', 'DINERO_ELECTRONICO',                       TRUE,  TRUE),
+  ('18', 'TARJETA_PREPAGO',                          TRUE,  TRUE),
+  ('19', 'TARJETA_CREDITO',                          TRUE,  TRUE),
+  ('20', 'OTROS_CON_UTILIZACION_SISTEMA_FINANCIERO', TRUE,  TRUE),
+  ('21', 'ENDOSO_TITULOS',                           FALSE, TRUE);
 
 -- Seed: sri.tipos_impuesto
 INSERT INTO sri.tipos_impuesto (codigo, nombre) VALUES
