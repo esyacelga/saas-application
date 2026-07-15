@@ -11,11 +11,15 @@ import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 
 @Component
 @RequiredArgsConstructor
 public class MensajeLogPersistenceAdapter implements MensajeLogRepository {
+
+    /** Zona de operación (Ecuador) — el "día de negocio" para la idempotencia C2 se ancla aquí. */
+    private static final ZoneId ZONA_OPERACION = ZoneId.of("America/Guayaquil");
 
     private final MensajeLogR2dbcRepository repository;
 
@@ -43,6 +47,17 @@ public class MensajeLogPersistenceAdapter implements MensajeLogRepository {
     @Override
     public Mono<Long> countByClienteAndTipoDesde(Integer idCliente, String tipo, OffsetDateTime desde) {
         return repository.countByClienteAndTipoDesde(idCliente, tipo, desde);
+    }
+
+    @Override
+    public Mono<Boolean> existsEnviadoHoy(Integer idCliente, String tipo, String canal, LocalDate dia) {
+        // El día de negocio se ancla a America/Guayaquil (igual que la fechaCorte de core); el rango
+        // [inicio, inicio+1d) se expresa en UTC porque fecha_programada se persiste en UTC.
+        OffsetDateTime desde = dia.atStartOfDay(ZONA_OPERACION).toOffsetDateTime()
+                .withOffsetSameInstant(ZoneOffset.UTC);
+        OffsetDateTime hasta = dia.plusDays(1).atStartOfDay(ZONA_OPERACION).toOffsetDateTime()
+                .withOffsetSameInstant(ZoneOffset.UTC);
+        return repository.existsEnviadoEnRango(idCliente, tipo, canal, desde, hasta);
     }
 
     private MensajeLog toDomain(MensajeLogEntity e) {

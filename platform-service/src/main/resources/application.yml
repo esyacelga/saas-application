@@ -46,6 +46,10 @@ notificacion:
     urls:
       comprar-premium: ${URL_COMPRAR_PREMIUM:https://gymadmin.app/planes}
       gym-admin: ${URL_GYM_ADMIN:https://gymadmin.app}
+  whatsapp:
+    queue:
+      fixed-delay-ms: ${NOTIF_WHATSAPP_QUEUE_DELAY_MS:30000}
+      batch-size: ${NOTIF_WHATSAPP_QUEUE_BATCH:50}
 
 app:
   cors:

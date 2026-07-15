@@ -1,11 +1,14 @@
 # Pendiente — Avisos por WhatsApp de vencimiento (socios y dueños)
 
-> **Estado:** 🟢 **Fases 1 y 2 cerradas (2 de 6)** — migración de consentimiento `202607_GYM-002` +
-> adaptador Meta/normalizador E.164 en platform-service, todo verificado con tests verdes. Siguiente:
-> **Fase 3** (cablear la cola WhatsApp del dueño → primer WhatsApp real; depende de 1 y 2) y/o **Fase 4**
-> (endpoint core; depende solo de 1). Plan de **6 fases testeables** + **issues de arquitectura** rastreados
-> al final del documento.
-> **Fecha:** 2026-07-15 (revisión de arquitectura + plan de fases + Fases 1 y 2 el mismo día).
+> **Estado:** 🟢 **Fases 1, 2, 3 y 4 cerradas (4 de 6)** — migración de consentimiento `202607_GYM-002` +
+> adaptador Meta/normalizador E.164 + **cola WhatsApp del dueño cableada** (`WhatsAppQueueService`/
+> `WhatsAppQueueProcessorJob`, buckets {3,0}, opt-in R4, cross-day día 0, R2/R3) + **endpoint interno
+> `clientes-por-vencer`** en core-service (contrato C3 + zona Guayaquil C4, IT 13/13 verde). Siguiente:
+> **Fase 5** (socio: `MensajeriaJob` de attendance cableado, consume el endpoint de Fase 4) → **Fase 6**
+> (panel). Plan de **6 fases testeables** + **issues de arquitectura** rastreados al final del documento.
+> Pendiente en Fase 3: IT con WireMock+Postgres y canario manual (diferidos a disponibilidad de
+> BD/credenciales de Fase 0).
+> **Fecha:** 2026-07-15 (revisión de arquitectura + plan de fases + Fases 1, 2 y 3 el mismo día).
 > **Área:** attendance-service (socios/membresía) · core-service (lista de clientes por vencer) · platform-service (dueños/suscripción SaaS) · identidad/tenant (teléfono + consentimiento).
 > **Prioridad:** media-alta — función de retención/cobranza que hoy queda a medias (se registra el mensaje pero nunca sale del sistema).
 
@@ -121,7 +124,7 @@ Decisiones tomadas (heredadas del socio + específicas del dueño):
 | Decisión | Elegido |
 |---|---|
 | Variantes | **Previo** (faltan N días) + **día del vencimiento** + (opcional) **en gracia/vencido**. |
-| Buckets | **`5` y `0` días** (aviso previo a 5 días + día del vencimiento). **Configurable desde el panel** (default `5`/`0`), no hardcodeado. |
+| Buckets | **`3` y `0` días** (aviso previo a 3 días + día del vencimiento). **Configurable desde el panel** (default `3`/`0`), no hardcodeado. *(Decidido 2026-07-15 en Fase 3: "el recordatorio son de tres días no más" — se reemplazó el `5` previo.)* |
 | Tono / CTA | **Directo y de retención**, con enlace a **renovar / reportar pago** (`url_comprar_premium` / `url_reportar_pago`). |
 | Personalización | **Texto único de plataforma** con `{{plan}}` y días como variables (una sola aprobación por plantilla, no una por bucket). |
 | Cobertura de planes | `TRIAL` y `PREMIUM` (los que `NotificacionVencimientoJob` ya notifica). |
@@ -166,7 +169,7 @@ Categoría **`UTILITY`** (avisan sobre un servicio ya contratado), idioma `es`:
 
 | `tipo` (job) | Bucket | Plantilla HSM |
 |---|---|---|
-| `VENCIMIENTO_TRIAL` / `VENCIMIENTO_PREMIUM` | `5` (previo, configurable) | `venc_suscripcion_previo` (con `{{4}}=días`) |
+| `VENCIMIENTO_TRIAL` / `VENCIMIENTO_PREMIUM` | `3` (previo, configurable) | `venc_suscripcion_previo` (con `{{4}}=días`) |
 | `VENCIMIENTO_TRIAL` / `VENCIMIENTO_PREMIUM` | `0` | `venc_suscripcion_hoy` |
 | *(estado `EN_GRACIA`, si se añade)* | — | `venc_suscripcion_gracia` |
 
@@ -539,7 +542,10 @@ Ruta de menor riesgo, entregando valor incremental:
 
 ### Críticas
 
-- [ ] **C1 — Procesador de cola WhatsApp: hermano, no extensión (fase 3).** No meter WhatsApp dentro
+- [x] **C1 — Procesador de cola WhatsApp: hermano, no extensión (fase 3).** ✅ **Resuelto en Fase 3.**
+      `WhatsAppQueueService` (implementa `ProcesarColaWhatsAppUseCase`) + `WhatsAppQueueProcessorJob` leen
+      la misma tabla vía `claimLoteWhatsapp(max)` (`WHERE canal='whatsapp'`, mismo `FOR UPDATE SKIP LOCKED`);
+      no se tocó `EmailQueueService`. Texto original abajo. No meter WhatsApp dentro
       de `EmailQueueService` (rompería la responsabilidad única del `EmailSender`). Crear
       `WhatsAppQueueService` + `WhatsAppQueueProcessorJob` que leen la **misma** tabla
       `tenant.notificaciones_suscripcion` filtrando `canal='whatsapp'`. Requiere `claimLoteWhatsapp(max)`
@@ -551,7 +557,11 @@ Ruta de menor riesgo, entregando valor incremental:
       por bucket/canal: un reinicio del job el mismo día genera duplicados → Meta bloquea el número.
       Añadir `MensajeLogRepository.existsEnviadoHoy(idCliente, tipo, canal)` y checkear **antes** de
       encolar. `contarEnviadosDesde` se queda solo para avisos de **ausencia** (semántica distinta).
-- [ ] **C3 — Contrato formal del endpoint interno de core (fase 4).** Formalizar antes de que attendance
+- [x] **C3 — Contrato formal del endpoint interno de core (fase 4).** ✅ **Resuelto en Fase 4.**
+      Implementado `GET /internal/v1/companias/{id}/clientes-por-vencer?dias=&modo=` con la proyección
+      de abajo (`ClientePorVencer`): `telefono` sin normalizar, `estadoCliente`, `aceptaWhatsapp`/
+      `fechaConsentimientoWa` (evita 2º JOIN en attendance), `accesosRestantes` calculado por core.
+      403 sin secreto; 400 si `dias`∉[0,30] o `modo` inválido. Contrato original abajo. Formalizar antes de que attendance
       lo consuma:
       ```
       GET /internal/v1/companias/{id}/clientes-por-vencer?dias={0..30}&modo={calendario|accesos|todos}
@@ -564,13 +574,15 @@ Ruta de menor riesgo, entregando valor incremental:
       Claves: `telefono` va **sin** normalizar (E.164 es responsabilidad de attendance, no acopla core);
       incluir `estadoCliente` (para saltar `congelado`, RN-05) y `aceptaWhatsapp`/`fechaConsentimientoWa`
       (evita un segundo JOIN en attendance); `accesosRestantes` la calcula core (no attendance).
-- [ ] **C4 — Zona horaria coherente al resolver "hoy" (fase 4).** `attendance` fija JVM a
-      `America/Guayaquil`; `platform` usa `Clock` inyectable; `core.ClienteStatusJobService` usa
-      `LocalDate.now()` **sin** `Clock` → depende de la zona del proceso. Un job a las 23:30 Guayaquil
-      (04:30 UTC del día siguiente) calcularía un día distinto al que ve el socio → el aviso "vence hoy"
-      se dispara un día antes/después. Fix: core resuelve el "hoy" de negocio con
-      `LocalDate.now(ZoneId.of("America/Guayaquil"))` (y refactor a `Clock` inyectable para tests). No
-      delegar la `fechaCorte` al cliente.
+- [x] **C4 — Zona horaria coherente al resolver "hoy" (fase 4).** ✅ **Resuelto en Fase 4** para el
+      endpoint interno. `ClockConfig` expone un `Clock` anclado a `America/Guayaquil`
+      (`@ConditionalOnMissingBean` para override en tests); el `InternalCoreController` calcula
+      `fechaCorte = LocalDate.now(clock)` y la query usa `:fechaCorte` en vez de `CURRENT_DATE`. La
+      `fechaCorte` **no** se delega al cliente. Verificado por IT con `Clock.fixed` a
+      `2026-07-15T04:00Z` → `fechaCorte = 2026-07-14` (día Guayaquil, no UTC). **Nota:** el
+      `ClienteStatusJobService` (job de estados, distinto de este endpoint) sigue usando
+      `LocalDate.now()` sin `Clock`; su refactor a `Clock` queda como mejora futura si se quiere
+      alinear también ese cron (no lo consume attendance para los avisos).
 - [x] **C5 — Orden de despliegue de la migración de consentimiento (fase 1).** ✅ **Resuelto en Fase 1.**
       Migración `202607_GYM-002` (una sola story, 2 columnas en ambas tablas, `ALTER TABLE ADD COLUMN`
       idempotente + `COMMENT ON COLUMN`). `acepta_whatsapp BOOLEAN NOT NULL DEFAULT FALSE` +
@@ -584,21 +596,23 @@ Ruta de menor riesgo, entregando valor incremental:
 - [ ] **R1 — `config_notif_suscripcion` tiene PK `(id_compania, dias_antes)` (fase 6).** Los buckets
       son **globales**, no por tenant → no meterlos en esa tabla por-tenant. Crear
       `saas.notif_buckets_globales(destinatario CHECK IN('socio','dueno'), dias_previo INT, activo)` con
-      seed `socio=3`, `dueno=5`. El `0` **no** va en la tabla (es constante del código).
+      seed `socio=3`, `dueno=3` (era `dueno=5`; ajustado a la decisión de Fase 3). El `0` **no** va en la
+      tabla (es constante del código).
       `config_notif_suscripcion` sigue rigiendo **canal por tenant**, sin tocar su PK.
-- [ ] **R2 — Reevaluar el `.next()` de buckets al reducir a `{previo, 0}` (fases 3 y 6).**
-      `Flux.fromIterable(BUCKETS).filter(b -> diasRestantes <= b).next()` con `diasRestantes=0` matchea
-      primero `0 <= 5` → dispararía el template **previo** con "en 0 días". Evaluar el `0` como igualdad
-      (`diasRestantes == 0`) y solo si no matchea caer al previo (`0 < diasRestantes <= N_previo`).
-- [ ] **R3 — Poblar `fecha_vencimiento` en la ruta clásica de vencimiento (fase 3).**
-      `EmailQueueService` hoy hace `vars.put("fecha_vencimiento", "")` en `VENCIMIENTO_*` → con WhatsApp
-      `{{3}}` sale vacío y **Meta rechaza la plantilla en runtime**. Cargar `CompaniaPlan` en el
-      contexto también para `VENCIMIENTO_*` y poblar con `cp.getFechaFin().format(FECHA_ES)`. Arregla el
-      email de paso.
-- [ ] **R4 — `canal='whatsapp'` puro + sin consentimiento = NO enviar nada (fase 3 y 5).** El fallback
-      a email **solo** aplica cuando el tenant eligió `ambos`. Si el canal es solo `whatsapp` y no hay
-      opt-in → no se envía nada (respeta la elección explícita del tenant); para tener respaldo el tenant
-      debe configurar `ambos`.
+- [x] **R2 — Reevaluar el `.next()` de buckets al reducir a `{previo, 0}` (fases 3 y 6).** ✅ **Resuelto en
+      Fase 3** (lado dueño). Se reemplazó el `filter(...).next()` por `resolverBucket(diasRestantes)`:
+      `==0`→bucket 0; `1..3`→bucket previo (3); resto (incl. `<0`)→null (no encola). El día 0 ya no cae al
+      template previo con "en 0 días". Falta aplicarlo al socio en Fase 5/6.
+- [x] **R3 — Poblar `fecha_vencimiento` (fase 3).** ✅ **Resuelto en Fase 3** para el canal WhatsApp del
+      dueño: `WhatsAppQueueService` carga el `CompaniaPlan` y pobla `{{3}}` con
+      `cp.getFechaFin().format(FECHA_ES)` (`dd/MM/yyyy`) para `venc_suscripcion_previo`. **Nota:** el bug de
+      `vars.put("fecha_vencimiento","")` en `EmailQueueService` para la ruta de **email** clásica sigue
+      presente (WhatsApp usa su propio service, no `EmailQueueService`); arreglar el email queda pendiente
+      si se quiere `fecha_vencimiento` en el correo de vencimiento.
+- [x] **R4 — `canal='whatsapp'` puro + sin consentimiento = NO enviar nada (fase 3 y 5).** ✅ **Resuelto en
+      Fase 3** (dueño): el encolado en `NotificacionVencimientoJob` solo añade el canal `whatsapp` si hay
+      opt-in + teléfono normalizable; si el tenant eligió solo `whatsapp` y no cumple, no se encola nada por
+      ese canal (no cae a email). El `banner` se mantiene siempre. Falta aplicarlo al socio en Fase 5.
 - [x] **R5 — Timeouts y clasificación de errores del `MetaWhatsAppAdapter` (fase 2).** ✅ **Resuelto en
       Fase 2.** `WebClient` sobre `HttpClient` de Reactor Netty con timeout de conexión (5s,
       `CONNECT_TIMEOUT_MILLIS`) y lectura (10s, `ReadTimeoutHandler`). `WhatsAppSendException(retryable,
@@ -700,7 +714,7 @@ Crear/verificar WABA + `phone_number_id` y **subir las plantillas HSM a aprobaci
   (**R4**). Procesador hermano `WhatsAppQueueService` + `WhatsAppQueueProcessorJob` sobre la misma tabla
   filtrando `canal='whatsapp'` (**C1**). Map `tipo`+`diasAntes`→template (`>0`→`venc_suscripcion_previo`,
   `=0`→`venc_suscripcion_hoy`). Regla cross-day del día 0 (falla y el retry cruza de fecha → `fallido`
-  sin reintento). Fix `fecha_vencimiento` (**R3**). Buckets `{5,0}` hardcodeados aquí (configurables en
+  sin reintento). Fix `fecha_vencimiento` (**R3**). Buckets `{3,0}` hardcodeados aquí (configurables en
   fase 6); aplicar **R2** al `next()`.
 - **Testeo:** IT (`WhatsAppQueueDuenoIntegrationTest`) con WireMock-Meta y `Clock.fixed`, 10 casos:
   (1) `whatsapp`+opt-in+tel válido→1 `enviado` whatsapp/0 email; (2) `ambos`+opt-in→1+1; (3)
@@ -710,7 +724,26 @@ Crear/verificar WABA + `phone_number_id` y **subir las plantillas HSM a aprobaci
   no vacío en el request a Meta.
 - **Aceptación:** 10 casos verdes; canario manual a un número de prueba si Fase 0 lista (si no, se difiere).
 - **Depende de:** Fase 1 (`companias.acepta_whatsapp`) + Fase 2. Resuelve **C1, R2, R3, R4** y parte de **M3**.
-- [ ] Fase 3 cerrada.
+- [x] **Fase 3 cerrada** (2026-07-15). Archivos nuevos en platform-service: puerto in
+      `domain/port/in/ProcesarColaWhatsAppUseCase`, servicio hermano
+      `application/service/WhatsAppQueueService` (implementa el puerto; C1 — lee la misma tabla
+      filtrando `canal='whatsapp'` vía `claimLoteWhatsapp`, sin extender `EmailQueueService`), worker
+      `infrastructure/scheduler/WhatsAppQueueProcessorJob` (`fixedDelay` 30s, batch 50). Modificados:
+      `NotificacionRepository` + `NotificacionPersistenceAdapter` (nuevo `claimLoteWhatsapp(max)` calcado
+      de `claimLoteEmails` con `FOR UPDATE SKIP LOCKED`); `NotificacionVencimientoJob` (buckets **{3,0}**
+      no `{5,0}` — decisión del usuario; **R2**: día 0 por igualdad vía `resolverBucket`; encola canal
+      según `config_notif_suscripcion.canal` + `banner` siempre; **R4**: `whatsapp` solo con opt-in +
+      teléfono normalizable); `application.yml` (`notificacion.whatsapp.queue.*`). Map template:
+      `dias>0`→`venc_suscripcion_previo` (params [nombre, plan, fecha `dd/MM/yyyy`, dias] — **R3**),
+      `dias=0`→`venc_suscripcion_hoy` (params [nombre, plan]). Regla cross-day del día 0 implementada en
+      `manejarError`. **Testeo (unit Mockito, no IT-con-WireMock):** `NotificacionVencimientoJobTest`
+      reescrito para {3,0}/canal/opt-in (6/0/0) y nuevo `WhatsAppQueueServiceTest` (7/0/0: previo OK +
+      params en orden con fecha R3, hoy 2 params, telefono_invalido→skip, retryable→reintentar +30s,
+      no-retryable→fallido con meta_code, cross-day día 0→fallido, compañía inexistente→fallido).
+      `MetaWhatsAppAdapterTest` (5/0/0) intacto. Suite unit completa **197/0/0** verde. **Diferido:** el IT
+      `WhatsAppQueueDuenoIntegrationTest` con WireMock-Meta + Postgres real y el canario manual quedan para
+      cuando haya BD/credenciales (Fase 0). Los 39 errores de `mvn test` son `*IntegrationTest`
+      preexistentes que requieren Postgres levantado, ajenos a esta fase.
 
 ### Fase 4 — Endpoint interno "clientes por vencer" (bloque C)
 
@@ -724,7 +757,27 @@ Crear/verificar WABA + `phone_number_id` y **subir las plantillas HSM a aprobaci
   Guayaquil, no UTC).
 - **Aceptación:** casos verdes; smoke con servicios arrancados; `internal.md` actualizado.
 - **Depende de:** Fase 1 (columnas en `personas`). Paralela a 2/3. Resuelve **C3, C4**.
-- [ ] Fase 4 cerrada.
+- [x] **Fase 4 cerrada** (2026-07-15). Archivos nuevos en core-service: `domain/model/ClientePorVencer`
+      (proyección C3: `telefono` sin normalizar, opt-in incluido, `estadoCliente`, `diasParaVencer`/
+      `accesosRestantes`), `domain/model/ClientesPorVencerResult` (`companiaId` + `fechaCorte` +
+      `clientes[]`), `infrastructure/config/ClockConfig` (**C4** — `Clock` anclado a
+      `America/Guayaquil`, `@ConditionalOnMissingBean` para override en tests). Modificados:
+      `ClienteRepository` + `ClientePersistenceAdapter` (nuevo `findClientesPorVencer(idCompania,
+      fechaCorte, dias, modo)` — JOIN a `identidad.personas` con `acepta_whatsapp`/
+      `fecha_consentimiento_wa`, `LEFT JOIN asistencia.asistencias` para `accesos_restantes`, filtro
+      por modo vía `HAVING`, excluye `congelado`/`vencido`, usa `:fechaCorte` en vez de `CURRENT_DATE`
+      para respetar C4); `InternalCoreController` (endpoint `GET /internal/v1/companias/{id}/
+      clientes-por-vencer?dias=&modo=`, valida `dias∈[0,30]` y `modo∈{calendario,accesos,todos}` →
+      400, header `X-Internal-Call` → 403, `fechaCorte = LocalDate.now(clock)`);
+      `BaseIntegrationTest` (limpieza de `asistencia.asistencias` antes de `membresias` por FK).
+      `docs/core-service/api/internal.md` actualizado con el contrato completo. **Testeo:** IT
+      `ClientesPorVencerInternalIntegrationTest` **13/13 verde** (calendario 3d aparece/10d no; accesos
+      restantes 3 aparece/8 no; congelado y vencido nunca; opt-in sí/no reflejado; **C4** fechaCorte =
+      día Guayaquil con `Clock.fixed` a `2026-07-15T04:00Z`→`2026-07-14`; seguridad sin/mal secreto →
+      403; validación `dias=99`→400 y `modo=raro`→400). **Nota:** los fallos preexistentes de
+      `MembresiaIntegrationTest`, `AccessControlServiceTest`, `ClienteServiceTest` y
+      `MembresiaServiceTest` (5 F + 9 E) son **ajenos a esta fase** — reproducidos en `master` sin estos
+      cambios (deuda: `UnnecessaryStubbingException` de Mockito y `validar-acceso` devolviendo 400).
 
 ### Fase 5 — `MensajeriaJob` del socio cableado (bloques A, B, D-socio en attendance)
 

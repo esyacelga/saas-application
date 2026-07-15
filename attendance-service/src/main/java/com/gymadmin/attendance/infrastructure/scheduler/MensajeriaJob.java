@@ -1,185 +1,188 @@
 package com.gymadmin.attendance.infrastructure.scheduler;
 
 import com.gymadmin.attendance.application.service.MensajeLogService;
-import com.gymadmin.attendance.domain.model.PlantillaMensaje;
 import com.gymadmin.attendance.domain.port.out.AsistenciaRepository;
-import com.gymadmin.attendance.domain.port.out.PlantillaMensajeRepository;
+import com.gymadmin.attendance.domain.validation.PhoneNumberE164Normalizer;
+import com.gymadmin.attendance.infrastructure.adapter.out.core.CoreServiceClient;
+import com.gymadmin.attendance.infrastructure.adapter.out.core.CoreServiceClient.ClientePorVencer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Optional;
 
+/**
+ * REQ-SAAS-001 (Fase 5): job diario que avisa por WhatsApp a los socios cuya <b>membresía</b> está
+ * por vencer (calendario o accesos). Consume el endpoint interno de core
+ * ({@code /internal/v1/companias/{id}/clientes-por-vencer}, Fase 4) — <b>no</b> duplica la detección
+ * de vencimiento — y envía plantillas HSM pre-aprobadas vía {@link CoreServiceClient} + el
+ * {@code WhatsAppSender}.
+ *
+ * <p><b>Buckets del socio {3, 0}</b> (aviso previo a 3 días + día del vencimiento), heredados de la
+ * lógica existente. Mapeo {@code tipo} → plantilla HSM por {@code modoControl} (calendario/accesos).
+ *
+ * <p><b>Reglas de envío:</b>
+ * <ul>
+ *   <li><b>R4/opt-in:</b> solo se envía si {@code aceptaWhatsapp = TRUE} y el teléfono es
+ *       normalizable a E.164; si no, se omite (attendance no manda emails → sin fallback).</li>
+ *   <li><b>RN-05:</b> el endpoint de core ya excluye {@code congelado}; aquí se reconfirma.</li>
+ *   <li><b>C2/idempotencia:</b> {@code existsEnviadoHoy(idCliente, tipo, 'whatsapp')} evita duplicar
+ *       el mismo aviso el mismo día (un reinicio del job no reenvía → Meta no bloquea el número).</li>
+ * </ul>
+ *
+ * <p>La JVM corre en {@code America/Guayaquil} (fijada en el arranque), así que {@code LocalDate.now()}
+ * ya refleja el día de negocio.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class MensajeriaJob {
 
     private final AsistenciaRepository asistenciaRepository;
-    private final PlantillaMensajeRepository plantillaRepository;
+    private final CoreServiceClient coreServiceClient;
     private final MensajeLogService mensajeLogService;
 
-    private static final String TEXTO_DEFAULT_AUSENCIA_2D =
-            "Hola {nombre}, te extrañamos en el gym. ¡Hoy es un buen día para volver!";
-    private static final String TEXTO_DEFAULT_RECUPERACION_5D =
-            "Llevas {dias} días sin entrenar, {nombre}. ¡Te esperamos!";
-    private static final String TEXTO_DEFAULT_RECUPERACION_10D =
-            "{nombre}, han pasado {dias} días. Tu membresía vence el {fecha_vencimiento}.";
-    private static final String TEXTO_DEFAULT_RECUPERACION_15D =
-            "{nombre}, llevamos {dias} días sin verte. Tenemos una oferta especial para ti.";
-    private static final String TEXTO_DEFAULT_VENCIMIENTO_3D =
-            "Hola {nombre}, tu membresía vence en {dias} días. ¡Renueva y sigue sin parar!";
-    private static final String TEXTO_DEFAULT_VENCIMIENTO_HOY =
-            "{nombre}, tu membresía venció hoy. Acércate para renovar.";
+    /** Buckets del socio: aviso previo a 3 días + día del vencimiento. */
+    private static final int BUCKET_PREVIO = 3;
+    private static final int BUCKET_DIA_0 = 0;
 
-    /**
-     * Se ejecuta diariamente a las 00:15 UTC.
-     * Cron: segundo minuto hora día mes díaSemana
-     */
+    private static final String CANAL_WHATSAPP = "whatsapp";
+    private static final String IDIOMA = "es";
+    private static final DateTimeFormatter FECHA_ES = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    // Plantillas HSM del socio (categoría UTILITY, idioma es).
+    private static final String TPL_MEMBRESIA_PREVIO = "venc_membresia_previo"; // [nombre, gym, fecha, dias]
+    private static final String TPL_MEMBRESIA_HOY = "venc_membresia_hoy";       // [nombre, gym]
+    private static final String TPL_ACCESOS_PREVIO = "venc_accesos_previo";     // [nombre, accesos, gym]
+    private static final String TPL_ACCESOS_FINAL = "venc_accesos_final";       // [nombre, gym]
+
+    // Tipos lógicos (los mismos que ya usa mensajes_log): distinguen previo vs día del vencimiento.
+    private static final String TIPO_PREVIO = "vencimiento_3d";
+    private static final String TIPO_HOY = "vencimiento_hoy";
+
+    /** Diariamente a las 00:15 (hora Guayaquil, JVM). Cron sobreescribible por env var. */
     @Scheduled(cron = "${scheduling.messaging-job-cron:0 15 0 * * *}")
     public void ejecutar() {
         log.info("[MensajeriaJob] Inicio ejecución {}", LocalDate.now());
-
-        // Por compañía y sucursal activas se procesa cada cliente con membresía vigente.
-        // La implementación real requeriría una consulta que traiga clientes con membresía activa.
-        // Aquí se muestra el flujo completo con la lógica de negocio.
         procesarAusencias()
                 .doOnComplete(() -> log.info("[MensajeriaJob] Fin ejecución"))
                 .doOnError(e -> log.error("[MensajeriaJob] Error: {}", e.getMessage()))
                 .subscribe();
     }
 
-    private reactor.core.publisher.Flux<Void> procesarAusencias() {
-        // Este método debe iterar sobre todos los clientes con membresía activa por compañía.
-        // La consulta real vendría de una query agregada al CoreServiceClient o a la BD.
-        // Se deja preparado el esqueleto con la lógica completa de negocio.
-        return reactor.core.publisher.Flux.empty();
+    /**
+     * Itera las compañías activas, pide a core sus socios por vencer (buckets {3,0}) y despacha un
+     * aviso por WhatsApp a cada uno. Público para poder verificarlo en unit tests sin reflexión.
+     */
+    public Flux<Void> procesarAusencias() {
+        return asistenciaRepository.findCompaniasActivas()
+                .flatMap(this::procesarCompania);
+    }
+
+    private Flux<Void> procesarCompania(Integer idCompania) {
+        Mono<String> gymNombre = asistenciaRepository.findNombreCompania(idCompania)
+                .defaultIfEmpty("tu gimnasio")
+                .cache();
+        return coreServiceClient.listarClientesPorVencer(idCompania, BUCKET_PREVIO, "todos")
+                .flatMap(cliente -> gymNombre.flatMap(gym -> procesarCliente(idCompania, cliente, gym)));
     }
 
     /**
-     * Procesa un cliente individual: calcula días de ausencia y envía el mensaje correspondiente.
-     * Llamado desde procesarAusencias() por cada cliente activo.
+     * Despacha un socio individual: valida opt-in + teléfono, resuelve {@code tipo}+plantilla por
+     * {@code modoControl} y bucket, aplica idempotencia y envía. Package-private para tests.
      */
-    public Mono<Void> procesarCliente(Integer idCompania, Integer idSucursal, Integer idCliente,
-                                       LocalDate fechaInicioMembresia, LocalDate fechaFinMembresia,
-                                       String modoControl, Integer accesosRestantes,
-                                       String nombreCliente, String gymNombre) {
+    Mono<Void> procesarCliente(Integer idCompania, ClientePorVencer cliente, String gymNombre) {
+        // RN-05: el endpoint ya excluye congelado; reconfirmar por si el contrato cambia.
+        if ("congelado".equals(cliente.getEstadoCliente())) {
+            return Mono.empty();
+        }
+        // R4: sin opt-in explícito no se envía WhatsApp (attendance no cae a email).
+        if (!cliente.isAceptaWhatsapp()) {
+            log.debug("[MensajeriaJob] cliente={} sin opt-in whatsapp, skip", cliente.getIdCliente());
+            return Mono.empty();
+        }
+        Optional<String> e164 = PhoneNumberE164Normalizer.normalizar(cliente.getTelefono());
+        if (e164.isEmpty()) {
+            log.debug("[MensajeriaJob] cliente={} telefono no normalizable, skip telefono_invalido",
+                    cliente.getIdCliente());
+            return Mono.empty();
+        }
 
-        return asistenciaRepository.findUltimaAsistencia(idCliente, idCompania)
-                .defaultIfEmpty(fechaInicioMembresia)
-                .flatMap(ultimaAsistencia -> {
-                    long diasAusente = ChronoUnit.DAYS.between(ultimaAsistencia, LocalDate.now());
+        Aviso aviso = resolverAviso(cliente, gymNombre);
+        if (aviso == null) {
+            return Mono.empty(); // no cae en ningún bucket {3,0} para su modo
+        }
 
-                    // Mensajes de vencimiento tienen prioridad
-                    if (fechaFinMembresia != null) {
-                        long diasParaVencer = ChronoUnit.DAYS.between(LocalDate.now(), fechaFinMembresia);
-                        if (diasParaVencer == 0) {
-                            return enviarSiNoExiste(idCompania, idSucursal, idCliente,
-                                    "vencimiento_hoy", diasAusente, fechaFinMembresia, accesosRestantes,
-                                    nombreCliente, gymNombre, ultimaAsistencia);
-                        }
-                        if (diasParaVencer == 3) {
-                            return enviarSiNoExiste(idCompania, idSucursal, idCliente,
-                                    "vencimiento_3d", diasAusente, fechaFinMembresia, accesosRestantes,
-                                    nombreCliente, gymNombre, ultimaAsistencia);
-                        }
+        return mensajeLogService.existsEnviadoHoy(cliente.getIdCliente(), aviso.tipo(), CANAL_WHATSAPP)
+                .flatMap(existe -> {
+                    if (Boolean.TRUE.equals(existe)) {
+                        log.debug("[MensajeriaJob] cliente={} tipo={} ya enviado hoy (C2), skip",
+                                cliente.getIdCliente(), aviso.tipo());
+                        return Mono.<Void>empty();
                     }
-
-                    // Mensajes de vencimiento por accesos
-                    if ("accesos".equals(modoControl) && accesosRestantes != null) {
-                        if (accesosRestantes == 0) {
-                            return enviarSiNoExiste(idCompania, idSucursal, idCliente,
-                                    "vencimiento_hoy", diasAusente, fechaFinMembresia, accesosRestantes,
-                                    nombreCliente, gymNombre, ultimaAsistencia);
-                        }
-                        if (accesosRestantes == 3) {
-                            return enviarSiNoExiste(idCompania, idSucursal, idCliente,
-                                    "vencimiento_3d", diasAusente, fechaFinMembresia, accesosRestantes,
-                                    nombreCliente, gymNombre, ultimaAsistencia);
-                        }
-                    }
-
-                    // Mensajes de ausencia
-                    String tipo = switch ((int) diasAusente) {
-                        case 2  -> "ausencia_2d";
-                        case 5  -> "recuperacion_5d";
-                        case 10 -> "recuperacion_10d";
-                        case 15 -> "recuperacion_15d";
-                        default -> null;
-                    };
-
-                    if (tipo == null) return Mono.empty();
-
-                    return enviarSiNoExiste(idCompania, idSucursal, idCliente,
-                            tipo, diasAusente, fechaFinMembresia, accesosRestantes,
-                            nombreCliente, gymNombre, ultimaAsistencia);
-                });
-    }
-
-    private Mono<Void> enviarSiNoExiste(Integer idCompania, Integer idSucursal, Integer idCliente,
-                                         String tipo, long diasAusente, LocalDate fechaFin,
-                                         Integer accesosRestantes, String nombreCliente, String gymNombre,
-                                         LocalDate ultimaAsistencia) {
-
-        // Anti-spam: verificar si ya se envió este tipo desde la última asistencia
-        OffsetDateTime desdeUltimaAsistencia = ultimaAsistencia
-                .atStartOfDay().atOffset(ZoneOffset.UTC);
-
-        return mensajeLogService.contarEnviadosDesde(idCliente, tipo, desdeUltimaAsistencia)
-                .flatMap(count -> {
-                    if (count > 0) {
-                        log.debug("[MensajeriaJob] Skip cliente={} tipo={} (anti-spam)", idCliente, tipo);
-                        return Mono.empty();
-                    }
-
-                    // Seleccionar plantilla aleatoria o usar texto default
-                    return plantillaRepository.findRandomActivaByTipo(idCompania, tipo)
-                            .map(p -> {
-                                String contenido = sustituirVariables(p.getContenido(), nombreCliente,
-                                        diasAusente, fechaFin, accesosRestantes, gymNombre);
-                                return new PlantillaConContenido(p, contenido);
-                            })
-                            .switchIfEmpty(Mono.fromCallable(() -> {
-                                log.warn("[MensajeriaJob] Sin plantilla para tipo={}, usando texto default", tipo);
-                                String contenidoDefault = sustituirVariables(
-                                        textoDefault(tipo), nombreCliente, diasAusente,
-                                        fechaFin, accesosRestantes, gymNombre);
-                                return new PlantillaConContenido(null, contenidoDefault);
-                            }))
-                            .flatMap(pc -> mensajeLogService.guardarMensajeJob(
-                                    idCompania, idSucursal, idCliente,
-                                    pc.plantilla(), tipo, pc.contenido()))
+                    return mensajeLogService.enviarWhatsAppJob(
+                                    idCompania, cliente.getIdSucursal(), cliente.getIdCliente(),
+                                    aviso.tipo(), CANAL_WHATSAPP, e164.get(),
+                                    aviso.template(), IDIOMA, aviso.params(), aviso.contenidoLegible())
                             .then();
                 });
     }
 
-    private String sustituirVariables(String plantilla, String nombre, long dias,
-                                       LocalDate fechaVencimiento, Integer accesosRestantes, String gymNombre) {
-        if (plantilla == null) return "";
-        return plantilla
-                .replace("{nombre}", nombre != null ? nombre : "Cliente")
-                .replace("{dias}", String.valueOf(dias))
-                .replace("{fecha_vencimiento}", fechaVencimiento != null ? fechaVencimiento.toString() : "N/A")
-                .replace("{accesos_restantes}", accesosRestantes != null ? String.valueOf(accesosRestantes) : "0")
-                .replace("{gym_nombre}", gymNombre != null ? gymNombre : "el gimnasio");
+    /**
+     * Resuelve el aviso (tipo + plantilla HSM + params) según {@code modoControl} y el bucket.
+     * Devuelve {@code null} si el socio no cae en ningún bucket {3,0} de su modo.
+     */
+    private Aviso resolverAviso(ClientePorVencer c, String gym) {
+        String nombre = c.getNombre() != null ? c.getNombre() : "Cliente";
+
+        if ("accesos".equals(c.getModoControl())) {
+            Integer restantes = c.getAccesosRestantes();
+            if (restantes == null) return null;
+            if (restantes == BUCKET_DIA_0) {
+                return new Aviso(TIPO_HOY, TPL_ACCESOS_FINAL, List.of(nombre, gym),
+                        "Usaste tu última entrada en " + gym + ".");
+            }
+            if (restantes == BUCKET_PREVIO) {
+                return new Aviso(TIPO_PREVIO, TPL_ACCESOS_PREVIO,
+                        List.of(nombre, String.valueOf(restantes), gym),
+                        "Te quedan " + restantes + " entradas en " + gym + ".");
+            }
+            return null;
+        }
+
+        // calendario (default)
+        Integer dias = c.getDiasParaVencer();
+        if (dias == null) return null;
+        LocalDate fechaFin = parseFecha(c.getFechaFin());
+        String fechaTxt = fechaFin != null ? fechaFin.format(FECHA_ES) : "N/A";
+
+        if (dias == BUCKET_DIA_0) {
+            return new Aviso(TIPO_HOY, TPL_MEMBRESIA_HOY, List.of(nombre, gym),
+                    "Tu membresía en " + gym + " vence hoy.");
+        }
+        if (dias >= 1 && dias <= BUCKET_PREVIO) {
+            return new Aviso(TIPO_PREVIO, TPL_MEMBRESIA_PREVIO,
+                    List.of(nombre, gym, fechaTxt, String.valueOf(dias)),
+                    "Tu membresía en " + gym + " vence el " + fechaTxt + ", en " + dias + " días.");
+        }
+        return null;
     }
 
-    private String textoDefault(String tipo) {
-        return switch (tipo) {
-            case "ausencia_2d"      -> TEXTO_DEFAULT_AUSENCIA_2D;
-            case "recuperacion_5d"  -> TEXTO_DEFAULT_RECUPERACION_5D;
-            case "recuperacion_10d" -> TEXTO_DEFAULT_RECUPERACION_10D;
-            case "recuperacion_15d" -> TEXTO_DEFAULT_RECUPERACION_15D;
-            case "vencimiento_3d"   -> TEXTO_DEFAULT_VENCIMIENTO_3D;
-            case "vencimiento_hoy"  -> TEXTO_DEFAULT_VENCIMIENTO_HOY;
-            default -> "Hola {nombre}, te contactamos desde el gimnasio.";
-        };
+    private static LocalDate parseFecha(String iso) {
+        if (iso == null || iso.isBlank()) return null;
+        try {
+            return LocalDate.parse(iso);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
-    private record PlantillaConContenido(PlantillaMensaje plantilla, String contenido) {}
+    /** Aviso resuelto: tipo lógico (mensajes_log), plantilla HSM, params en orden, texto legible. */
+    private record Aviso(String tipo, String template, List<String> params, String contenidoLegible) {}
 }

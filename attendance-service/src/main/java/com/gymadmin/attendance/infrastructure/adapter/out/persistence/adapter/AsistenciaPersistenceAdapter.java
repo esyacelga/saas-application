@@ -111,6 +111,22 @@ public class AsistenciaPersistenceAdapter implements AsistenciaRepository {
         )).all();
     }
 
+    @Override
+    public Flux<Integer> findCompaniasActivas() {
+        return databaseClient.sql(
+                        "SELECT DISTINCT id_compania FROM core.clientes WHERE eliminado = false ORDER BY id_compania")
+                .map((row, meta) -> row.get("id_compania", Integer.class))
+                .all();
+    }
+
+    @Override
+    public Mono<String> findNombreCompania(Integer idCompania) {
+        return databaseClient.sql("SELECT nombre FROM tenant.companias WHERE id = :id")
+                .bind("id", idCompania)
+                .map((row, meta) -> row.get("nombre", String.class))
+                .one();
+    }
+
     private Asistencia toDomain(AsistenciaEntity e) {
         Asistencia a = new Asistencia();
         a.setId(e.getId());

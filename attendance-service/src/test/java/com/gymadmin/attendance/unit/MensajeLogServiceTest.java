@@ -6,6 +6,7 @@ import com.gymadmin.attendance.domain.model.PlantillaMensaje;
 import com.gymadmin.attendance.domain.port.in.MensajeLogUseCase.EnviarMensajeCommand;
 import com.gymadmin.attendance.domain.port.out.MensajeLogRepository;
 import com.gymadmin.attendance.domain.port.out.PlantillaMensajeRepository;
+import com.gymadmin.attendance.domain.port.out.WhatsAppSender;
 import com.gymadmin.attendance.infrastructure.exception.IllegalArgumentException;
 import com.gymadmin.attendance.infrastructure.exception.NotFoundException;
 import org.junit.jupiter.api.DisplayName;
@@ -39,6 +40,9 @@ class MensajeLogServiceTest {
 
     @Mock
     private PlantillaMensajeRepository plantillaRepository;
+
+    @Mock
+    private WhatsAppSender whatsAppSender;
 
     @InjectMocks
     private MensajeLogService service;

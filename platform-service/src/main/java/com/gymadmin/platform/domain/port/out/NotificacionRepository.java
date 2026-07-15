@@ -44,6 +44,14 @@ public interface NotificacionRepository {
      */
     Flux<NotificacionSuscripcion> claimLoteEmails(int max);
 
+    /**
+     * REQ-SAAS-001 (Fase 3): claim atómico de un lote de notificaciones
+     * {@code canal='whatsapp'} pendientes usando
+     * {@code UPDATE ... WHERE id IN (SELECT ... FOR UPDATE SKIP LOCKED)}.
+     * Análogo a {@link #claimLoteEmails(int)} pero para el canal WhatsApp del dueño.
+     */
+    Flux<NotificacionSuscripcion> claimLoteWhatsapp(int max);
+
     Mono<Void> marcarEnviado(Long id);
 
     Mono<Void> marcarReintentar(Long id, int intentos, String ultimoError, java.time.OffsetDateTime proximoIntento);

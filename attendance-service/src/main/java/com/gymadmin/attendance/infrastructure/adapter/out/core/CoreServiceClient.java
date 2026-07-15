@@ -5,16 +5,26 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class CoreServiceClient {
 
+    /** Header del contrato interno service-to-service de core (no JWT). */
+    public static final String HEADER_INTERNAL_CALL = "X-Internal-Call";
+
     private final WebClient coreWebClient;
+
+    @Value("${services.core-service.internal-secret:${INTERNAL_SECRET:platform-secret-dev}}")
+    private String internalSecret;
 
     public Mono<ValidarAccesoResponse> validarAcceso(Integer idCliente, Integer idCompania, String bearerToken) {
         boolean tokenPresente = bearerToken != null && !bearerToken.isBlank();
@@ -83,6 +93,35 @@ public class CoreServiceClient {
                 });
     }
 
+    /**
+     * REQ-SAAS-001 (Fase 5): consume el endpoint interno de core
+     * {@code GET /internal/v1/companias/{id}/clientes-por-vencer} (Fase 4) para alimentar el
+     * {@code MensajeriaJob}. Usa el header {@code X-Internal-Call} (no JWT).
+     *
+     * @param idCompania compañía a consultar.
+     * @param dias       umbral de anticipación (calendario: días; accesos: entradas restantes).
+     * @param modo       {@code calendario} | {@code accesos} | {@code todos}.
+     */
+    public Flux<ClientePorVencer> listarClientesPorVencer(Integer idCompania, int dias, String modo) {
+        log.debug("[CoreService] clientesPorVencer → idCompania={} dias={} modo={}", idCompania, dias, modo);
+        return coreWebClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/internal/v1/companias/{id}/clientes-por-vencer")
+                        .queryParam("dias", dias)
+                        .queryParam("modo", modo)
+                        .build(idCompania))
+                .header(HEADER_INTERNAL_CALL, internalSecret)
+                .retrieve()
+                .bodyToMono(ClientesPorVencerResponse.class)
+                .flatMapMany(r -> r == null || r.getClientes() == null
+                        ? Flux.empty()
+                        : Flux.fromIterable(r.getClientes()))
+                .onErrorResume(e -> {
+                    log.error("[CoreService] clientesPorVencer FALLÓ idCompania={} causa='{}'", idCompania, e.getMessage());
+                    return Flux.error(new RuntimeException("Error consultando Core Service: " + e.getMessage()));
+                });
+    }
+
     private static String truncate(String s) {
         return s != null && s.length() > 8 ? s.substring(0, 8) : s;
     }
@@ -107,5 +146,33 @@ public class CoreServiceClient {
         private Integer idCompania;
         private String nombre;
         private String qrTokenExpira;
+    }
+
+    /** Respuesta del endpoint interno de core (Fase 4): {@code companiaId + fechaCorte + clientes[]}. */
+    @Getter
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    public static class ClientesPorVencerResponse {
+        private Long companiaId;
+        private String fechaCorte;
+        private List<ClientePorVencer> clientes;
+    }
+
+    /** Proyección de un socio por vencer (contrato C3). El {@code telefono} viene SIN normalizar. */
+    @Getter
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    public static class ClientePorVencer {
+        private Integer idCliente;
+        private Integer idPersona;
+        private Integer idSucursal;
+        private String nombre;
+        private String telefono;
+        private String correo;
+        private String modoControl;
+        private String fechaFin;
+        private Integer diasParaVencer;
+        private Integer accesosRestantes;
+        private String estadoCliente;
+        private boolean aceptaWhatsapp;
+        private String fechaConsentimientoWa;
     }
 }

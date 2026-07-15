@@ -3,6 +3,7 @@ package com.gymadmin.core.infrastructure.adapter.out.persistence.adapter;
 import com.gymadmin.core.domain.model.Cliente;
 import com.gymadmin.core.domain.model.ClienteDetalle;
 import com.gymadmin.core.domain.model.ClienteListItem;
+import com.gymadmin.core.domain.model.ClientePorVencer;
 import com.gymadmin.core.domain.port.out.ClienteRepository;
 import com.gymadmin.core.infrastructure.adapter.out.persistence.entity.ClienteEntity;
 import com.gymadmin.core.infrastructure.adapter.out.persistence.repository.ClienteR2dbcRepository;
@@ -14,6 +15,7 @@ import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 
 @Component
 public class ClientePersistenceAdapter implements ClienteRepository {
@@ -206,6 +208,49 @@ public class ClientePersistenceAdapter implements ClienteRepository {
         return repository.findActivosParaJob().map(this::toDomain);
     }
 
+    @Override
+    public Flux<ClientePorVencer> findClientesPorVencer(Long idCompania, LocalDate fechaCorte, int dias, String modo) {
+        boolean incluyeCalendario = "calendario".equals(modo) || "todos".equals(modo);
+        boolean incluyeAccesos = "accesos".equals(modo) || "todos".equals(modo);
+
+        // El "por vencer" difiere por modo: calendario mira los días al fecha_fin; accesos mira las
+        // entradas restantes. Con :fechaCorte (no CURRENT_DATE) el cálculo respeta la zona de negocio (C4).
+        String sql = "SELECT c.id AS id_cliente, c.id_persona, c.id_sucursal, c.estado AS estado_cliente, " +
+                     "       p.nombre, p.telefono, p.correo, " +
+                     "       p.acepta_whatsapp, p.fecha_consentimiento_wa, " +
+                     "       tm.modo_control, m.fecha_fin, " +
+                     "       (m.fecha_fin - :fechaCorte)::int AS dias_para_vencer, " +
+                     "       CASE WHEN tm.modo_control = 'accesos' " +
+                     "            THEN GREATEST(0, m.dias_acceso_total - COUNT(a.id)) ELSE NULL END AS accesos_restantes " +
+                     "FROM core.clientes c " +
+                     "JOIN identidad.personas p ON p.id = c.id_persona " +
+                     "JOIN core.membresias m ON m.id_cliente = c.id AND m.estado = 'activa' AND m.eliminado = false " +
+                     "JOIN core.tipos_membresia tm ON tm.id = m.id_tipo_membresia " +
+                     "LEFT JOIN asistencia.asistencias a ON a.id_membresia = m.id " +
+                     "WHERE c.id_compania = :idCompania AND c.eliminado = false " +
+                     "  AND c.estado NOT IN ('congelado','vencido') " +
+                     "GROUP BY c.id, c.id_persona, c.id_sucursal, c.estado, " +
+                     "         p.nombre, p.telefono, p.correo, p.acepta_whatsapp, p.fecha_consentimiento_wa, " +
+                     "         tm.modo_control, m.fecha_fin, m.dias_acceso_total " +
+                     "HAVING (" +
+                     "   (:incluyeCalendario AND tm.modo_control = 'calendario' " +
+                     "        AND (m.fecha_fin - :fechaCorte)::int BETWEEN 0 AND :dias) " +
+                     "   OR " +
+                     "   (:incluyeAccesos AND tm.modo_control = 'accesos' " +
+                     "        AND GREATEST(0, m.dias_acceso_total - COUNT(a.id)) <= :dias) " +
+                     ") " +
+                     "ORDER BY c.id";
+
+        return databaseClient.sql(sql)
+                .bind("idCompania", idCompania)
+                .bind("fechaCorte", fechaCorte)
+                .bind("dias", dias)
+                .bind("incluyeCalendario", incluyeCalendario)
+                .bind("incluyeAccesos", incluyeAccesos)
+                .map((row, meta) -> rowToClientePorVencer(row))
+                .all();
+    }
+
     // ── mapping helpers ───────────────────────────────────────────────────────
 
     private ClienteListItem rowToListItem(Row row) {
@@ -231,6 +276,25 @@ public class ClientePersistenceAdapter implements ClienteRepository {
                 row.get("telefono", String.class),
                 row.get("estado", String.class),
                 membresia
+        );
+    }
+
+    private ClientePorVencer rowToClientePorVencer(Row row) {
+        Boolean acepta = row.get("acepta_whatsapp", Boolean.class);
+        return new ClientePorVencer(
+                row.get("id_cliente", Long.class),
+                row.get("id_persona", Long.class),
+                row.get("id_sucursal", Long.class),
+                row.get("nombre", String.class),
+                row.get("telefono", String.class),
+                row.get("correo", String.class),
+                row.get("modo_control", String.class),
+                row.get("fecha_fin", LocalDate.class),
+                row.get("dias_para_vencer", Integer.class),
+                row.get("accesos_restantes", Integer.class),
+                row.get("estado_cliente", String.class),
+                Boolean.TRUE.equals(acepta),
+                row.get("fecha_consentimiento_wa", OffsetDateTime.class)
         );
     }
 

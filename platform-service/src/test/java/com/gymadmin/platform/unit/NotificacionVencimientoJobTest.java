@@ -1,10 +1,14 @@
 package com.gymadmin.platform.unit;
 
+import com.gymadmin.platform.domain.model.Compania;
 import com.gymadmin.platform.domain.model.CompaniaPlan;
+import com.gymadmin.platform.domain.model.ConfigNotifSuscripcion;
 import com.gymadmin.platform.domain.model.Plan;
 import com.gymadmin.platform.domain.port.in.EnviarNotificacionUseCase;
 import com.gymadmin.platform.domain.port.in.EnviarNotificacionUseCase.EncolarNotificacionCommand;
 import com.gymadmin.platform.domain.port.out.CompaniaPlanRepository;
+import com.gymadmin.platform.domain.port.out.CompaniaRepository;
+import com.gymadmin.platform.domain.port.out.ConfigNotifRepository;
 import com.gymadmin.platform.domain.port.out.NotificacionRepository;
 import com.gymadmin.platform.domain.port.out.PlanRepository;
 import com.gymadmin.platform.infrastructure.scheduler.NotificacionVencimientoJob;
@@ -31,20 +35,24 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * REQ-SAAS-001 (Sub-fase 1.5): a día {@code fechaFin - 15} el job encola 2
- * notificaciones (EMAIL + BANNER) para el bucket T-15.
+ * REQ-SAAS-001 (Fase 3): con buckets del dueño {@code {3, 0}}, el job encola por canal según
+ * {@code config_notif_suscripcion.canal} + {@code banner} siempre, respetando opt-in (R4) y la
+ * evaluación por igualdad del día 0 (R2).
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("NotificacionVencimientoJob — genera 2 notificaciones (email+banner) en T-15")
+@DisplayName("NotificacionVencimientoJob — buckets {3,0}, canal por config + opt-in")
 class NotificacionVencimientoJobTest {
 
     @Mock CompaniaPlanRepository companiaPlanRepository;
     @Mock PlanRepository planRepository;
     @Mock NotificacionRepository notificacionRepository;
+    @Mock ConfigNotifRepository configNotifRepository;
+    @Mock CompaniaRepository companiaRepository;
     @Mock EnviarNotificacionUseCase enviarUseCase;
 
     private final LocalDate hoy = LocalDate.of(2026, 7, 10);
@@ -55,97 +63,155 @@ class NotificacionVencimientoJobTest {
     @BeforeEach
     void setUp() {
         job = new NotificacionVencimientoJob(companiaPlanRepository, planRepository,
-                notificacionRepository, enviarUseCase, clockFijo);
+                notificacionRepository, configNotifRepository, companiaRepository, enviarUseCase, clockFijo);
     }
 
-    @Test
-    @DisplayName("Trial que vence en 15 días → encola EMAIL + BANNER con bucket T-15")
-    void encolaAmbosCanalesEnT15() throws Exception {
+    private CompaniaPlan cp(long fechaFinOffsetDays) {
         CompaniaPlan cp = new CompaniaPlan();
         cp.setId(50L);
         cp.setIdCompania(1L);
         cp.setIdPlan(100L);
         cp.setEstado(CompaniaPlan.Estado.ACTIVO);
-        cp.setFechaFin(hoy.plusDays(15));
+        cp.setFechaFin(hoy.plusDays(fechaFinOffsetDays));
+        return cp;
+    }
 
-        Plan planTrial = new Plan();
-        planTrial.setId(100L);
-        planTrial.setCodigo("TRIAL");
+    private Plan planTrial() {
+        Plan p = new Plan();
+        p.setId(100L);
+        p.setCodigo("TRIAL");
+        return p;
+    }
 
-        when(companiaPlanRepository.findActivosAndEnGracia()).thenReturn(Flux.just(cp));
-        when(planRepository.findById(100L)).thenReturn(Mono.just(planTrial));
-        when(notificacionRepository.existsIdempotente(eq(50L), eq("VENCIMIENTO_TRIAL"), anyString(), eq(15)))
-                .thenReturn(Mono.just(false));
-        when(enviarUseCase.encolar(any(EncolarNotificacionCommand.class)))
-                .thenAnswer(inv -> Mono.just(1L));
+    private Compania compania(boolean optIn, String whatsapp) {
+        Compania c = new Compania();
+        c.setId(1L);
+        c.setNombre("PowerGym");
+        c.setWhatsapp(whatsapp);
+        c.setAceptaWhatsapp(optIn);
+        return c;
+    }
 
+    private ConfigNotifSuscripcion config(ConfigNotifSuscripcion.Canal canal) {
+        return new ConfigNotifSuscripcion(1L, 3, canal, true);
+    }
+
+    private Mono<Void> invocarProcesar() throws Exception {
         Method m = NotificacionVencimientoJob.class.getDeclaredMethod("procesar", LocalDate.class);
         m.setAccessible(true);
         @SuppressWarnings("unchecked")
         Mono<Void> resultado = (Mono<Void>) m.invoke(job, hoy);
+        return resultado;
+    }
 
-        StepVerifier.create(resultado).verifyComplete();
+    @Test
+    @DisplayName("Vence en 3 días + config AMBOS + opt-in + tel válido → encola whatsapp + email + banner (bucket 3)")
+    void venceEn3_ambos_optIn() throws Exception {
+        when(companiaPlanRepository.findActivosAndEnGracia()).thenReturn(Flux.just(cp(3)));
+        when(planRepository.findById(100L)).thenReturn(Mono.just(planTrial()));
+        when(companiaRepository.findById(1L)).thenReturn(Mono.just(compania(true, "0987654321")));
+        when(configNotifRepository.findByIdCompania(1L))
+                .thenReturn(Flux.just(config(ConfigNotifSuscripcion.Canal.AMBOS)));
+        when(notificacionRepository.existsIdempotente(eq(50L), eq("VENCIMIENTO_TRIAL"), anyString(), eq(3)))
+                .thenReturn(Mono.just(false));
+        when(enviarUseCase.encolar(any(EncolarNotificacionCommand.class))).thenReturn(Mono.just(1L));
+
+        StepVerifier.create(invocarProcesar()).verifyComplete();
 
         ArgumentCaptor<EncolarNotificacionCommand> cap = ArgumentCaptor.forClass(EncolarNotificacionCommand.class);
-        verify(enviarUseCase, org.mockito.Mockito.times(2)).encolar(cap.capture());
-
-        List<EncolarNotificacionCommand> commands = cap.getAllValues();
-        assertThat(commands).extracting(EncolarNotificacionCommand::canal)
-                .containsExactlyInAnyOrder("email", "banner");
-        assertThat(commands).allSatisfy(c -> {
+        verify(enviarUseCase, org.mockito.Mockito.times(3)).encolar(cap.capture());
+        List<EncolarNotificacionCommand> cmds = cap.getAllValues();
+        assertThat(cmds).extracting(EncolarNotificacionCommand::canal)
+                .containsExactlyInAnyOrder("banner", "email", "whatsapp");
+        assertThat(cmds).allSatisfy(c -> {
             assertThat(c.tipo()).isEqualTo("VENCIMIENTO_TRIAL");
-            assertThat(c.diasAntes()).isEqualTo(15);
-            assertThat(c.idCompania()).isEqualTo(1L);
+            assertThat(c.diasAntes()).isEqualTo(3);
             assertThat(c.idCompaniaPlan()).isEqualTo(50L);
         });
     }
 
     @Test
-    @DisplayName("Trial en T-15 con notif idempotente ya existente → no encola nada")
-    void noEncolaSiExisteIdempotente() throws Exception {
-        CompaniaPlan cp = new CompaniaPlan();
-        cp.setId(50L);
-        cp.setIdCompania(1L);
-        cp.setIdPlan(100L);
-        cp.setEstado(CompaniaPlan.Estado.ACTIVO);
-        cp.setFechaFin(hoy.plusDays(15));
+    @DisplayName("Vence hoy (0 días) → bucket 0 (R2: igualdad, no cae al previo)")
+    void venceHoy_bucket0() throws Exception {
+        when(companiaPlanRepository.findActivosAndEnGracia()).thenReturn(Flux.just(cp(0)));
+        when(planRepository.findById(100L)).thenReturn(Mono.just(planTrial()));
+        when(companiaRepository.findById(1L)).thenReturn(Mono.just(compania(true, "0987654321")));
+        when(configNotifRepository.findByIdCompania(1L))
+                .thenReturn(Flux.just(config(ConfigNotifSuscripcion.Canal.WHATSAPP)));
+        when(notificacionRepository.existsIdempotente(eq(50L), anyString(), anyString(), eq(0)))
+                .thenReturn(Mono.just(false));
+        when(enviarUseCase.encolar(any(EncolarNotificacionCommand.class))).thenReturn(Mono.just(1L));
 
-        Plan planTrial = new Plan();
-        planTrial.setId(100L);
-        planTrial.setCodigo("TRIAL");
+        StepVerifier.create(invocarProcesar()).verifyComplete();
 
-        when(companiaPlanRepository.findActivosAndEnGracia()).thenReturn(Flux.just(cp));
-        when(planRepository.findById(100L)).thenReturn(Mono.just(planTrial));
-        when(notificacionRepository.existsIdempotente(anyLong(), anyString(), anyString(), anyInt()))
-                .thenReturn(Mono.just(true));
+        ArgumentCaptor<EncolarNotificacionCommand> cap = ArgumentCaptor.forClass(EncolarNotificacionCommand.class);
+        verify(enviarUseCase, org.mockito.Mockito.atLeastOnce()).encolar(cap.capture());
+        assertThat(cap.getAllValues()).allSatisfy(c -> assertThat(c.diasAntes()).isEqualTo(0));
+        // WHATSAPP → whatsapp + banner (no email)
+        assertThat(cap.getAllValues()).extracting(EncolarNotificacionCommand::canal)
+                .containsExactlyInAnyOrder("banner", "whatsapp");
+    }
 
-        Method m = NotificacionVencimientoJob.class.getDeclaredMethod("procesar", LocalDate.class);
-        m.setAccessible(true);
-        @SuppressWarnings("unchecked")
-        Mono<Void> resultado = (Mono<Void>) m.invoke(job, hoy);
+    @Test
+    @DisplayName("Config WHATSAPP pero opt-in FALSE → NO encola whatsapp (solo banner)")
+    void whatsappSinOptIn_omiteWhatsapp() throws Exception {
+        when(companiaPlanRepository.findActivosAndEnGracia()).thenReturn(Flux.just(cp(3)));
+        when(planRepository.findById(100L)).thenReturn(Mono.just(planTrial()));
+        when(companiaRepository.findById(1L)).thenReturn(Mono.just(compania(false, "0987654321")));
+        when(configNotifRepository.findByIdCompania(1L))
+                .thenReturn(Flux.just(config(ConfigNotifSuscripcion.Canal.WHATSAPP)));
+        when(notificacionRepository.existsIdempotente(eq(50L), anyString(), anyString(), eq(3)))
+                .thenReturn(Mono.just(false));
+        when(enviarUseCase.encolar(any(EncolarNotificacionCommand.class))).thenReturn(Mono.just(1L));
 
-        StepVerifier.create(resultado).verifyComplete();
+        StepVerifier.create(invocarProcesar()).verifyComplete();
+
+        ArgumentCaptor<EncolarNotificacionCommand> cap = ArgumentCaptor.forClass(EncolarNotificacionCommand.class);
+        verify(enviarUseCase, org.mockito.Mockito.times(1)).encolar(cap.capture());
+        assertThat(cap.getValue().canal()).isEqualTo("banner");
+    }
+
+    @Test
+    @DisplayName("Sin config → default EMAIL + banner")
+    void sinConfig_defaultEmail() throws Exception {
+        when(companiaPlanRepository.findActivosAndEnGracia()).thenReturn(Flux.just(cp(3)));
+        when(planRepository.findById(100L)).thenReturn(Mono.just(planTrial()));
+        when(companiaRepository.findById(1L)).thenReturn(Mono.just(compania(false, null)));
+        when(configNotifRepository.findByIdCompania(1L)).thenReturn(Flux.empty());
+        when(notificacionRepository.existsIdempotente(eq(50L), anyString(), anyString(), eq(3)))
+                .thenReturn(Mono.just(false));
+        when(enviarUseCase.encolar(any(EncolarNotificacionCommand.class))).thenReturn(Mono.just(1L));
+
+        StepVerifier.create(invocarProcesar()).verifyComplete();
+
+        ArgumentCaptor<EncolarNotificacionCommand> cap = ArgumentCaptor.forClass(EncolarNotificacionCommand.class);
+        verify(enviarUseCase, org.mockito.Mockito.times(2)).encolar(cap.capture());
+        assertThat(cap.getAllValues()).extracting(EncolarNotificacionCommand::canal)
+                .containsExactlyInAnyOrder("banner", "email");
+    }
+
+    @Test
+    @DisplayName("Vence en 10 días → fuera de rango {3,0}, no procesa")
+    void venceEn10_fueraDeRango() throws Exception {
+        when(companiaPlanRepository.findActivosAndEnGracia()).thenReturn(Flux.just(cp(10)));
+
+        StepVerifier.create(invocarProcesar()).verifyComplete();
         verify(enviarUseCase, org.mockito.Mockito.never()).encolar(any());
     }
 
     @Test
-    @DisplayName("Suscripción a 20 días de vencer → job no la procesa (fuera del rango 15d)")
-    void noProcesaSiFechaFinFueraDeRango() throws Exception {
-        CompaniaPlan cp = new CompaniaPlan();
-        cp.setId(50L);
-        cp.setIdCompania(1L);
-        cp.setIdPlan(100L);
-        cp.setEstado(CompaniaPlan.Estado.ACTIVO);
-        cp.setFechaFin(hoy.plusDays(20));
+    @DisplayName("Notif idempotente ya existente → no encola nada")
+    void idempotente_noEncola() throws Exception {
+        when(companiaPlanRepository.findActivosAndEnGracia()).thenReturn(Flux.just(cp(3)));
+        when(planRepository.findById(100L)).thenReturn(Mono.just(planTrial()));
+        when(companiaRepository.findById(1L)).thenReturn(Mono.just(compania(true, "0987654321")));
+        when(configNotifRepository.findByIdCompania(1L))
+                .thenReturn(Flux.just(config(ConfigNotifSuscripcion.Canal.AMBOS)));
+        lenient().when(enviarUseCase.encolar(any())).thenReturn(Mono.just(1L));
+        when(notificacionRepository.existsIdempotente(anyLong(), anyString(), anyString(), anyInt()))
+                .thenReturn(Mono.just(true));
 
-        when(companiaPlanRepository.findActivosAndEnGracia()).thenReturn(Flux.just(cp));
-
-        Method m = NotificacionVencimientoJob.class.getDeclaredMethod("procesar", LocalDate.class);
-        m.setAccessible(true);
-        @SuppressWarnings("unchecked")
-        Mono<Void> resultado = (Mono<Void>) m.invoke(job, hoy);
-
-        StepVerifier.create(resultado).verifyComplete();
+        StepVerifier.create(invocarProcesar()).verifyComplete();
         verify(enviarUseCase, org.mockito.Mockito.never()).encolar(any());
     }
 }

@@ -37,4 +37,13 @@ public interface AsistenciaRepository {
     Flux<Asistencia> findClientesConMembresia(Integer idCompania, LocalDate desde, LocalDate hasta);
 
     Flux<EntradaEnriquecida> findUltimasEntradas(Integer idCompania, Integer idSucursal, LocalDate fecha);
+
+    /**
+     * REQ-SAAS-001 (Fase 5): compañías con al menos un cliente no eliminado, para que el
+     * {@code MensajeriaJob} sepa a qué tenants consultar el endpoint de "clientes por vencer".
+     */
+    Flux<Integer> findCompaniasActivas();
+
+    /** REQ-SAAS-001 (Fase 5): nombre del gym para la variable {@code {{gym}}} de la plantilla HSM. */
+    Mono<String> findNombreCompania(Integer idCompania);
 }

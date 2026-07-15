@@ -28,11 +28,23 @@ jwt:
 services:
   core-service:
     url: ${CORE_SERVICE_URL:http://localhost:8082}
+    # REQ-SAAS-001 (Fase 5): secreto del contrato interno service-to-service de core
+    # (endpoint clientes-por-vencer). Mismo valor que INTERNAL_SECRET en core/platform.
+    internal-secret: ${INTERNAL_SECRET:platform-secret-dev}
   auth-service:
     url: ${AUTH_SERVICE_URL:http://localhost:8080}
 
 scheduling:
   messaging-job-cron: ${MESSAGING_JOB_CRON:0 15 0 * * *}
+
+# REQ-SAAS-001 (Fase 5): WhatsApp del socio (Meta Cloud API, plantillas HSM).
+# Si faltan las credenciales el MetaWhatsAppAdapter loguea WARN y no envía (dev/CI).
+whatsapp:
+  meta:
+    api-base-url: ${META_API_BASE_URL:https://graph.facebook.com}
+    api-version: ${META_API_VERSION:v21.0}
+    phone-number-id: ${META_PHONE_NUMBER_ID:}
+    access-token: ${META_ACCESS_TOKEN:}
 
 app:
   cors:

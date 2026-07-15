@@ -123,6 +123,31 @@ public class NotificacionPersistenceAdapter implements NotificacionRepository {
     }
 
     @Override
+    public Flux<NotificacionSuscripcion> claimLoteWhatsapp(int max) {
+        // REQ-SAAS-001 (Fase 3): idéntico a claimLoteEmails pero para canal='whatsapp'.
+        // Mismo claim atómico con FOR UPDATE SKIP LOCKED — el worker devuelve la fila
+        // a 'enviado', 'reintentar' o 'fallido' en la misma transacción.
+        String sql = """
+                UPDATE tenant.notificaciones_suscripcion
+                SET modifica_fecha = NOW()
+                WHERE id IN (
+                    SELECT id FROM tenant.notificaciones_suscripcion
+                    WHERE canal = 'whatsapp'
+                      AND estado IN ('pendiente','reintentar')
+                      AND (proximo_intento IS NULL OR proximo_intento <= NOW())
+                    ORDER BY creacion_fecha
+                    LIMIT %d
+                    FOR UPDATE SKIP LOCKED
+                )
+                RETURNING id, id_compania, id_compania_plan, tipo, dias_antes, canal,
+                          estado, intentos, ultimo_error, proximo_intento, descartado_at, fecha_envio
+                """.formatted(max);
+        return databaseClient.sql(sql)
+                .map((row, meta) -> mapRow(row))
+                .all();
+    }
+
+    @Override
     public Mono<Void> marcarEnviado(Long id) {
         return databaseClient.sql("""
                 UPDATE tenant.notificaciones_suscripcion

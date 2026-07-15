@@ -39,6 +39,8 @@ public abstract class BaseIntegrationTest {
 
     @BeforeEach
     void cleanDatabase() {
+        // asistencia.asistencias tiene FK → core.membresias: se borra primero para no violarla.
+        databaseClient.sql("DELETE FROM asistencia.asistencias").then().block();
         databaseClient.sql("DELETE FROM core.congelamientos").then().block();
         databaseClient.sql("DELETE FROM core.membresias").then().block();
         databaseClient.sql("DELETE FROM core.clientes").then().block();
