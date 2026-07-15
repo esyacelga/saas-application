@@ -9,7 +9,6 @@ import { autoRegistroUseCase } from '@/application/auth/AutoRegistro.usecase'
 import { PulsingDots } from '@/ui/components/PulsingDots'
 import { StepperBar } from './AutoRegistro/StepperBar'
 import { Step1Empresa } from './AutoRegistro/steps/Step1Empresa'
-import { Step2Sucursal } from './AutoRegistro/steps/Step2Sucursal'
 import { Step3Plan } from './AutoRegistro/steps/Step3Plan'
 import { Step4DatosPropios } from './AutoRegistro/steps/Step4DatosPropios'
 import { ResumenExito } from './AutoRegistro/ResumenExito'
@@ -19,16 +18,18 @@ import {
 } from '@/ui/features/platform/schemas/registrar-gym-wizard.schema'
 import {
   autoRegistroStep1Schema,
-  autoRegistroStep2Schema,
   autoRegistroStep4Schema,
   type AutoRegistroStep1Form,
-  type AutoRegistroStep2Form,
   type AutoRegistroStep4Form,
 } from '../schemas/auto-registro-wizard.schema'
 
+// El paso "Local/Sucursal" se eliminó: el nombre de la sucursal se deriva del nombre
+// del gimnasio en el submit (ver handleFinal), y la dirección vive ahora en el Paso 1.
+// El wizard quedó en 3 pasos. Los gyms multi-local agregan/renombran sucursales desde
+// el panel. Se conserva la numeración interna del Paso 3 (Plan) y Paso 4 (Tus datos)
+// para no reescribir el schema del plan compartido con el registro por operador.
 const STEPS = [
   { label: 'Gimnasio' },
-  { label: 'Local' },
   { label: 'Plan' },
   { label: 'Tus datos' },
 ]
@@ -51,27 +52,21 @@ export function AutoRegistroPage() {
   const [step3Blocked, setStep3Blocked] = useState(true)
   const [planCodigoSeleccionado, setPlanCodigoSeleccionado] = useState<string | null>(null)
 
-  // State acumulado para cada paso
+  // State acumulado para cada paso visible: 1 = Gimnasio, 2 = Plan, 3 = Tus datos.
   const [step1Data, setStep1Data] = useState<AutoRegistroStep1Form | null>(null)
-  const [step2Data, setStep2Data] = useState<AutoRegistroStep2Form | null>(null)
-  const [step3Data, setStep3Data] = useState<WizardStep3Form | null>(null)
+  const [planData, setPlanData] = useState<WizardStep3Form | null>(null)
 
   const form1 = useForm<AutoRegistroStep1Form>({
     resolver: zodResolver(autoRegistroStep1Schema),
-    defaultValues: step1Data ?? { nombre: '', correo: '' },
+    defaultValues: step1Data ?? { nombre: '', correo: '', direccion: '' },
   })
 
-  const form2 = useForm<AutoRegistroStep2Form>({
-    resolver: zodResolver(autoRegistroStep2Schema),
-    defaultValues: step2Data ?? { nombreSucursal: '', direccionSucursal: '' },
-  })
-
-  const form3 = useForm<WizardStep3Form>({
+  const formPlan = useForm<WizardStep3Form>({
     resolver: zodResolver(wizardStep3Schema),
-    defaultValues: step3Data ?? {},
+    defaultValues: planData ?? {},
   })
 
-  const form4 = useForm<AutoRegistroStep4Form>({
+  const formDatos = useForm<AutoRegistroStep4Form>({
     resolver: zodResolver(autoRegistroStep4Schema),
     defaultValues: { ci: '', nombre: '', correo: '', password: '', confirmarPassword: '' },
   })
@@ -99,26 +94,16 @@ export function AutoRegistroPage() {
 
   const handleStep1 = form1.handleSubmit((data) => {
     setStep1Data(data)
-    // Pre-llenar el nombre del local con el del gimnasio, solo si el usuario no lo tocó.
-    // Un gym de un solo local avanza sin escribir nada; el que tiene varios lo cambia.
-    if (!form2.getValues('nombreSucursal')) {
-      form2.setValue('nombreSucursal', data.nombre)
-    }
     setCurrentStep(2)
   })
 
-  const handleStep2 = form2.handleSubmit((data) => {
-    setStep2Data(data)
+  const handlePlan = formPlan.handleSubmit((data) => {
+    setPlanData(data)
     setCurrentStep(3)
   })
 
-  const handleStep3 = form3.handleSubmit((data) => {
-    setStep3Data(data)
-    setCurrentStep(4)
-  })
-
-  const handleStep4 = form4.handleSubmit(async (data4) => {
-    if (!step1Data || !step2Data || !step3Data) return
+  const handleFinal = formDatos.handleSubmit(async (dataDatos) => {
+    if (!step1Data || !planData) return
 
     setSubmitting(true)
     setServerError(null)
@@ -127,14 +112,17 @@ export function AutoRegistroPage() {
       const res = await autoRegistroUseCase.execute({
         nombre: step1Data.nombre,
         correo: step1Data.correo || undefined,
-        nombreSucursal: step2Data.nombreSucursal,
-        direccionSucursal: step2Data.direccionSucursal || undefined,
-        idPlan: step3Data.idPlan,
+        // La sucursal no se pide en el registro: su nombre se deriva del nombre del
+        // gimnasio (un solo local, el caso mayoritario) y la dirección viene del Paso 1.
+        // El backend exige nombreSucursal (@NotBlank); lo rellenamos aquí.
+        nombreSucursal: step1Data.nombre,
+        direccionSucursal: step1Data.direccion || undefined,
+        idPlan: planData.idPlan,
         usuarioPrincipal: {
-          ci: data4.ci,
-          nombre: data4.nombre,
-          correo: data4.correo,
-          password: data4.password,
+          ci: dataDatos.ci,
+          nombre: dataDatos.nombre,
+          correo: dataDatos.correo,
+          password: dataDatos.password,
         },
       })
 
@@ -150,7 +138,7 @@ export function AutoRegistroPage() {
         if (status === 409) {
           if (conflicto === 'idPlan') {
             setServerError({ tipo: 'idPlan' })
-            setCurrentStep(3)
+            setCurrentStep(2)
           } else if (conflicto === 'correo') {
             setServerError({ tipo: 'correo' })
           } else if (conflicto === 'ci') {
@@ -177,12 +165,12 @@ export function AutoRegistroPage() {
     return <ResumenExito nombreGimnasio={resultado.nombreGimnasio} planCodigo={resultado.planCodigo} />
   }
 
-  const isStep4 = currentStep === 4
+  const isFinalStep = currentStep === 3
   const isNextDisabled =
     submitting ||
-    (currentStep === 3 && step3Blocked)
+    (currentStep === 2 && step3Blocked)
 
-  const step4Error =
+  const datosError =
     serverError?.tipo === 'correo' || serverError?.tipo === 'ci'
       ? serverError
       : null
@@ -198,9 +186,8 @@ export function AutoRegistroPage() {
 
   const handleNext = () => {
     if (currentStep === 1) { handleStep1(); return }
-    if (currentStep === 2) { handleStep2(); return }
-    if (currentStep === 3) { handleStep3(); return }
-    if (currentStep === 4) { handleStep4(); return }
+    if (currentStep === 2) { handlePlan(); return }
+    if (currentStep === 3) { handleFinal(); return }
   }
 
   return (
@@ -231,16 +218,19 @@ export function AutoRegistroPage() {
 
       <div>
         {currentStep === 1 && <Step1Empresa form={form1} />}
-        {currentStep === 2 && <Step2Sucursal form={form2} />}
-        {currentStep === 3 && (
+        {currentStep === 2 && (
           <Step3Plan
-            form={form3}
+            form={formPlan}
             onLoadingChange={handleStep3LoadingChange}
             onPlanChange={handleStep3PlanChange}
           />
         )}
-        {currentStep === 4 && (
-          <Step4DatosPropios form={form4} serverError={step4Error} />
+        {currentStep === 3 && (
+          <Step4DatosPropios
+            form={formDatos}
+            serverError={datosError}
+            onCheckCorreo={(correo) => autoRegistroUseCase.correoEnUso(correo)}
+          />
         )}
       </div>
 
@@ -268,7 +258,7 @@ export function AutoRegistroPage() {
           {submitting && <PulsingDots size="sm" />}
           {submitting
             ? 'Creando cuenta…'
-            : isStep4
+            : isFinalStep
               ? 'Crear mi cuenta'
               : 'Siguiente →'
           }

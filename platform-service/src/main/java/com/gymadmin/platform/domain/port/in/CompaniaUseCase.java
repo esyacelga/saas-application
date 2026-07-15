@@ -21,6 +21,10 @@ public interface CompaniaUseCase {
 
     Mono<RegistrarGymWizardResult> registrarGymWizard(RegistrarGymWizardCommand command);
 
+    // Verificación de disponibilidad de correo para el registro público (onBlur).
+    // true = el correo ya está en uso por algún usuario.
+    Mono<Boolean> correoEnUso(String correo);
+
     record UsuarioWizardCommand(Long idPersona, String ci, String nombre, String telefono, String correo, String password) {}
 
     record RegistrarGymWizardCommand(

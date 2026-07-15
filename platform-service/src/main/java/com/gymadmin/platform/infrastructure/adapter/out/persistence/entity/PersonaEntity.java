@@ -22,6 +22,12 @@ public class PersonaEntity extends BaseAuditEntity {
     @Column("ci")
     private String ci;
 
+    // true cuando ci pasó el algoritmo del dígito verificador ecuatoriano (módulo 10).
+    // Se calcula al crear la persona; false por defecto (o cuando el documento no es una
+    // cédula ecuatoriana válida). Ver domain/validation/CedulaEcuatoriana.
+    @Column("ci_validada")
+    private Boolean ciValidada;
+
     @Column("nombre")
     private String nombre;
 

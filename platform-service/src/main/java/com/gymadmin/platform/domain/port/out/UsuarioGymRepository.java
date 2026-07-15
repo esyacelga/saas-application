@@ -16,4 +16,7 @@ public interface UsuarioGymRepository {
     );
 
     Mono<Boolean> existeCorreo(Long idCompania, String correo);
+
+    // Verificación global de correo (llave de login), independiente de la compañía.
+    Mono<Boolean> existeCorreoGlobal(String correo);
 }

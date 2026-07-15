@@ -31,6 +31,9 @@ public class SecurityConfig {
                         .pathMatchers("/api/v1/modulos/check").permitAll()
                         .pathMatchers("/api/v1/planes/publicos").permitAll()
                         .pathMatchers("/api/v1/companias/auto-registro").permitAll()
+                        // Verificación de disponibilidad de correo desde el registro público
+                        // (onBlur, antes del submit). Público como el propio auto-registro.
+                        .pathMatchers("/api/v1/companias/correo-disponible").permitAll()
                         .pathMatchers("/actuator/health").permitAll()
                         // REQ-SAAS-001 (Sub-fase 1.4): endpoints internos protegidos
                         // por header X-Internal-Call — están fuera del filtro JWT.

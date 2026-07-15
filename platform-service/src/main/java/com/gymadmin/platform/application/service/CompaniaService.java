@@ -148,14 +148,40 @@ public class CompaniaService implements CompaniaUseCase {
         // El RUC es opcional en el auto-registro público (la columna es nullable).
         // Solo validamos duplicado cuando efectivamente viene un RUC; con RUC ausente
         // no hay nada que chocar y varias compañías pueden quedar sin RUC.
-        if (command.ruc() == null || command.ruc().isBlank()) {
-            return registro;
-        }
+        Mono<RegistrarGymWizardResult> registroConRuc =
+                (command.ruc() == null || command.ruc().isBlank())
+                        ? registro
+                        : companiaRepository.findByRuc(command.ruc())
+                                .flatMap(existing -> Mono.<RegistrarGymWizardResult>error(
+                                        new ConflictException("Company with RUC '" + command.ruc() + "' already exists", "ruc")))
+                                .switchIfEmpty(registro);
 
-        return companiaRepository.findByRuc(command.ruc())
-                .flatMap(existing -> Mono.<RegistrarGymWizardResult>error(
-                        new ConflictException("Company with RUC '" + command.ruc() + "' already exists", "ruc")))
-                .switchIfEmpty(registro);
+        // El correo del usuario principal es la llave de login: debe ser único a nivel
+        // global. Se valida ANTES de crear nada para que el front reciba un 409 con
+        // conflicto='correo' (y muestre "este correo ya está registrado") en vez de un
+        // error de BD genérico. Los usuarios adicionales se validan en su propio flujo.
+        return validarCorreoPrincipalDisponible(command)
+                .then(registroConRuc);
+    }
+
+    @Override
+    public Mono<Boolean> correoEnUso(String correo) {
+        if (correo == null || correo.isBlank()) {
+            return Mono.just(false);
+        }
+        return usuarioGymRepository.existeCorreoGlobal(correo);
+    }
+
+    private Mono<Void> validarCorreoPrincipalDisponible(RegistrarGymWizardCommand command) {
+        UsuarioWizardCommand principal = command.usuarioPrincipal();
+        if (principal == null || principal.correo() == null || principal.correo().isBlank()) {
+            return Mono.empty();
+        }
+        return usuarioGymRepository.existeCorreoGlobal(principal.correo())
+                .flatMap(existe -> Boolean.TRUE.equals(existe)
+                        ? Mono.error(new ConflictException(
+                                "A user with email '" + principal.correo() + "' already exists", "correo"))
+                        : Mono.empty());
     }
 
     private Mono<RegistrarGymWizardResult> ejecutarRegistroWizard(

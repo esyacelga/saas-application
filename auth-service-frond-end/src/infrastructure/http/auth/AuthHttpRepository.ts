@@ -295,6 +295,13 @@ export class AuthHttpRepository implements AuthRepositoryPort {
   autoRegistro(body: AutoRegistroRequest): Promise<AutoRegistroResponse> {
     return platformPublicApi.post<AutoRegistroResponse>('/companias/auto-registro', body).then(r => r.data)
   }
+
+  // Verificación pública de correo para el registro (onBlur). true = ya está en uso.
+  correoEnUso(correo: string): Promise<boolean> {
+    return platformPublicApi
+      .get<{ disponible: boolean; existe: boolean }>('/companias/correo-disponible', { params: { correo } })
+      .then(r => r.data.existe)
+  }
 }
 
 export const authRepository = new AuthHttpRepository()

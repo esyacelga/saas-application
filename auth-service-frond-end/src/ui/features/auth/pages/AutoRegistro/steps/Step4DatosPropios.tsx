@@ -1,7 +1,8 @@
 import type { UseFormReturn } from 'react-hook-form'
 import { useState } from 'react'
-import { Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { Eye, EyeOff, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { z } from 'zod'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PasswordStrength } from '@/ui/features/auth/components/PasswordStrength'
@@ -10,18 +11,50 @@ import type { AutoRegistroStep4Form } from '../../../schemas/auto-registro-wizar
 interface Props {
   form: UseFormReturn<AutoRegistroStep4Form>
   serverError?: { tipo: 'correo' | 'ci' | string } | null
+  // Verificación de disponibilidad de correo (onBlur). true = ya está en uso.
+  onCheckCorreo?: (correo: string) => Promise<boolean>
 }
+
+// Estado de la verificación asíncrona del correo (onBlur, contra el backend).
+type CorreoCheck =
+  | { estado: 'idle' }
+  | { estado: 'checking' }
+  | { estado: 'disponible' }
+  | { estado: 'en_uso' }
+
+const emailFormato = z.string().email()
 
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null
   return <p className="text-xs mt-1" style={{ color: '#ef4444' }}>{msg}</p>
 }
 
-export function Step4DatosPropios({ form, serverError }: Props) {
+export function Step4DatosPropios({ form, serverError, onCheckCorreo }: Props) {
   const { register, watch, formState: { errors } } = form
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [correoCheck, setCorreoCheck] = useState<CorreoCheck>({ estado: 'idle' })
   const password = watch('password') ?? ''
+
+  // Al salir del campo correo: si el formato es válido, consulta al backend si ya existe.
+  // Puramente informativo — no bloquea el submit (el 409 del envío es la barrera dura).
+  const handleCorreoBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
+    const correo = e.target.value.trim()
+    if (!correo || !emailFormato.safeParse(correo).success || !onCheckCorreo) {
+      setCorreoCheck({ estado: 'idle' })
+      return
+    }
+    setCorreoCheck({ estado: 'checking' })
+    try {
+      const enUso = await onCheckCorreo(correo)
+      setCorreoCheck({ estado: enUso ? 'en_uso' : 'disponible' })
+    } catch {
+      // Si la verificación falla (red, etc.), no molestamos: el submit igual valida.
+      setCorreoCheck({ estado: 'idle' })
+    }
+  }
+
+  const correoRegister = register('correo')
 
   return (
     <div className="space-y-4">
@@ -88,15 +121,36 @@ export function Step4DatosPropios({ form, serverError }: Props) {
             Correo electrónico <span style={{ color: '#ef4444' }}>*</span>
           </Label>
           <Input
-            {...register('correo')}
+            {...correoRegister}
+            onBlur={(e) => { correoRegister.onBlur(e); void handleCorreoBlur(e) }}
+            onChange={(e) => { correoRegister.onChange(e); if (correoCheck.estado !== 'idle') setCorreoCheck({ estado: 'idle' }) }}
             type="email"
             placeholder="tu@correo.com"
             className="mt-1.5"
             style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-text)' }}
           />
-          <p className="text-xs mt-1" style={{ color: 'var(--page-muted)' }}>
-            Este correo será tu usuario de acceso al panel.
-          </p>
+          {correoCheck.estado === 'checking' && (
+            <p className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--page-muted)' }}>
+              <Loader2 size={12} className="animate-spin" /> Verificando correo…
+            </p>
+          )}
+          {correoCheck.estado === 'en_uso' && (
+            <p className="text-xs mt-1 flex items-center gap-1.5" style={{ color: '#b91c1c' }}>
+              <AlertCircle size={12} />
+              Este correo ya está registrado.{' '}
+              <Link to="/login" className="font-semibold underline">Inicia sesión →</Link>
+            </p>
+          )}
+          {correoCheck.estado === 'disponible' && (
+            <p className="text-xs mt-1 flex items-center gap-1" style={{ color: '#16a34a' }}>
+              <CheckCircle2 size={12} /> Correo disponible.
+            </p>
+          )}
+          {correoCheck.estado === 'idle' && (
+            <p className="text-xs mt-1" style={{ color: 'var(--page-muted)' }}>
+              Este correo será tu usuario de acceso al panel.
+            </p>
+          )}
           <FieldError msg={errors.correo?.message} />
         </div>
 

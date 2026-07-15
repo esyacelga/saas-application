@@ -37,4 +37,11 @@ public class UsuarioGymPersistenceAdapter implements UsuarioGymRepository {
                 .map(u -> true)
                 .defaultIfEmpty(false);
     }
+
+    @Override
+    public Mono<Boolean> existeCorreoGlobal(String correo) {
+        return repo.findFirstByCorreoAndEliminadoFalse(correo)
+                .map(u -> true)
+                .defaultIfEmpty(false);
+    }
 }

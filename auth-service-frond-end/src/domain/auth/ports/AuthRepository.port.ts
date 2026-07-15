@@ -95,4 +95,7 @@ export interface AuthRepositoryPort {
 
   // Auto-registro público
   autoRegistro(body: AutoRegistroRequest): Promise<AutoRegistroResponse>
+
+  // Verificación pública de correo (onBlur en el registro). true = ya está en uso.
+  correoEnUso(correo: string): Promise<boolean>
 }

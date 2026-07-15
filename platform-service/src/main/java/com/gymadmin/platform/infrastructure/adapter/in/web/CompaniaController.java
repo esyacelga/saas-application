@@ -153,6 +153,16 @@ public class CompaniaController {
                 ));
     }
 
+    @Operation(summary = "Verificar disponibilidad de correo (público, para el registro)")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Devuelve si el correo ya está en uso")
+    })
+    @GetMapping("/correo-disponible")
+    public Mono<CorreoDisponibleResponse> correoDisponible(@RequestParam("correo") String correo) {
+        return companiaUseCase.correoEnUso(correo)
+                .map(enUso -> new CorreoDisponibleResponse(!enUso, enUso));
+    }
+
     @Operation(summary = "Registro wizard de gimnasio con usuarios (super_admin)", security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "Gimnasio y usuarios creados"),

@@ -1,6 +1,7 @@
 package com.gymadmin.platform.infrastructure.adapter.out.persistence.adapter;
 
 import com.gymadmin.platform.domain.port.out.PersonaRepository;
+import com.gymadmin.platform.domain.validation.CedulaEcuatoriana;
 import com.gymadmin.platform.infrastructure.adapter.out.persistence.entity.PersonaEntity;
 import com.gymadmin.platform.infrastructure.adapter.out.persistence.repository.PersonaR2dbcRepository;
 import org.springframework.stereotype.Component;
@@ -25,6 +26,10 @@ public class PersonaPersistenceAdapter implements PersonaRepository {
                 .switchIfEmpty(Mono.defer(() -> {
                     PersonaEntity entity = new PersonaEntity();
                     entity.setCi(ci);
+                    // Marca la identidad como validada solo si la cédula pasa el algoritmo
+                    // del dígito verificador ecuatoriano. Cualquier otro documento (o typo)
+                    // queda en false; no se rechaza el registro por esto.
+                    entity.setCiValidada(CedulaEcuatoriana.esValida(ci));
                     entity.setNombre(nombre);
                     entity.setCorreo(correo);
                     entity.setTelefono(telefono);

@@ -1,5 +1,5 @@
 import type { UseFormReturn } from 'react-hook-form'
-import { Mail } from 'lucide-react'
+import { Mail, MapPin } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { AutoRegistroStep1Form } from '../../../schemas/auto-registro-wizard.schema'
@@ -52,6 +52,22 @@ export function Step1Empresa({ form }: Props) {
             style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-text)' }}
           />
           <FieldError msg={errors.correo?.message} />
+        </div>
+
+        <div>
+          <Label className="text-xs font-medium" style={{ color: 'var(--page-text)' }}>
+            <MapPin size={12} className="inline mr-1 opacity-60" />
+            Dirección <span style={{ color: 'var(--page-muted)', fontWeight: 400 }}>(opcional)</span>
+          </Label>
+          <Input
+            {...register('direccion')}
+            placeholder="Av. Amazonas N23-45..."
+            className="mt-1.5"
+            style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-text)' }}
+          />
+          <p className="text-xs mt-1" style={{ color: 'var(--page-muted)' }}>
+            ¿Dónde entrenan tus clientes? Podrás cambiarla o agregar más locales desde el panel.
+          </p>
         </div>
       </div>
     </div>
