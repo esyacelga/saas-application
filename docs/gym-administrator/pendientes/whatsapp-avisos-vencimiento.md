@@ -1,10 +1,11 @@
 # Pendiente — Avisos por WhatsApp de vencimiento (socios y dueños)
 
-> **Estado:** 🟢 **Fase 1 cerrada (1 de 6)** — migración de consentimiento `202607_GYM-002` aplicada y
-> verificada (IT verdes en auth + platform). Siguiente entrada: **Fase 2** (adaptador Meta + E.164) y/o
-> **Fase 4** (endpoint core), ambas dependientes solo de Fase 1. Plan de **6 fases testeables** + **issues
-> de arquitectura** rastreados al final del documento.
-> **Fecha:** 2026-07-15 (revisión de arquitectura + plan de fases + Fase 1 el mismo día).
+> **Estado:** 🟢 **Fases 1 y 2 cerradas (2 de 6)** — migración de consentimiento `202607_GYM-002` +
+> adaptador Meta/normalizador E.164 en platform-service, todo verificado con tests verdes. Siguiente:
+> **Fase 3** (cablear la cola WhatsApp del dueño → primer WhatsApp real; depende de 1 y 2) y/o **Fase 4**
+> (endpoint core; depende solo de 1). Plan de **6 fases testeables** + **issues de arquitectura** rastreados
+> al final del documento.
+> **Fecha:** 2026-07-15 (revisión de arquitectura + plan de fases + Fases 1 y 2 el mismo día).
 > **Área:** attendance-service (socios/membresía) · core-service (lista de clientes por vencer) · platform-service (dueños/suscripción SaaS) · identidad/tenant (teléfono + consentimiento).
 > **Prioridad:** media-alta — función de retención/cobranza que hoy queda a medias (se registra el mensaje pero nunca sale del sistema).
 
@@ -598,10 +599,13 @@ Ruta de menor riesgo, entregando valor incremental:
       a email **solo** aplica cuando el tenant eligió `ambos`. Si el canal es solo `whatsapp` y no hay
       opt-in → no se envía nada (respeta la elección explícita del tenant); para tener respaldo el tenant
       debe configurar `ambos`.
-- [ ] **R5 — Timeouts y clasificación de errores del `MetaWhatsAppAdapter` (fase 2).** `WebClient` con
-      timeout de conexión (5s) y lectura (10s). Distinguir **retryables** (429, 5xx, timeout) de
-      **no-retryables** (400 `error.code=131047` sin consentimiento, `132000` plantilla no aprobada) →
-      los no-retryables van a `fallido` sin backoff. Loggear `error.code` de Meta en `ultimo_error`.
+- [x] **R5 — Timeouts y clasificación de errores del `MetaWhatsAppAdapter` (fase 2).** ✅ **Resuelto en
+      Fase 2.** `WebClient` sobre `HttpClient` de Reactor Netty con timeout de conexión (5s,
+      `CONNECT_TIMEOUT_MILLIS`) y lectura (10s, `ReadTimeoutHandler`). `WhatsAppSendException(retryable,
+      metaErrorCode)` clasifica: **retryable** = 429 + 5xx + errores de transporte/timeout; **no-retryable**
+      = resto de 4xx de negocio (con `error.code` de Meta, p. ej. `131047`). El `error.code` queda en el
+      mensaje para loggearlo en `ultimo_error`. Verificado por IT (429→retryable, 400 `131047`→no-retryable,
+      5xx→retryable).
 
 ### Menores
 
@@ -673,7 +677,21 @@ Crear/verificar WABA + `phone_number_id` y **subir las plantillas HSM a aprobaci
 - **Aceptación:** los 5 tests verdes; el servicio arranca sin env vars de Meta; el adaptador es
   inyectable como `WhatsAppSender`.
 - **Depende de:** nada (paralela a Fase 1). Resuelve **R5**.
-- [ ] Fase 2 cerrada.
+- [x] **Fase 2 cerrada** (2026-07-15). Archivos nuevos en platform-service: puerto
+      `domain/port/out/WhatsAppSender`, `domain/exception/WhatsAppSendException` (retryable + metaErrorCode),
+      `domain/validation/PhoneNumberE164Normalizer` (puro/estático, `Optional<String>`), adaptador
+      `infrastructure/adapter/out/whatsapp/MetaWhatsAppAdapter` (WebClient + Reactor Netty timeouts, fallback
+      WARN si faltan `META_PHONE_NUMBER_ID`/`META_ACCESS_TOKEN`). Env vars leídas: `META_API_BASE_URL`,
+      `META_API_VERSION` (default `v21.0`), `META_PHONE_NUMBER_ID`, `META_ACCESS_TOKEN`. Dependencia test
+      nueva: `okhttp3:mockwebserver` (test-scope). **No** se cablea al job todavía (eso es Fase 3). Tests
+      verdes: `PhoneNumberE164NormalizerTest` (15/0/0) y `MetaWhatsAppAdapterTest` (5/0/0 — request bien
+      formado, 429 retryable, 400 `131047` no-retryable, 5xx retryable, sin-credenciales→WARN+empty). El
+      servicio arranca sin las env vars de Meta (bean inyectable, flag `configurado`).
+      > ✅ **Deuda ajena resuelta:** `AprobarPagoServiceTest.aprobacionInmediataOk` fallaba con NPE porque el
+      > mock `CompaniaPlanRepository.findActivoByIdCompania` no estaba stubeado. El servicio, en activación
+      > **no** programada, llama `reemplazarActivoPrevio` → `findActivoByIdCompania` (lógica añadida por
+      > `d48b283` billing/SRI) y el test no se había actualizado. Fix: stub `findActivoByIdCompania(5L) →
+      > Mono.empty()` (sin plan previo que reemplazar). Suite completa ahora **238/0/0** verde.
 
 ### Fase 3 — Cola WhatsApp del dueño (bloque D-dueño) · *primer WhatsApp real*
 

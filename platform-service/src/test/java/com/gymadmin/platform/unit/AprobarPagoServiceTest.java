@@ -81,6 +81,10 @@ class AprobarPagoServiceTest {
                 .thenReturn(Mono.just(1L));
         when(pagoRepository.findById(eq(1L))).thenReturn(Mono.just(pago));
         when(planRepository.findById(eq(300L))).thenReturn(Mono.just(premium));
+        // Activación inmediata (no programada): el servicio busca la suscripción activa
+        // previa para marcarla REEMPLAZADA antes de guardar la nueva. Sin plan previo,
+        // findActivoByIdCompania devuelve empty y reemplazarActivoPrevio completa sin tocar nada.
+        when(companiaPlanRepository.findActivoByIdCompania(eq(5L))).thenReturn(Mono.empty());
         when(companiaPlanRepository.save(any(CompaniaPlan.class))).thenAnswer(inv -> {
             CompaniaPlan cp = inv.getArgument(0);
             cp.setId(500L);
