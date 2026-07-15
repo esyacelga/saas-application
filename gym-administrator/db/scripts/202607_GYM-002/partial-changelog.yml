@@ -1,0 +1,24 @@
+databaseChangeLog:
+
+  # ── GYM-002 · Consentimiento (opt-in) para avisos por WhatsApp ────────────────
+  # Añade acepta_whatsapp + fecha_consentimiento_wa a identidad.personas y
+  # tenant.companias. Story incremental sobre la baseline GYM-001.
+
+  - changeSet:
+      id: GYM-002-1
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/01_add_consentimiento_whatsapp.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+      rollback:
+        - sql:
+            sql: >-
+              ALTER TABLE identidad.personas
+                DROP COLUMN acepta_whatsapp,
+                DROP COLUMN fecha_consentimiento_wa;
+              ALTER TABLE tenant.companias
+                DROP COLUMN acepta_whatsapp,
+                DROP COLUMN fecha_consentimiento_wa;

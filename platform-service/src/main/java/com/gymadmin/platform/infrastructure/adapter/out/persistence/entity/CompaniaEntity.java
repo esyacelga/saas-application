@@ -50,4 +50,12 @@ public class CompaniaEntity extends BaseAuditEntity {
 
     @Column("fecha_trial_usado")
     private OffsetDateTime fechaTrialUsado;
+
+    // GYM-002: opt-in para avisos de vencimiento por WhatsApp. FALSE por defecto:
+    // sin este flag NUNCA se envía WhatsApp al dueño (evita bloqueo del número por Meta).
+    @Column("acepta_whatsapp")
+    private Boolean aceptaWhatsapp;
+
+    @Column("fecha_consentimiento_wa")
+    private OffsetDateTime fechaConsentimientoWa;
 }

@@ -127,4 +127,57 @@ class CompaniaR2dbcRepositoryIT extends BaseIntegrationTest {
                     .verifyComplete();
         }
     }
+
+    // ── TC-PLATFORM-REPO-004 (GYM-002 · consentimiento WhatsApp) ──────────────
+
+    @Nested
+    @DisplayName("consentimiento WhatsApp")
+    class ConsentimientoWhatsApp {
+
+        @Test
+        @DisplayName("compañía nueva sin especificar → acepta_whatsapp = FALSE, fecha = NULL")
+        void save_sinOptIn_quedaNoConsentido() {
+            CompaniaEntity entity = CompaniaEntity.builder()
+                    .nombre("Gym Sin Opt-in")
+                    .activo(true)
+                    .trialUsado(false)
+                    .creacionUsuario("test")
+                    .eliminado(false)
+                    .build();
+
+            StepVerifier.create(companiaRepository.save(entity)
+                    .flatMap(saved -> companiaRepository.findById(saved.getId())))
+                    .assertNext(found -> {
+                        assert Boolean.FALSE.equals(found.getAceptaWhatsapp())
+                                : "el DEFAULT FALSE debe dejar acepta_whatsapp en false";
+                        assert found.getFechaConsentimientoWa() == null
+                                : "fecha_consentimiento_wa debe quedar NULL sin opt-in";
+                    })
+                    .verifyComplete();
+        }
+
+        @Test
+        @DisplayName("compañía con opt-in explícito → se relee acepta_whatsapp = TRUE + fecha")
+        void save_conOptIn_seRelee() {
+            CompaniaEntity entity = CompaniaEntity.builder()
+                    .nombre("Gym Con Opt-in")
+                    .activo(true)
+                    .trialUsado(false)
+                    .aceptaWhatsapp(true)
+                    .fechaConsentimientoWa(java.time.OffsetDateTime.now())
+                    .creacionUsuario("test")
+                    .eliminado(false)
+                    .build();
+
+            StepVerifier.create(companiaRepository.save(entity)
+                    .flatMap(saved -> companiaRepository.findById(saved.getId())))
+                    .assertNext(found -> {
+                        assert Boolean.TRUE.equals(found.getAceptaWhatsapp())
+                                : "acepta_whatsapp debe persistir en true";
+                        assert found.getFechaConsentimientoWa() != null
+                                : "fecha_consentimiento_wa debe persistir";
+                    })
+                    .verifyComplete();
+        }
+    }
 }

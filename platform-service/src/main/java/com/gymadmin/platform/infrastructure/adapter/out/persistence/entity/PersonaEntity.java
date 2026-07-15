@@ -7,6 +7,7 @@ import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 
 @Table("identidad.personas")
 @Getter
@@ -42,4 +43,12 @@ public class PersonaEntity extends BaseAuditEntity {
 
     @Column("fecha_nacimiento")
     private LocalDate fechaNacimiento;
+
+    // GYM-002: opt-in del socio para avisos por WhatsApp. FALSE por defecto:
+    // sin este flag NUNCA se envía WhatsApp (evita bloqueo del número por Meta).
+    @Column("acepta_whatsapp")
+    private Boolean aceptaWhatsapp;
+
+    @Column("fecha_consentimiento_wa")
+    private OffsetDateTime fechaConsentimientoWa;
 }

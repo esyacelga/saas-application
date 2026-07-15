@@ -17,6 +17,10 @@ public class Compania {
     private boolean trialUsado;
     private Instant fechaTrialUsado;
 
+    // GYM-002: opt-in del dueño para avisos de vencimiento por WhatsApp.
+    private boolean aceptaWhatsapp;
+    private Instant fechaConsentimientoWa;
+
     public Compania() {}
 
     public Compania(Long id, String nombre, String ruc, String logoUrl, String telefono,
@@ -60,4 +64,10 @@ public class Compania {
 
     public Instant getFechaTrialUsado() { return fechaTrialUsado; }
     public void setFechaTrialUsado(Instant fechaTrialUsado) { this.fechaTrialUsado = fechaTrialUsado; }
+
+    public boolean isAceptaWhatsapp() { return aceptaWhatsapp; }
+    public void setAceptaWhatsapp(boolean aceptaWhatsapp) { this.aceptaWhatsapp = aceptaWhatsapp; }
+
+    public Instant getFechaConsentimientoWa() { return fechaConsentimientoWa; }
+    public void setFechaConsentimientoWa(Instant fechaConsentimientoWa) { this.fechaConsentimientoWa = fechaConsentimientoWa; }
 }

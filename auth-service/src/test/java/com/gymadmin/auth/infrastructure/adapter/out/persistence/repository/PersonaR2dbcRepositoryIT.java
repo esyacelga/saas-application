@@ -333,6 +333,56 @@ class PersonaR2dbcRepositoryIT extends IntegrationTestBase {
     }
 
     @Nested
+    @DisplayName("consentimiento WhatsApp (GYM-002)")
+    class ConsentimientoWhatsApp {
+
+        @Test
+        @DisplayName("persona nueva sin especificar → acepta_whatsapp = FALSE, fecha = NULL")
+        void save_sinOptIn_quedaNoConsentido() {
+            PersonaEntity persona = PersonaEntity.builder()
+                    .ci(UUID.randomUUID().toString().substring(0, 10))
+                    .nombre("Sofía Vega")
+                    .creacionFecha(OffsetDateTime.now())
+                    .creacionUsuario("test")
+                    .build();
+
+            StepVerifier.create(repository.save(persona)
+                    .flatMap(saved -> repository.findById(saved.getId())))
+                    .assertNext(retrieved -> {
+                        assert Boolean.FALSE.equals(retrieved.getAceptaWhatsapp())
+                                : "el DEFAULT FALSE debe dejar acepta_whatsapp en false";
+                        assert retrieved.getFechaConsentimientoWa() == null
+                                : "fecha_consentimiento_wa debe quedar NULL sin opt-in";
+                    })
+                    .verifyComplete();
+        }
+
+        @Test
+        @DisplayName("persona con opt-in explícito → se relee acepta_whatsapp = TRUE + fecha")
+        void save_conOptIn_seRelee() {
+            OffsetDateTime consentimiento = OffsetDateTime.now();
+            PersonaEntity persona = PersonaEntity.builder()
+                    .ci(UUID.randomUUID().toString().substring(0, 10))
+                    .nombre("Marco Díaz")
+                    .aceptaWhatsapp(true)
+                    .fechaConsentimientoWa(consentimiento)
+                    .creacionFecha(OffsetDateTime.now())
+                    .creacionUsuario("test")
+                    .build();
+
+            StepVerifier.create(repository.save(persona)
+                    .flatMap(saved -> repository.findById(saved.getId())))
+                    .assertNext(retrieved -> {
+                        assert Boolean.TRUE.equals(retrieved.getAceptaWhatsapp())
+                                : "acepta_whatsapp debe persistir en true";
+                        assert retrieved.getFechaConsentimientoWa() != null
+                                : "fecha_consentimiento_wa debe persistir";
+                    })
+                    .verifyComplete();
+        }
+    }
+
+    @Nested
     @DisplayName("deleteById")
     class DeleteById {
 

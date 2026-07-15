@@ -14,6 +14,7 @@ public final class PersonaMapper {
                 .id(e.getId()).ci(e.getCi()).nombre(e.getNombre())
                 .telefono(e.getTelefono()).correo(e.getCorreo())
                 .fotoUrl(e.getFotoUrl()).sexo(e.getSexo()).fechaNacimiento(e.getFechaNacimiento())
+                .aceptaWhatsapp(e.getAceptaWhatsapp()).fechaConsentimientoWa(e.getFechaConsentimientoWa())
                 .creacionFecha(e.getCreacionFecha()).creacionUsuario(e.getCreacionUsuario())
                 .modificaFecha(e.getModificaFecha()).modificaUsuario(e.getModificaUsuario())
                 .build();

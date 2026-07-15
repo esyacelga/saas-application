@@ -83,6 +83,10 @@ public class CompaniaPersistenceAdapter implements CompaniaRepository {
         if (entity.getFechaTrialUsado() != null) {
             c.setFechaTrialUsado(entity.getFechaTrialUsado().toInstant());
         }
+        c.setAceptaWhatsapp(Boolean.TRUE.equals(entity.getAceptaWhatsapp()));
+        if (entity.getFechaConsentimientoWa() != null) {
+            c.setFechaConsentimientoWa(entity.getFechaConsentimientoWa().toInstant());
+        }
         return c;
     }
 
@@ -99,6 +103,10 @@ public class CompaniaPersistenceAdapter implements CompaniaRepository {
         entity.setTrialUsado(c.isTrialUsado());
         if (c.getFechaTrialUsado() != null) {
             entity.setFechaTrialUsado(OffsetDateTime.ofInstant(c.getFechaTrialUsado(), ZoneOffset.UTC));
+        }
+        entity.setAceptaWhatsapp(c.isAceptaWhatsapp());
+        if (c.getFechaConsentimientoWa() != null) {
+            entity.setFechaConsentimientoWa(OffsetDateTime.ofInstant(c.getFechaConsentimientoWa(), ZoneOffset.UTC));
         }
         return entity;
     }
