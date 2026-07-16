@@ -9,6 +9,7 @@ import {
     ClipboardList,
     Clock,
     Layers,
+    Rocket,
     Settings2,
     UserPlus,
     Users,
@@ -23,6 +24,9 @@ import {coreRepository} from '@/infrastructure/http/core/CoreRepository'
 import type {Compania} from '@/domain/platform/entities/Plan.entity'
 import {cn} from '@/lib/utils'
 import {VenderMembresiaModal} from '@/ui/features/core/components/VenderMembresiaModal'
+import {useOnboardingStore} from '@/infrastructure/store/onboarding/onboarding.store'
+import {useAuthStore, useHasPermission} from '@/infrastructure/store/auth/auth.store'
+import type {JwtPayloadStaff} from '@/domain/auth/entities/User.entity'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -541,10 +545,134 @@ function ProximosVencerPanel({total, onClose, onRenovada}: ProximosVencerPanelPr
     )
 }
 
+// ── Onboarding Checklist ──────────────────────────────────────────────────────
+
+function OnboardingChecklist() {
+    const {t} = useTranslation()
+    const {totalTipos, totalClientes, checklistOculto, cargado, marcarOculto} = useOnboardingStore()
+    const user = useAuthStore(s => s.user)
+    const canCreate = useHasPermission('membresias:leer')
+
+    if (!user || user.tipo !== 'staff' || !cargado || totalTipos !== 0 || checklistOculto) {
+        return null
+    }
+
+    return (
+        <div
+            className="rounded-lg p-4"
+            style={{
+                background: 'var(--page-surface)',
+                border: '1px solid var(--page-border)',
+                borderLeft: '3px solid #f97316',
+            }}
+        >
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-2 flex-1 min-w-0">
+                    <Rocket size={16} style={{color: '#f97316', flexShrink: 0, marginTop: '2px'}} />
+                    <div className="min-w-0">
+                        <p className="text-sm font-semibold" style={{color: 'var(--page-text)'}}>
+                            {t('onboarding.titulo')}
+                        </p>
+                        <p className="text-xs mt-0.5" style={{color: 'var(--page-muted)'}}>
+                            {t('onboarding.subtitulo')}
+                        </p>
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    onClick={marcarOculto}
+                    className="p-1 rounded transition-colors hover:opacity-70 flex-shrink-0"
+                    style={{color: 'var(--page-muted)'}}
+                    aria-label={t('onboarding.cerrar')}
+                >
+                    <X size={14} />
+                </button>
+            </div>
+
+            {/* Divider */}
+            <div className="my-3 border-t" style={{borderColor: 'var(--page-border)'}} />
+
+            {/* Paso 1 */}
+            <div className="flex items-start gap-3 mb-3">
+                <div className="flex-shrink-0 mt-0.5">
+                    {totalTipos === 0 ? (
+                        <div
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                            style={{background: '#f97316'}}
+                        >
+                            1
+                        </div>
+                    ) : (
+                        <CheckCircle2 size={24} style={{color: '#22c55e'}} />
+                    )}
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold" style={{color: 'var(--page-text)'}}>
+                        {t('onboarding.paso1Label')}
+                    </p>
+                    <p className="text-xs mt-0.5" style={{color: 'var(--page-muted)'}}>
+                        {t('onboarding.paso1Desc')}
+                    </p>
+                </div>
+                <div className="flex-shrink-0">
+                    {canCreate ? (
+                        <Link
+                            to="/admin/tipos-membresia"
+                            className="text-xs font-semibold"
+                            style={{color: '#f97316'}}
+                        >
+                            {t('onboarding.paso1Cta')}
+                        </Link>
+                    ) : (
+                        <p className="text-xs" style={{color: 'var(--page-muted)'}}>
+                            {t('onboarding.paso1SinPermiso')}
+                        </p>
+                    )}
+                </div>
+            </div>
+
+            {/* Paso 2 */}
+            <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 mt-0.5">
+                    {totalClientes === 0 ? (
+                        <div
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                            style={{background: 'var(--page-muted)'}}
+                        >
+                            2
+                        </div>
+                    ) : (
+                        <CheckCircle2 size={24} style={{color: '#22c55e'}} />
+                    )}
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold" style={{color: 'var(--page-text)'}}>
+                        {t('onboarding.paso2Label')}
+                    </p>
+                    <p className="text-xs mt-0.5" style={{color: 'var(--page-muted)'}}>
+                        {t('onboarding.paso2Desc')}
+                    </p>
+                </div>
+                <div className="flex-shrink-0">
+                    <Link
+                        to="/admin/clientes"
+                        className="text-xs font-semibold"
+                        style={{color: '#f97316'}}
+                    >
+                        {t('onboarding.paso2Cta')}
+                    </Link>
+                </div>
+            </div>
+        </div>
+    )
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export function DashboardPage() {
     const {t} = useTranslation()
+    const user = useAuthStore(s => s.user)
     const [loading, setLoading] = useState(true)
     const [state, setState] = useState<DashboardState>({
         empresa: null, hoy: null, stats: null,
@@ -552,6 +680,13 @@ export function DashboardPage() {
     })
     const [showPanel, setShowPanel] = useState(false)
     const [showProximosPanel, setShowProximosPanel] = useState(false)
+
+    // Hydrate onboarding store on mount
+    useEffect(() => {
+        if (!user || user.tipo !== 'staff') return
+        const idCompania = (user as JwtPayloadStaff).id_compania
+        useOnboardingStore.getState().hidratarDesdeApi(idCompania)
+    }, [user])
 
     useEffect(() => {
         setLoading(true)
@@ -592,7 +727,7 @@ export function DashboardPage() {
         }))
     }, [])
 
-    const {empresa, hoy, stats, totalClientesActivos, sinSuscripcionTotal, proximosVencerTotal} = state
+    const {empresa, hoy, stats: _stats, totalClientesActivos, sinSuscripcionTotal, proximosVencerTotal} = state
     const planNombre = empresa?.planActivo?.nombre ?? t('dashboard.noPlan')
 
     const metodLabel = (m: string) =>
@@ -629,6 +764,9 @@ export function DashboardPage() {
                     </div>
                 </div>
             </div>
+
+            {/* ── Onboarding Checklist ───────────────────────────────────────────── */}
+            <OnboardingChecklist />
 
             {/* ── KPI cards ──────────────────────────────────────────────────────── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

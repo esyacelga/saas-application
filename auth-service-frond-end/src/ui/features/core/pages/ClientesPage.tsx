@@ -19,11 +19,15 @@ import type {
 import { attendanceRepository } from '@/infrastructure/http/attendance/AttendanceHttpRepository'
 import type { Ultimos30DiasAdminResult, AsistenciaAdminItem } from '@/infrastructure/http/attendance/AttendanceHttpRepository'
 import { getAvatarUrl } from '@/lib/avatar'
+import { useAuthStore, useHasPermission } from '@/infrastructure/store/auth/auth.store'
+import { useOnboardingStore } from '@/infrastructure/store/onboarding/onboarding.store'
+import type { JwtPayloadStaff } from '@/domain/auth/entities/User.entity'
 import { RegistrarClienteModal } from '../components/RegistrarClienteModal'
 import { VenderMembresiaModal } from '../components/VenderMembresiaModal'
 import { CongelarMembresiaModal } from '../components/CongelarMembresiaModal'
 import { CargarAsistenciasModal } from '../components/CargarAsistenciasModal'
 import { EditarClienteModal } from '../components/EditarClienteModal'
+import { SinTiposMembresiaBanner } from '../components/SinTiposMembresiaBanner'
 
 // ── Badges ───────────────────────────────────────────────────────────────────
 
@@ -58,22 +62,41 @@ function MembresiaActivaCard({
   onCargarHistorial: () => void
 }) {
   const { t } = useTranslation()
+  const puedeCrear = useHasPermission('membresias:leer')
+  const { totalTipos, tiposActivos, cargado } = useOnboardingStore()
 
-  if (!membresia) return (
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--page-muted)' }}>
-          {t('membresias.activaTitle')}
-        </p>
-        <Button label={t('membresias.venderTitle')} icon="pi pi-plus" severity="warning" size="small"
-          onClick={onVender} />
+  const tieneTiposActivos = tiposActivos > 0
+  const sinTipos = totalTipos === 0
+
+  if (!membresia) {
+    // Determine if we should show the banner
+    const showBanner = cargado && !tieneTiposActivos
+
+    return (
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--page-muted)' }}>
+            {t('membresias.activaTitle')}
+          </p>
+          {(!showBanner) && (
+            <Button label={t('membresias.venderTitle')} icon="pi pi-plus" severity="warning" size="small"
+              onClick={onVender} />
+          )}
+        </div>
+        {showBanner ? (
+          <SinTiposMembresiaBanner
+            caso={sinTipos ? 'sin_tipos' : 'todos_desactivados'}
+            canCreate={puedeCrear}
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <CreditCard size={28} className="mb-2" style={{ color: 'var(--page-border)' }} />
+            <p className="text-xs" style={{ color: 'var(--page-muted)' }}>{t('membresias.sinMembresia')}</p>
+          </div>
+        )}
       </div>
-      <div className="flex flex-col items-center justify-center py-8 text-center">
-        <CreditCard size={28} className="mb-2" style={{ color: 'var(--page-border)' }} />
-        <p className="text-xs" style={{ color: 'var(--page-muted)' }}>{t('membresias.sinMembresia')}</p>
-      </div>
-    </div>
-  )
+    )
+  }
 
   const isCongelada = membresia.estado === 'congelada'
   const isAccesos = membresia.modo_control === 'accesos'
@@ -586,10 +609,11 @@ function UsuarioAppTab({ ci }: { ci: string }) {
 
 // ── Página principal ─────────────────────────────────────────────────────────
 
-type DetTab = 'perfil' | 'membresia' | 'historial_mem' | 'congelamientos' | 'asistencias' | 'usuario_app'
+type DetTab = 'perfil' | 'datos_personales' | 'membresia' | 'historial_mem' | 'congelamientos' | 'asistencias' | 'usuario_app'
 
 export function ClientesPage() {
   const { t } = useTranslation()
+  const user = useAuthStore(s => s.user)
 
   // Lista
   const [clientes, setClientes] = useState<ClienteListItem[]>([])
@@ -622,6 +646,17 @@ export function ClientesPage() {
   const [congelarOpen, setCongelarOpen] = useState(false)
   const [cargarAsistOpen, setCargarAsistOpen] = useState(false)
   const [editarOpen, setEditarOpen] = useState(false)
+  const [editarSeccion, setEditarSeccion] = useState<'perfil' | 'datos_personales'>('perfil')
+
+  // Post-registro: auto-navegar al subtab membresía
+  const [nuevoClienteId, setNuevoClienteId] = useState<number | null>(null)
+
+  // Hydrate onboarding store on mount (idempotente)
+  useEffect(() => {
+    if (!user || user.tipo !== 'staff') return
+    const idCompania = (user as JwtPayloadStaff).id_compania
+    useOnboardingStore.getState().hidratarDesdeApi(idCompania)
+  }, [user])
 
   const cargarLista = useCallback(async () => {
     setLoading(true)
@@ -640,6 +675,19 @@ export function ClientesPage() {
   }, [globalFilter, filtroEstado, t])
 
   useEffect(() => { cargarLista() }, [cargarLista])
+
+  // Auto-navegar al detalle de membresía cuando se registra un cliente nuevo
+  useEffect(() => {
+    if (nuevoClienteId == null) return
+    const nuevo = clientes.find(c => c.id === nuevoClienteId)
+    if (nuevo) {
+      handleSelectCliente(nuevo)
+      setDetTab('membresia')
+      setActiveTab('detalle')
+      setNuevoClienteId(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientes, nuevoClienteId])
 
   const cargarDetalle = useCallback(async (cliente: ClienteListItem) => {
     setLoadingDetalle(true)
@@ -981,9 +1029,10 @@ export function ClientesPage() {
           {/* Sub-tabs detalle */}
           <div className="flex items-end gap-1 px-4 pt-2 flex-shrink-0"
             style={{ borderBottom: '1px solid var(--page-border)' }}>
-            {(['perfil', 'membresia', 'historial_mem', 'congelamientos', 'asistencias', 'usuario_app'] as DetTab[]).map(tab => {
+            {(['perfil', 'datos_personales', 'membresia', 'historial_mem', 'congelamientos', 'asistencias', 'usuario_app'] as DetTab[]).map(tab => {
               const icons: Record<DetTab, JSX.Element> = {
                 perfil: <User size={11} />,
+                datos_personales: <User size={11} />,
                 membresia: <CreditCard size={11} />,
                 historial_mem: <History size={11} />,
                 congelamientos: <Snowflake size={11} />,
@@ -992,6 +1041,7 @@ export function ClientesPage() {
               }
               const labels: Record<DetTab, string> = {
                 perfil: t('clientes.subTabPerfil'),
+                datos_personales: t('clientes.tabDatosPersonales'),
                 membresia: t('membresias.activaTitle'),
                 historial_mem: t('membresias.historialTitle'),
                 congelamientos: t('congelamientos.historialTitle'),
@@ -1034,7 +1084,7 @@ export function ClientesPage() {
                           size="small"
                           severity="warning"
                           text
-                          onClick={() => setEditarOpen(true)}
+                          onClick={() => { setEditarSeccion('perfil'); setEditarOpen(true) }}
                           pt={{ root: { className: '!text-[0.65rem] !px-2 !py-1' } }}
                         />
                       </IfPermission>
@@ -1063,21 +1113,39 @@ export function ClientesPage() {
                     <div className="rounded-lg p-3"
                       style={{ background: 'var(--page-surface)', border: '1px solid var(--page-border)' }}>
                       <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--page-muted)' }}>
-                        {t('clientes.sectionFisico')}
-                      </p>
-                      <div className="space-y-1 text-xs">
-                        <div><span style={{ color: 'var(--page-muted)' }}>{t('clientes.fieldPeso')}: </span><span style={{ color: 'var(--page-text)' }}>{detalle.peso_kg ?? '—'} kg</span></div>
-                        <div><span style={{ color: 'var(--page-muted)' }}>{t('clientes.fieldAltura')}: </span><span style={{ color: 'var(--page-text)' }}>{detalle.altura_cm ?? '—'} cm</span></div>
-                      </div>
-                    </div>
-                    <div className="rounded-lg p-3"
-                      style={{ background: 'var(--page-surface)', border: '1px solid var(--page-border)' }}>
-                      <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--page-muted)' }}>
                         {t('clientes.sectionGym')}
                       </p>
                       <div className="space-y-1 text-xs">
                         <div><span style={{ color: 'var(--page-muted)' }}>{t('clientes.fieldIngreso')}: </span><span style={{ color: 'var(--page-text)' }}>{detalle.fecha_ingreso}</span></div>
                         <div><span style={{ color: 'var(--page-muted)' }}>{t('clientes.fieldCarnet')}: </span><span style={{ color: 'var(--page-text)' }}>{detalle.codigo_carnet ?? '—'}</span></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {detTab === 'datos_personales' && detalle && (
+                  <div className="p-4 grid grid-cols-2 gap-4">
+                    <div className="col-span-2 flex justify-end">
+                      <IfPermission permiso="clientes:leer">
+                        <Button
+                          label={t('common.edit')}
+                          icon={<Pencil size={12} className="mr-1" />}
+                          size="small"
+                          severity="warning"
+                          text
+                          onClick={() => { setEditarSeccion('datos_personales'); setEditarOpen(true) }}
+                          pt={{ root: { className: '!text-[0.65rem] !px-2 !py-1' } }}
+                        />
+                      </IfPermission>
+                    </div>
+                    <div className="rounded-lg p-3"
+                      style={{ background: 'var(--page-surface)', border: '1px solid var(--page-border)' }}>
+                      <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--page-muted)' }}>
+                        {t('clientes.sectionFisico')}
+                      </p>
+                      <div className="space-y-1 text-xs">
+                        <div><span style={{ color: 'var(--page-muted)' }}>{t('clientes.fieldPeso')}: </span><span style={{ color: 'var(--page-text)' }}>{detalle.peso_kg ?? '—'} kg</span></div>
+                        <div><span style={{ color: 'var(--page-muted)' }}>{t('clientes.fieldAltura')}: </span><span style={{ color: 'var(--page-text)' }}>{detalle.altura_cm ?? '—'} cm</span></div>
                       </div>
                     </div>
                     {detalle.objetivos && (
@@ -1144,7 +1212,12 @@ export function ClientesPage() {
         open={registrarOpen}
         idSucursal={1}
         onClose={() => setRegistrarOpen(false)}
-        onRegistrado={id => { setRegistrarOpen(false); cargarLista(); toast.success(t('clientes.registerSuccess')) }}
+        onRegistrado={id => {
+          setRegistrarOpen(false)
+          setNuevoClienteId(id)
+          cargarLista()
+          toast.success(t('clientes.registerSuccess'))
+        }}
       />
 
       {seleccionado && detalle && (
@@ -1152,6 +1225,7 @@ export function ClientesPage() {
           open={editarOpen}
           detalle={detalle}
           onClose={() => setEditarOpen(false)}
+          seccion={editarSeccion}
           onGuardado={() => {
             setEditarOpen(false)
             cargarLista()

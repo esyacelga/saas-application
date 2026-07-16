@@ -27,6 +27,8 @@ public final class PersonaMapper {
                 .id(d.getId()).ci(d.getCi()).nombre(d.getNombre())
                 .telefono(d.getTelefono()).correo(d.getCorreo())
                 .fotoUrl(d.getFotoUrl()).sexo(d.getSexo()).fechaNacimiento(d.getFechaNacimiento())
+                .aceptaWhatsapp(d.getAceptaWhatsapp() != null ? d.getAceptaWhatsapp() : Boolean.FALSE)
+                .fechaConsentimientoWa(d.getFechaConsentimientoWa())
                 .creacionFecha(isNew ? now : d.getCreacionFecha())
                 .creacionUsuario(d.getCreacionUsuario() != null ? d.getCreacionUsuario() : "sistema")
                 .modificaFecha(isNew ? null : now)

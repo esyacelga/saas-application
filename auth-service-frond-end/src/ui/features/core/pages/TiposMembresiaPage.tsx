@@ -10,6 +10,8 @@ import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
 import { PageHeader } from '@/ui/components/PageHeader'
 import { coreRepository } from '@/infrastructure/http/core/CoreRepository'
 import type { TipoMembresia } from '@/infrastructure/http/core/core.dto'
+import { PLANTILLAS } from '@/ui/features/core/constants/tiposMembresia.plantillas'
+import type { PlantillaOption } from '@/ui/features/core/constants/tiposMembresia.plantillas'
 import { CrearTipoMembresiaModal } from '../components/CrearTipoMembresiaModal'
 import { EditarTipoMembresiaModal } from '../components/EditarTipoMembresiaModal'
 
@@ -41,7 +43,54 @@ function BadgeActivo({ activo }: { activo: boolean }) {
   )
 }
 
-function EmptyState({ onAdd }: { onAdd: () => void }) {
+interface EmptyStateEnriquecidoProps {
+  onSelectPlantilla: (p: PlantillaOption) => void
+  onAddSimple: () => void
+}
+
+function EmptyStateEnriquecido({ onSelectPlantilla, onAddSimple: _onAddSimple }: EmptyStateEnriquecidoProps) {
+  const { t } = useTranslation()
+  return (
+    <div className="flex flex-col items-center justify-center py-10 text-center">
+      <Tag size={36} className="mb-3" style={{ color: 'var(--page-border)' }} />
+      <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--page-text)' }}>
+        {t('tiposMembresia.emptyTitle')}
+      </p>
+      <p style={{ fontSize: '0.75rem', color: 'var(--page-muted)', marginTop: '4px' }}>
+        {t('tiposMembresia.emptySubtitle')}
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 max-w-2xl mx-auto w-full">
+        {PLANTILLAS.map(p => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => onSelectPlantilla(p)}
+            className={`flex items-start gap-2.5 p-3 rounded-lg text-left transition-all${p.colSpan ? ' sm:col-span-2' : ''}`}
+            style={{
+              background: 'var(--page-surface)',
+              border: '1px solid var(--page-border)',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#f97316' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--page-border)' }}
+          >
+            <span className="text-xl flex-shrink-0">{p.emoji}</span>
+            <div className="min-w-0 text-left">
+              <p className="text-xs font-semibold" style={{ color: 'var(--page-text)' }}>
+                {p.label}
+              </p>
+              <p className="text-[0.65rem] mt-0.5 leading-snug" style={{ color: 'var(--page-muted)' }}>
+                {p.desc}
+              </p>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function EmptyStateSimple({ onAdd }: { onAdd: () => void }) {
   const { t } = useTranslation()
   return (
     <div className="flex flex-col items-center justify-center py-14 text-center">
@@ -60,6 +109,7 @@ export function TiposMembresiaPage() {
   const [globalFilter, setGlobalFilter] = useState('')
   const [crearOpen, setCrearOpen] = useState(false)
   const [tipoEditar, setTipoEditar] = useState<TipoMembresia | null>(null)
+  const [plantillaInicial, setPlantillaInicial] = useState<PlantillaOption | null>(null)
 
   const cargar = useCallback(async () => {
     setLoading(true)
@@ -100,6 +150,16 @@ export function TiposMembresiaPage() {
     })
   }
 
+  const handleSelectPlantilla = (p: PlantillaOption) => {
+    setPlantillaInicial(p)
+    setCrearOpen(true)
+  }
+
+  const handleAbrirNuevo = () => {
+    setPlantillaInicial(null)
+    setCrearOpen(true)
+  }
+
   const tableHeader = (
     <div className="flex items-center justify-end">
       <div className="relative">
@@ -117,7 +177,7 @@ export function TiposMembresiaPage() {
     </div>
   )
 
-  const modoTemplate = (t: TipoMembresia) => <BadgeModo modo={t.modo_control} />
+  const modoTemplate = (tipo: TipoMembresia) => <BadgeModo modo={tipo.modo_control} />
 
   const duracionTemplate = (tipo: TipoMembresia) => (
     <span style={{ fontSize: '0.64rem', color: 'var(--page-text)' }}>
@@ -149,6 +209,11 @@ export function TiposMembresiaPage() {
   const activos = tipos.filter(t => t.activo).length
   const inactivos = tipos.length - activos
 
+  // Determine empty message: rich empty state only when no filter is active
+  const emptyMessage = globalFilter === ''
+    ? <EmptyStateEnriquecido onSelectPlantilla={handleSelectPlantilla} onAddSimple={handleAbrirNuevo} />
+    : <EmptyStateSimple onAdd={handleAbrirNuevo} />
+
   return (
     <div className="flex flex-col h-full" style={{ color: 'var(--page-text)' }}>
       <ConfirmDialog />
@@ -158,7 +223,7 @@ export function TiposMembresiaPage() {
         description={t('tiposMembresia.description')}
         action={
           <Button label={t('tiposMembresia.createTitle')} icon="pi pi-plus"
-            severity="warning" size="small" onClick={() => setCrearOpen(true)} />
+            severity="warning" size="small" onClick={handleAbrirNuevo} />
         }
       />
 
@@ -189,7 +254,7 @@ export function TiposMembresiaPage() {
           globalFilter={globalFilter}
           globalFilterFields={['nombre', 'modo_control']}
           header={tableHeader}
-          emptyMessage={<EmptyState onAdd={() => setCrearOpen(true)} />}
+          emptyMessage={emptyMessage}
           paginator
           rows={10}
           rowsPerPageOptions={[5, 10, 25]}
@@ -211,8 +276,10 @@ export function TiposMembresiaPage() {
 
       <CrearTipoMembresiaModal
         open={crearOpen}
-        onClose={() => setCrearOpen(false)}
-        onCreado={() => { setCrearOpen(false); cargar() }}
+        onClose={() => { setCrearOpen(false); setPlantillaInicial(null) }}
+        onCreado={() => { setCrearOpen(false); setPlantillaInicial(null); cargar() }}
+        initialStep={plantillaInicial ? 'form' : undefined}
+        initialDefaults={plantillaInicial ? plantillaInicial.defaults : undefined}
       />
 
       {tipoEditar && (
