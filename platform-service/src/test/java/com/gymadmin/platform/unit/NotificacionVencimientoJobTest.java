@@ -3,12 +3,15 @@ package com.gymadmin.platform.unit;
 import com.gymadmin.platform.domain.model.Compania;
 import com.gymadmin.platform.domain.model.CompaniaPlan;
 import com.gymadmin.platform.domain.model.ConfigNotifSuscripcion;
+import com.gymadmin.platform.domain.model.NotifBucketGlobal;
+import com.gymadmin.platform.domain.model.NotifBucketGlobal.Destinatario;
 import com.gymadmin.platform.domain.model.Plan;
 import com.gymadmin.platform.domain.port.in.EnviarNotificacionUseCase;
 import com.gymadmin.platform.domain.port.in.EnviarNotificacionUseCase.EncolarNotificacionCommand;
 import com.gymadmin.platform.domain.port.out.CompaniaPlanRepository;
 import com.gymadmin.platform.domain.port.out.CompaniaRepository;
 import com.gymadmin.platform.domain.port.out.ConfigNotifRepository;
+import com.gymadmin.platform.domain.port.out.NotifBucketGlobalRepository;
 import com.gymadmin.platform.domain.port.out.NotificacionRepository;
 import com.gymadmin.platform.domain.port.out.PlanRepository;
 import com.gymadmin.platform.infrastructure.scheduler.NotificacionVencimientoJob;
@@ -53,6 +56,7 @@ class NotificacionVencimientoJobTest {
     @Mock NotificacionRepository notificacionRepository;
     @Mock ConfigNotifRepository configNotifRepository;
     @Mock CompaniaRepository companiaRepository;
+    @Mock NotifBucketGlobalRepository notifBucketRepository;
     @Mock EnviarNotificacionUseCase enviarUseCase;
 
     private final LocalDate hoy = LocalDate.of(2026, 7, 10);
@@ -62,8 +66,13 @@ class NotificacionVencimientoJobTest {
 
     @BeforeEach
     void setUp() {
+        // Fase 6: por defecto el bucket previo del dueño = 3 activo (igual que el seed de la migración),
+        // así el ventaneo {3,0} de estos tests se conserva. lenient() por si el flujo corta antes de leerlo.
+        lenient().when(notifBucketRepository.findByDestinatario(Destinatario.DUENO))
+                .thenReturn(Mono.just(new NotifBucketGlobal(Destinatario.DUENO, 3, true)));
         job = new NotificacionVencimientoJob(companiaPlanRepository, planRepository,
-                notificacionRepository, configNotifRepository, companiaRepository, enviarUseCase, clockFijo);
+                notificacionRepository, configNotifRepository, companiaRepository,
+                notifBucketRepository, enviarUseCase, clockFijo);
     }
 
     private CompaniaPlan cp(long fechaFinOffsetDays) {
@@ -197,6 +206,67 @@ class NotificacionVencimientoJobTest {
 
         StepVerifier.create(invocarProcesar()).verifyComplete();
         verify(enviarUseCase, org.mockito.Mockito.never()).encolar(any());
+    }
+
+    @Test
+    @DisplayName("Fase 6: bucket previo dinámico = 7 → un plan que vence en 7 días SÍ se procesa (bucket 7)")
+    void bucketPrevioDinamico7_procesaVence7() throws Exception {
+        when(notifBucketRepository.findByDestinatario(Destinatario.DUENO))
+                .thenReturn(Mono.just(new NotifBucketGlobal(Destinatario.DUENO, 7, true)));
+        when(companiaPlanRepository.findActivosAndEnGracia()).thenReturn(Flux.just(cp(7)));
+        when(planRepository.findById(100L)).thenReturn(Mono.just(planTrial()));
+        when(companiaRepository.findById(1L)).thenReturn(Mono.just(compania(false, null)));
+        when(configNotifRepository.findByIdCompania(1L)).thenReturn(Flux.empty());
+        when(notificacionRepository.existsIdempotente(eq(50L), anyString(), anyString(), eq(7)))
+                .thenReturn(Mono.just(false));
+        when(enviarUseCase.encolar(any(EncolarNotificacionCommand.class))).thenReturn(Mono.just(1L));
+
+        StepVerifier.create(invocarProcesar()).verifyComplete();
+
+        ArgumentCaptor<EncolarNotificacionCommand> cap = ArgumentCaptor.forClass(EncolarNotificacionCommand.class);
+        verify(enviarUseCase, org.mockito.Mockito.atLeastOnce()).encolar(cap.capture());
+        assertThat(cap.getAllValues()).allSatisfy(c -> assertThat(c.diasAntes()).isEqualTo(7));
+    }
+
+    @Test
+    @DisplayName("Fase 6: bucket previo activo=FALSE → aviso previo omitido, pero día 0 SÍ dispara")
+    void bucketPrevioDesactivado_soloDia0() throws Exception {
+        when(notifBucketRepository.findByDestinatario(Destinatario.DUENO))
+                .thenReturn(Mono.just(new NotifBucketGlobal(Destinatario.DUENO, 3, false)));
+        // Con previo desactivado (efectivo 0), un plan que vence en 3 días queda fuera de rango.
+        when(companiaPlanRepository.findActivosAndEnGracia()).thenReturn(Flux.just(cp(3), cp(0)));
+        lenient().when(planRepository.findById(100L)).thenReturn(Mono.just(planTrial()));
+        lenient().when(companiaRepository.findById(1L)).thenReturn(Mono.just(compania(false, null)));
+        lenient().when(configNotifRepository.findByIdCompania(1L)).thenReturn(Flux.empty());
+        lenient().when(notificacionRepository.existsIdempotente(eq(50L), anyString(), anyString(), eq(0)))
+                .thenReturn(Mono.just(false));
+        lenient().when(enviarUseCase.encolar(any(EncolarNotificacionCommand.class))).thenReturn(Mono.just(1L));
+
+        StepVerifier.create(invocarProcesar()).verifyComplete();
+
+        ArgumentCaptor<EncolarNotificacionCommand> cap = ArgumentCaptor.forClass(EncolarNotificacionCommand.class);
+        verify(enviarUseCase, org.mockito.Mockito.atLeastOnce()).encolar(cap.capture());
+        // Solo debe haber encolado el bucket 0 (el de 3 días quedó fuera de rango).
+        assertThat(cap.getAllValues()).allSatisfy(c -> assertThat(c.diasAntes()).isEqualTo(0));
+    }
+
+    @Test
+    @DisplayName("Fase 6: sin fila de bucket (tabla vacía) → fallback al default 3")
+    void sinFilaBucket_fallbackDefault3() throws Exception {
+        when(notifBucketRepository.findByDestinatario(Destinatario.DUENO)).thenReturn(Mono.empty());
+        when(companiaPlanRepository.findActivosAndEnGracia()).thenReturn(Flux.just(cp(3)));
+        when(planRepository.findById(100L)).thenReturn(Mono.just(planTrial()));
+        when(companiaRepository.findById(1L)).thenReturn(Mono.just(compania(false, null)));
+        when(configNotifRepository.findByIdCompania(1L)).thenReturn(Flux.empty());
+        when(notificacionRepository.existsIdempotente(eq(50L), anyString(), anyString(), eq(3)))
+                .thenReturn(Mono.just(false));
+        when(enviarUseCase.encolar(any(EncolarNotificacionCommand.class))).thenReturn(Mono.just(1L));
+
+        StepVerifier.create(invocarProcesar()).verifyComplete();
+
+        ArgumentCaptor<EncolarNotificacionCommand> cap = ArgumentCaptor.forClass(EncolarNotificacionCommand.class);
+        verify(enviarUseCase, org.mockito.Mockito.atLeastOnce()).encolar(cap.capture());
+        assertThat(cap.getAllValues()).allSatisfy(c -> assertThat(c.diasAntes()).isEqualTo(3));
     }
 
     @Test

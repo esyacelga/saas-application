@@ -5,15 +5,19 @@ import com.gymadmin.auth.domain.port.out.PersonaPort;
 import com.gymadmin.auth.infrastructure.adapter.out.persistence.mapper.PersonaMapper;
 import com.gymadmin.auth.infrastructure.adapter.out.persistence.repository.PersonaR2dbcRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.time.OffsetDateTime;
 
 @Component
 @RequiredArgsConstructor
 public class PersonaPersistenceAdapter implements PersonaPort {
 
     private final PersonaR2dbcRepository repository;
+    private final DatabaseClient db;
 
     @Override
     public Mono<Persona> findByCi(String ci) {
@@ -54,5 +58,22 @@ public class PersonaPersistenceAdapter implements PersonaPort {
     @Override
     public Mono<Long> countAll(String nombre, String ci, String correo, String sexo) {
         return repository.countAllFiltered(nombre, ci, correo, sexo);
+    }
+
+    @Override
+    public Mono<Long> updateConsentimientoWa(Integer id, boolean acepta, OffsetDateTime fecha) {
+        DatabaseClient.GenericExecuteSpec spec = db.sql("""
+                        UPDATE identidad.personas
+                           SET acepta_whatsapp = :acepta,
+                               fecha_consentimiento_wa = :fecha,
+                               modifica_fecha = NOW()
+                         WHERE id = :id
+                        """)
+                .bind("acepta", acepta)
+                .bind("id", id);
+        spec = (fecha != null)
+                ? spec.bind("fecha", fecha)
+                : spec.bindNull("fecha", OffsetDateTime.class);
+        return spec.fetch().rowsUpdated();
     }
 }

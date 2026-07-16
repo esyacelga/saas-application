@@ -7,6 +7,7 @@ import com.gymadmin.auth.domain.port.in.PersonaUseCase;
 import com.gymadmin.auth.domain.port.out.PersonaPort;
 import com.gymadmin.auth.dto.request.CreatePersonaRequest;
 import com.gymadmin.auth.dto.request.UpdatePersonaRequest;
+import com.gymadmin.auth.dto.response.ConsentimientoWaResponse;
 import com.gymadmin.auth.dto.response.PersonaPageResponse;
 import com.gymadmin.auth.dto.response.PersonaResponse;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Service
@@ -104,6 +106,23 @@ public class PersonaApplicationService implements PersonaUseCase {
                         page,
                         size
                 ));
+    }
+
+    @Override
+    @Transactional
+    public Mono<ConsentimientoWaResponse> actualizarConsentimientoWa(Integer id, boolean acepta) {
+        OffsetDateTime fecha = acepta ? OffsetDateTime.now() : null;
+        return personaPort.updateConsentimientoWa(id, acepta, fecha)
+                .flatMap(rows -> {
+                    if (rows == null || rows == 0L) {
+                        return Mono.error(new ResourceNotFoundException("Persona no encontrada: " + id));
+                    }
+                    return personaPort.findById(id);
+                })
+                .map(p -> new ConsentimientoWaResponse(
+                        p.getId(),
+                        Boolean.TRUE.equals(p.getAceptaWhatsapp()),
+                        p.getFechaConsentimientoWa()));
     }
 
     private PersonaResponse toResponse(Persona p) {

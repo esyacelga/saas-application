@@ -1,0 +1,18 @@
+databaseChangeLog:
+
+  # ── GYM-003 · Buckets globales de aviso de vencimiento (Fase 6 / R1) ──────────
+  # Crea saas.notif_buckets_globales (config global del aviso PREVIO, editable por
+  # super_admin) + seed socio=3 / dueno=3. Story incremental sobre la baseline GYM-001.
+
+  - changeSet:
+      id: GYM-003-1
+      author: gesyacelga
+      context: dev, test, prod
+      changes:
+        - sqlFile:
+            path: ddl/01_create_table_saas_notif_buckets_globales.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+      rollback:
+        - sql:
+            sql: DROP TABLE saas.notif_buckets_globales;

@@ -121,7 +121,7 @@ com.gymadmin.attendance/
     │   └── out/        # Adaptadores R2DBC, CoreServiceClient
     ├── config/         # SecurityConfig, JwtConfig, CorsConfig, AppProperties
     ├── exception/      # GlobalExceptionHandler + excepciones personalizadas
-    └── scheduler/      # MensajeriaJob (cron diario 00:15 UTC)
+    └── scheduler/      # MensajeriaJob (cron diario 00:15 Guayaquil) — avisos WhatsApp de vencimiento
 ```
 
 ### Dominios principales
@@ -132,7 +132,19 @@ com.gymadmin.attendance/
 
 ### Dependencia externa
 
-`CoreServiceClient` llama al **Core Service** (`CORE_SERVICE_URL`) para validar membresías y códigos QR. El endpoint de override (`POST /api/v1/asistencias/manual/override`) omite esta validación.
+`CoreServiceClient` llama al **Core Service** (`CORE_SERVICE_URL`) para validar membresías y códigos QR. El endpoint de override (`POST /api/v1/asistencias/manual/override`) omite esta validación. Además (REQ-SAAS-001 Fase 5) consume el endpoint interno `GET /internal/v1/companias/{id}/clientes-por-vencer` (header `X-Internal-Call: {INTERNAL_SECRET}`) para alimentar el `MensajeriaJob`.
+
+### MensajeriaJob — avisos de vencimiento por WhatsApp (REQ-SAAS-001 Fase 5)
+
+El job diario (cron `${MESSAGING_JOB_CRON:0 15 0 * * *}`, hora Guayaquil) avisa por WhatsApp a los socios cuya **membresía** está por vencer, con buckets **{3, 0}** (aviso previo a 3 días + día del vencimiento):
+
+- Consume `clientes-por-vencer` de core (no duplica la detección de vencimiento).
+- Envía **plantillas HSM pre-aprobadas** vía `WhatsAppSender`/`MetaWhatsAppAdapter` (Meta Cloud API): `venc_membresia_previo`/`venc_membresia_hoy` (calendario), `venc_accesos_previo`/`venc_accesos_final` (accesos). Sin credenciales Meta el adaptador loguea WARN y no envía (dev/CI).
+- **Opt-in (R4):** solo envía si `identidad.personas.acepta_whatsapp = TRUE` y el teléfono es normalizable a E.164; si no, omite (attendance no manda emails → sin fallback).
+- **Idempotencia (C2):** `existsEnviadoHoy(idCliente, tipo, 'whatsapp')` evita duplicar el mismo aviso el mismo día.
+- Registra cada envío en `asistencia.mensajes_log` con estado `enviado`/`fallido`.
+
+Variables de entorno WhatsApp: `META_PHONE_NUMBER_ID`, `META_ACCESS_TOKEN`, `META_API_VERSION` (default `v21.0`), `META_API_BASE_URL`; `INTERNAL_SECRET` para el header interno hacia core.
 
 ---
 

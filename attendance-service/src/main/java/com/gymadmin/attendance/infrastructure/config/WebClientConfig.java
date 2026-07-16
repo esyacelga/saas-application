@@ -21,4 +21,12 @@ public class WebClientConfig {
                 .baseUrl(authServiceUrl)
                 .build();
     }
+
+    /** Fase 6 (R1): cliente hacia platform-service para leer el bucket global de aviso previo del socio. */
+    @Bean
+    public WebClient platformWebClient(@Value("${services.platform-service.url}") String platformServiceUrl) {
+        return WebClient.builder()
+                .baseUrl(platformServiceUrl)
+                .build();
+    }
 }

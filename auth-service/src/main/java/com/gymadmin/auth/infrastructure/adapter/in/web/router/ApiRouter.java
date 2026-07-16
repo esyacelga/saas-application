@@ -52,6 +52,7 @@ public class ApiRouter {
         @RouterOperation(path = "/api/v1/personas/{id}",               method = RequestMethod.GET,  beanClass = PersonaHandler.class, beanMethod = "findById"),
         @RouterOperation(path = "/api/v1/personas",                    method = RequestMethod.POST, beanClass = PersonaHandler.class, beanMethod = "crear"),
         @RouterOperation(path = "/api/v1/personas/{id}",               method = RequestMethod.PUT,  beanClass = PersonaHandler.class, beanMethod = "actualizar"),
+        @RouterOperation(path = "/api/v1/personas/{id}/consentimiento-wa", method = RequestMethod.PATCH, beanClass = PersonaHandler.class, beanMethod = "actualizarConsentimientoWa"),
         @RouterOperation(path = "/api/v1/personas/{id}/foto",          method = RequestMethod.POST, beanClass = PersonaHandler.class, beanMethod = "subirFoto")
     })
     @Bean
@@ -63,6 +64,7 @@ public class ApiRouter {
                 .GET(V1 + "/personas/{id}", h::findById)
                 .POST(V1 + "/personas", h::crear)
                 .PUT(V1 + "/personas/{id}", h::actualizar)
+                .PATCH(V1 + "/personas/{id}/consentimiento-wa", h::actualizarConsentimientoWa)
                 .POST(V1 + "/personas/{id}/foto", h::subirFoto)
                 .build();
     }

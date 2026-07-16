@@ -5,3 +5,6 @@ databaseChangeLog:
   - include:
       file: 202607_GYM-002/partial-changelog.yml
       relativeToChangelogFile: true
+  - include:
+      file: 202607_GYM-003/partial-changelog.yml
+      relativeToChangelogFile: true

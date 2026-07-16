@@ -1,13 +1,14 @@
 # Pendiente — Avisos por WhatsApp de vencimiento (socios y dueños)
 
-> **Estado:** 🟢 **Fases 1, 2, 3 y 4 cerradas (4 de 6)** — migración de consentimiento `202607_GYM-002` +
-> adaptador Meta/normalizador E.164 + **cola WhatsApp del dueño cableada** (`WhatsAppQueueService`/
-> `WhatsAppQueueProcessorJob`, buckets {3,0}, opt-in R4, cross-day día 0, R2/R3) + **endpoint interno
-> `clientes-por-vencer`** en core-service (contrato C3 + zona Guayaquil C4, IT 13/13 verde). Siguiente:
-> **Fase 5** (socio: `MensajeriaJob` de attendance cableado, consume el endpoint de Fase 4) → **Fase 6**
-> (panel). Plan de **6 fases testeables** + **issues de arquitectura** rastreados al final del documento.
-> Pendiente en Fase 3: IT con WireMock+Postgres y canario manual (diferidos a disponibilidad de
-> BD/credenciales de Fase 0).
+> **Estado:** 🟢 **Fases 1–5 cerradas (5 de 6)** — migración de consentimiento `202607_GYM-002` +
+> adaptador Meta/normalizador E.164 + **cola WhatsApp del dueño** (`WhatsAppQueueService`, buckets {3,0},
+> R2/R3/R4, cross-day día 0) + **endpoint interno `clientes-por-vencer`** en core (C3 + zona Guayaquil C4,
+> IT 13/13) + **`MensajeriaJob` del socio cableado** en attendance (consume el endpoint, plantillas HSM
+> `venc_membresia_*`/`venc_accesos_*`, opt-in R4, idempotencia C2, unit 29/29). Siguiente y última:
+> **Fase 6** (panel super_admin + buckets configurables `saas.notif_buckets_globales` R1 + UIs de opt-in).
+> Plan de **6 fases testeables** + **issues de arquitectura** rastreados al final del documento.
+> **Diferido** (Fases 3 y 5): ITs con WireMock+Postgres y canario manual, hasta disponibilidad de
+> BD limpia/credenciales de Fase 0.
 > **Fecha:** 2026-07-15 (revisión de arquitectura + plan de fases + Fases 1, 2 y 3 el mismo día).
 > **Área:** attendance-service (socios/membresía) · core-service (lista de clientes por vencer) · platform-service (dueños/suscripción SaaS) · identidad/tenant (teléfono + consentimiento).
 > **Prioridad:** media-alta — función de retención/cobranza que hoy queda a medias (se registra el mensaje pero nunca sale del sistema).
@@ -552,11 +553,14 @@ Ruta de menor riesgo, entregando valor incremental:
       (o parametrizar el `claimLote` existente por canal) con el mismo `FOR UPDATE SKIP LOCKED`; sin ese
       filtro, email y whatsapp compiten por los mismos lotes con el sender equivocado. El
       `EnviarNotificacionUseCase.encolar(...)` puede seguir compartido (solo cambia el `canal`).
-- [ ] **C2 — Idempotencia del socio por `(idCliente, tipo, canal, día)` (fase 5).** El anti-spam actual
+- [x] **C2 — Idempotencia del socio por `(idCliente, tipo, canal, día)` (fase 5).** ✅ **Resuelto en Fase 5.**
+      Añadido `MensajeLogRepository.existsEnviadoHoy(idCliente, tipo, canal, dia)` (query
+      `existsEnviadoEnRango` sobre `mensajes_log` con rango [inicio, inicio+1d) del día Guayaquil) y el
+      `MensajeriaJob` lo checkea **antes** de enviar. `contarEnviadosDesde` se queda solo para avisos de
+      **ausencia** (semántica distinta, intacto). Verificado por `MensajeriaJobTest` (caso "ya enviado hoy
+      → no reenvía"). Texto original abajo. El anti-spam actual
       (`contarEnviadosDesde` atado a la última asistencia) **no** garantiza un solo aviso de vencimiento
       por bucket/canal: un reinicio del job el mismo día genera duplicados → Meta bloquea el número.
-      Añadir `MensajeLogRepository.existsEnviadoHoy(idCliente, tipo, canal)` y checkear **antes** de
-      encolar. `contarEnviadosDesde` se queda solo para avisos de **ausencia** (semántica distinta).
 - [x] **C3 — Contrato formal del endpoint interno de core (fase 4).** ✅ **Resuelto en Fase 4.**
       Implementado `GET /internal/v1/companias/{id}/clientes-por-vencer?dias=&modo=` con la proyección
       de abajo (`ClientePorVencer`): `telefono` sin normalizar, `estadoCliente`, `aceptaWhatsapp`/
@@ -793,11 +797,36 @@ Crear/verificar WABA + `phone_number_id` y **subir las plantillas HSM a aprobaci
   requests; idempotencia (2×→3 rows, no 6); congelado→0; teléfono inválido→skip.
 - **Aceptación:** tests verdes; canario manual a número de prueba (si Fase 0 lista).
 - **Depende de:** Fase 1 + Fase 4 (+ Fase 2 como referencia del adaptador). Resuelve **C2**.
-- [ ] Fase 5 cerrada.
+- [x] **Fase 5 cerrada** (2026-07-15). Archivos nuevos en attendance-service (duplicado pragmático v1 de
+      Fase 2): `domain/port/out/WhatsAppSender`, `domain/exception/WhatsAppSendException`,
+      `domain/validation/PhoneNumberE164Normalizer`, `infrastructure/adapter/out/whatsapp/MetaWhatsAppAdapter`.
+      Modificados: `CoreServiceClient` (nuevo `listarClientesPorVencer(idCompania, dias, modo)` con header
+      `X-Internal-Call` + DTOs `ClientesPorVencerResponse`/`ClientePorVencer`); `MensajeLogRepository` +
+      `MensajeLogPersistenceAdapter` + `MensajeLogR2dbcRepository` (**C2**: `existsEnviadoHoy(idCliente,
+      tipo, canal, dia)` por rango de día Guayaquil); `AsistenciaRepository` + adapter
+      (`findCompaniasActivas`, `findNombreCompania`); `MensajeLogService` (inyecta `WhatsAppSender`;
+      `existsEnviadoHoy` + `enviarWhatsAppJob` que inserta `pendiente`→envía HSM→`enviado`/`fallido`);
+      `MensajeriaJob` **reescrito** (`procesarAusencias()` ya no vacío: itera compañías → consume core →
+      buckets {3,0} → ruteo template HSM por `tipo`+`modoControl`, opt-in R4, teléfono normalizable, RN-05
+      congelado, idempotencia C2, fecha `dd/MM/yyyy`); `application.yml` (`services.core-service.internal-secret`
+      + `whatsapp.meta.*`); `pom.xml` (`okhttp3:mockwebserver` test). Map plantillas del socio:
+      calendario→`venc_membresia_previo`[nombre,gym,fecha,dias]/`venc_membresia_hoy`[nombre,gym];
+      accesos→`venc_accesos_previo`[nombre,accesos,gym]/`venc_accesos_final`[nombre,gym]. `README.md`
+      actualizado. **Testeo (unit Mockito + MockWebServer, no IT-con-WireMock):** `MensajeriaJobTest`
+      (9/0/0: calendario previo/hoy, accesos previo/final con params en orden, sin opt-in→no envía,
+      telefono inválido→skip, congelado→no envía, idempotencia C2→no reenvía, fuera de bucket→no envía),
+      `PhoneNumberE164NormalizerTest` (15/0/0), `MetaWhatsAppAdapterTest` (5/0/0: request bien formado,
+      429/5xx retryable, 400 `131047` no-retryable, sin credenciales→WARN+empty). `MensajeLogServiceTest`
+      (16/0/0) intacto tras añadir el mock `WhatsAppSender`. **Diferido:** el IT
+      `MensajeriaJobWhatsAppIntegrationTest` con WireMock de core+Meta + Postgres y el canario manual quedan
+      para disponibilidad de BD limpia/credenciales (Fase 0). **Nota:** los ~58 errores de `*IntegrationTest`
+      de attendance son **preexistentes/ambientales** — `BaseIntegrationTest.cleanDatabase` falla con FK
+      (`tipos_membresia`↔`membresias`) por datos residuales en la BD local compartida `gym-app-saas`;
+      reproducido en HEAD sin estos cambios (mis clases nuevas no tocan `BaseIntegrationTest` ni los ITs).
 
 ### Fase 6 — Panel super_admin + buckets configurables + UIs de opt-in (bloque E completo)
 
-- **Alcance:** tabla `saas.notif_buckets_globales` (**R1**, seed `socio=3`/`dueno=5`, story nueva).
+- **Alcance:** tabla `saas.notif_buckets_globales` (**R1**, seed `socio=3`/`dueno=3`, story nueva).
   Endpoint `GET/PUT /api/v1/plataforma/notif-buckets` (super_admin only). Los dos jobs leen el bucket
   previo de la tabla (en vez de la constante), aplicando **R2**. Frontend en `auth-service-frond-end`:
   pantalla de super_admin (bucket socio + dueño, hora de envío en **solo-lectura**). Captura de opt-in:

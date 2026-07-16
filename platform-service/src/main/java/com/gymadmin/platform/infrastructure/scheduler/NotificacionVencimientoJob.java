@@ -3,6 +3,8 @@ package com.gymadmin.platform.infrastructure.scheduler;
 import com.gymadmin.platform.domain.model.Compania;
 import com.gymadmin.platform.domain.model.CompaniaPlan;
 import com.gymadmin.platform.domain.model.ConfigNotifSuscripcion;
+import com.gymadmin.platform.domain.model.NotifBucketGlobal;
+import com.gymadmin.platform.domain.model.NotifBucketGlobal.Destinatario;
 import com.gymadmin.platform.domain.model.NotificacionSuscripcion;
 import com.gymadmin.platform.domain.model.Plan;
 import com.gymadmin.platform.domain.port.in.EnviarNotificacionUseCase;
@@ -10,6 +12,7 @@ import com.gymadmin.platform.domain.port.in.EnviarNotificacionUseCase.EncolarNot
 import com.gymadmin.platform.domain.port.out.CompaniaPlanRepository;
 import com.gymadmin.platform.domain.port.out.CompaniaRepository;
 import com.gymadmin.platform.domain.port.out.ConfigNotifRepository;
+import com.gymadmin.platform.domain.port.out.NotifBucketGlobalRepository;
 import com.gymadmin.platform.domain.port.out.NotificacionRepository;
 import com.gymadmin.platform.domain.port.out.PlanRepository;
 import com.gymadmin.platform.domain.validation.PhoneNumberE164Normalizer;
@@ -36,9 +39,12 @@ import java.util.Optional;
  * suscripción ACTIVA/EN_GRACIA con {@code fecha_fin} próxima, evalúa los buckets del dueño
  * <b>{3, 0}</b> (aviso previo a 3 días + día del vencimiento) y encola una notificación por canal.
  *
- * <p><b>Buckets {3, 0} (Fase 3):</b> el recordatorio del dueño es "3 días no más" — se reemplazó el
- * histórico {@code {15,7,3,1,0}}. El {@code 3} (previo) será configurable desde el panel super_admin
- * (Fase 6); el {@code 0} es fijo. <b>R2</b>: el día 0 se evalúa por igualdad (no cae al bucket previo).
+ * <p><b>Buckets {previo, 0}:</b> el recordatorio del dueño es "previo + día del vencimiento" — se
+ * reemplazó el histórico {@code {15,7,3,1,0}}. Desde la <b>Fase 6</b> el bucket <b>previo</b> se lee
+ * de {@code saas.notif_buckets_globales} (destinatario {@code dueno}, editable por super_admin), con
+ * fallback a {@value #BUCKET_PREVIO_DEFAULT} si la fila falta. Si ese bucket está {@code activo=false},
+ * el aviso previo se omite pero el día {@code 0} <b>siempre</b> se evalúa. El {@code 0} es fijo, no
+ * configurable. <b>R2</b>: el día 0 se evalúa por igualdad (no cae al bucket previo).
  *
  * <p><b>Canal WhatsApp (Fase 3):</b> el canal a encolar sale de {@code config_notif_suscripcion.canal}
  * del tenant ({@code email}/{@code whatsapp}/{@code ambos}); el {@code banner} se mantiene siempre.
@@ -50,8 +56,8 @@ public class NotificacionVencimientoJob {
 
     private static final Logger log = LoggerFactory.getLogger(NotificacionVencimientoJob.class);
 
-    /** Buckets del dueño (Fase 3): aviso previo a 3 días + día del vencimiento. */
-    private static final int BUCKET_PREVIO = 3;
+    /** Fallback del bucket previo del dueño si falta la fila en saas.notif_buckets_globales. */
+    private static final int BUCKET_PREVIO_DEFAULT = 3;
     private static final int BUCKET_DIA_0 = 0;
 
     private static final String CODIGO_PLAN_TRIAL = "TRIAL";
@@ -62,6 +68,7 @@ public class NotificacionVencimientoJob {
     private final NotificacionRepository notificacionRepository;
     private final ConfigNotifRepository configNotifRepository;
     private final CompaniaRepository companiaRepository;
+    private final NotifBucketGlobalRepository notifBucketRepository;
     private final EnviarNotificacionUseCase enviarUseCase;
     private final Clock clock;
 
@@ -70,6 +77,7 @@ public class NotificacionVencimientoJob {
                                        NotificacionRepository notificacionRepository,
                                        ConfigNotifRepository configNotifRepository,
                                        CompaniaRepository companiaRepository,
+                                       NotifBucketGlobalRepository notifBucketRepository,
                                        EnviarNotificacionUseCase enviarUseCase,
                                        Clock clock) {
         this.companiaPlanRepository = companiaPlanRepository;
@@ -77,6 +85,7 @@ public class NotificacionVencimientoJob {
         this.notificacionRepository = notificacionRepository;
         this.configNotifRepository = configNotifRepository;
         this.companiaRepository = companiaRepository;
+        this.notifBucketRepository = notifBucketRepository;
         this.enviarUseCase = enviarUseCase;
         this.clock = clock;
     }
@@ -95,13 +104,31 @@ public class NotificacionVencimientoJob {
 
     /** Expuesto package-private para tests con Clock.fixed(...). */
     Mono<Void> procesar(LocalDate today) {
-        return companiaPlanRepository.findActivosAndEnGracia()
-                .filter(cp -> cp.getFechaFin() != null)
-                .filter(cp -> ChronoUnit.DAYS.between(today, cp.getFechaFin()) <= (long) BUCKET_PREVIO)
-                .flatMap(cp -> planRepository.findById(cp.getIdPlan())
-                        .filter(this::esPlanNotificable)
-                        .flatMapMany(plan -> generarNotificaciones(cp, plan, today)))
-                .then();
+        return resolverBucketPrevioDueno()
+                .flatMap(bucketPrevio -> companiaPlanRepository.findActivosAndEnGracia()
+                        .filter(cp -> cp.getFechaFin() != null)
+                        // Techo del ventaneo: como máximo el bucket previo (el día 0 cae dentro de él).
+                        .filter(cp -> ChronoUnit.DAYS.between(today, cp.getFechaFin()) <= (long) bucketPrevio)
+                        .flatMap(cp -> planRepository.findById(cp.getIdPlan())
+                                .filter(this::esPlanNotificable)
+                                .flatMapMany(plan -> generarNotificaciones(cp, plan, today, bucketPrevio)))
+                        .then());
+    }
+
+    /**
+     * Fase 6: lee el bucket previo del dueño de {@code saas.notif_buckets_globales}. Si la fila está
+     * {@code activo=false}, devuelve {@code 0} (solo día del vencimiento). Si falta la fila (o error),
+     * cae al default {@value #BUCKET_PREVIO_DEFAULT}.
+     */
+    private Mono<Integer> resolverBucketPrevioDueno() {
+        return notifBucketRepository.findByDestinatario(Destinatario.DUENO)
+                .map(this::bucketPrevioEfectivo)
+                .defaultIfEmpty(BUCKET_PREVIO_DEFAULT)
+                .onErrorReturn(BUCKET_PREVIO_DEFAULT);
+    }
+
+    private int bucketPrevioEfectivo(NotifBucketGlobal bucket) {
+        return bucket.isActivo() ? bucket.getDiasPrevio() : BUCKET_DIA_0;
     }
 
     private boolean esPlanNotificable(Plan plan) {
@@ -109,27 +136,30 @@ public class NotificacionVencimientoJob {
         return CODIGO_PLAN_TRIAL.equalsIgnoreCase(codigo) || CODIGO_PLAN_PREMIUM.equalsIgnoreCase(codigo);
     }
 
-    private Flux<Long> generarNotificaciones(CompaniaPlan cp, Plan plan, LocalDate today) {
+    private Flux<Long> generarNotificaciones(CompaniaPlan cp, Plan plan, LocalDate today, int bucketPrevio) {
         long diasRestantes = ChronoUnit.DAYS.between(today, cp.getFechaFin());
         String tipo = CODIGO_PLAN_TRIAL.equalsIgnoreCase(plan.getCodigo())
                 ? "VENCIMIENTO_TRIAL"
                 : "VENCIMIENTO_PREMIUM";
 
-        // R2: el día 0 usa el bucket 0 por igualdad; 1..3 usan el previo. Vencidos (<0) no se encolan.
-        Integer bucket = resolverBucket(diasRestantes);
+        // R2: el día 0 usa el bucket 0 por igualdad; 1..bucketPrevio usan el previo. Vencidos (<0) no se encolan.
+        Integer bucket = resolverBucket(diasRestantes, bucketPrevio);
         if (bucket == null) {
             return Flux.empty();
         }
         return encolarSiNoExiste(cp, tipo, bucket);
     }
 
-    /** R2: día 0 → bucket 0; 1..3 → bucket previo (3); cualquier otro (incluye <0) → null (no encolar). */
-    private static Integer resolverBucket(long diasRestantes) {
-        if (diasRestantes == 0) {
+    /**
+     * R2: día 0 → bucket 0; 1..bucketPrevio → bucket previo; cualquier otro (incluye &lt;0) → null.
+     * Si {@code bucketPrevio == 0} (aviso previo desactivado), solo el día 0 encola.
+     */
+    private static Integer resolverBucket(long diasRestantes, int bucketPrevio) {
+        if (diasRestantes == BUCKET_DIA_0) {
             return BUCKET_DIA_0;
         }
-        if (diasRestantes >= 1 && diasRestantes <= BUCKET_PREVIO) {
-            return BUCKET_PREVIO;
+        if (diasRestantes >= 1 && diasRestantes <= bucketPrevio) {
+            return bucketPrevio;
         }
         return null;
     }

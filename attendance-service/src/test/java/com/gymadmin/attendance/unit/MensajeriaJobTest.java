@@ -5,6 +5,7 @@ import com.gymadmin.attendance.domain.model.MensajeLog;
 import com.gymadmin.attendance.domain.port.out.AsistenciaRepository;
 import com.gymadmin.attendance.infrastructure.adapter.out.core.CoreServiceClient;
 import com.gymadmin.attendance.infrastructure.adapter.out.core.CoreServiceClient.ClientePorVencer;
+import com.gymadmin.attendance.infrastructure.adapter.out.platform.PlatformServiceClient;
 import com.gymadmin.attendance.infrastructure.scheduler.MensajeriaJob;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +41,7 @@ class MensajeriaJobTest {
 
     private AsistenciaRepository asistenciaRepository;
     private CoreServiceClient coreServiceClient;
+    private PlatformServiceClient platformServiceClient;
     private MensajeLogService mensajeLogService;
     private MensajeriaJob job;
 
@@ -50,9 +52,14 @@ class MensajeriaJobTest {
     void setUp() {
         asistenciaRepository = mock(AsistenciaRepository.class);
         coreServiceClient = mock(CoreServiceClient.class);
+        platformServiceClient = mock(PlatformServiceClient.class);
         mensajeLogService = mock(MensajeLogService.class);
-        job = new MensajeriaJob(asistenciaRepository, coreServiceClient, mensajeLogService);
+        job = new MensajeriaJob(asistenciaRepository, coreServiceClient, platformServiceClient, mensajeLogService);
 
+        // Fase 6: por defecto el bucket previo del socio = 3 (igual que el seed), conservando el ventaneo
+        // {3,0} de los tests existentes. El fallback recibido (3) se devuelve tal cual salvo override.
+        lenient().when(platformServiceClient.obtenerBucketPrevioSocio(anyInt()))
+                .thenReturn(Mono.just(3));
         lenient().when(asistenciaRepository.findNombreCompania(COMPANIA)).thenReturn(Mono.just(GYM));
         lenient().when(mensajeLogService.existsEnviadoHoy(anyInt(), anyString(), anyString()))
                 .thenReturn(Mono.just(false));
@@ -188,5 +195,55 @@ class MensajeriaJobTest {
 
         verify(mensajeLogService, never()).enviarWhatsAppJob(anyInt(), any(), anyInt(), anyString(),
                 anyString(), anyString(), anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Fase 6: bucket previo dinámico = 7 → calendario 5 días AHORA sí envía previo")
+    void bucketPrevioDinamico7_calendario5Envia() {
+        when(platformServiceClient.obtenerBucketPrevioSocio(anyInt())).thenReturn(Mono.just(7));
+        stubClientes(cliente("calendario", 5, null, "0987654321", true, "proximo_vencer"));
+
+        StepVerifier.create(job.procesarAusencias()).verifyComplete();
+
+        ArgumentCaptor<List<String>> params = ArgumentCaptor.forClass(List.class);
+        verify(mensajeLogService).enviarWhatsAppJob(eq(COMPANIA), eq(1), eq(10),
+                eq("vencimiento_3d"), eq("whatsapp"), eq("+593987654321"),
+                eq("venc_membresia_previo"), eq("es"), params.capture(), anyString());
+        assertThat(params.getValue()).containsExactly("María", GYM, "18/07/2026", "5");
+    }
+
+    @Test
+    @DisplayName("Fase 6: bucket previo = 0 (desactivado) → previo omitido, pero día 0 SÍ dispara")
+    void bucketPrevioDesactivado_previoOmitido_dia0Envia() {
+        when(platformServiceClient.obtenerBucketPrevioSocio(anyInt())).thenReturn(Mono.just(0));
+        // Un socio a 3 días queda fuera; uno a 0 días (vence hoy) SÍ dispara.
+        stubClientes(
+                cliente("calendario", 3, null, "0987654321", true, "proximo_vencer"),
+                clienteHoy());
+
+        StepVerifier.create(job.procesarAusencias()).verifyComplete();
+
+        // Solo el de "vence hoy" debe salir (venc_membresia_hoy).
+        verify(mensajeLogService).enviarWhatsAppJob(eq(COMPANIA), anyInt(), eq(20),
+                eq("vencimiento_hoy"), eq("whatsapp"), eq("+593999888777"),
+                eq("venc_membresia_hoy"), eq("es"), eq(List.of("Juan", GYM)), anyString());
+        verify(mensajeLogService, never()).enviarWhatsAppJob(anyInt(), any(), eq(10), anyString(),
+                anyString(), anyString(), anyString(), anyString(), any(), any());
+    }
+
+    /** Socio distinto (id 20) que vence hoy, para el caso de bucket previo desactivado. */
+    private ClientePorVencer clienteHoy() {
+        ClientePorVencer c = mock(ClientePorVencer.class);
+        lenient().when(c.getIdCliente()).thenReturn(20);
+        lenient().when(c.getIdSucursal()).thenReturn(1);
+        lenient().when(c.getNombre()).thenReturn("Juan");
+        lenient().when(c.getTelefono()).thenReturn("0999888777");
+        lenient().when(c.getModoControl()).thenReturn("calendario");
+        lenient().when(c.getDiasParaVencer()).thenReturn(0);
+        lenient().when(c.getAccesosRestantes()).thenReturn(null);
+        lenient().when(c.getFechaFin()).thenReturn("2026-07-15");
+        lenient().when(c.isAceptaWhatsapp()).thenReturn(true);
+        lenient().when(c.getEstadoCliente()).thenReturn("proximo_vencer");
+        return c;
     }
 }

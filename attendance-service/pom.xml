@@ -126,10 +126,18 @@
             <artifactId>reactor-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Runtime: MetaWhatsAppAdapter y otros @Value leen META_*/INTERNAL_SECRET del .env
+             cuando el servicio corre con `mvn spring-boot:run` (ver AttendanceServiceApplication.main). -->
         <dependency>
             <groupId>io.github.cdimascio</groupId>
             <artifactId>dotenv-java</artifactId>
             <version>3.0.0</version>
+        </dependency>
+        <!-- REQ-SAAS-001 (Fase 5): IT del MetaWhatsAppAdapter contra un servidor HTTP mock. -->
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>mockwebserver</artifactId>
+            <version>4.12.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

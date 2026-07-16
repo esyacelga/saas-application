@@ -2,6 +2,7 @@ package com.gymadmin.auth.infrastructure.adapter.in.web.handler;
 
 import com.gymadmin.auth.application.service.CloudinaryService;
 import com.gymadmin.auth.domain.port.in.PersonaUseCase;
+import com.gymadmin.auth.dto.request.ConsentimientoWaRequest;
 import com.gymadmin.auth.dto.request.CreatePersonaRequest;
 import com.gymadmin.auth.dto.request.UpdatePersonaRequest;
 import com.gymadmin.auth.infrastructure.security.SecurityUtils;
@@ -103,6 +104,23 @@ public class PersonaHandler {
         return SecurityUtils.currentUserIdentifier()
                 .flatMap(identity -> request.bodyToMono(UpdatePersonaRequest.class)
                         .flatMap(req -> personaUseCase.update(id, req, identity)))
+                .flatMap(r -> ServerResponse.ok().contentType(MediaType.APPLICATION_JSON).bodyValue(r));
+    }
+
+    @Operation(summary = "Registrar opt-in/opt-out de WhatsApp del socio", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Consentimiento actualizado"),
+        @ApiResponse(responseCode = "400", description = "Body inválido (acepta requerido)"),
+        @ApiResponse(responseCode = "404", description = "Persona no encontrada")
+    })
+    public Mono<ServerResponse> actualizarConsentimientoWa(ServerRequest request) {
+        Integer id = Integer.parseInt(request.pathVariable("id"));
+        // currentUserIdentifier() exige un JWT válido (staff/cliente/plataforma): cubre los tres puntos
+        // de captura del socio (registro/recepción/perfil PWA) sin acoplar a un rol concreto.
+        return SecurityUtils.currentUserIdentifier()
+                .flatMap(identity -> request.bodyToMono(ConsentimientoWaRequest.class)
+                        .flatMap(validator::validate)
+                        .flatMap(req -> personaUseCase.actualizarConsentimientoWa(id, req.acepta())))
                 .flatMap(r -> ServerResponse.ok().contentType(MediaType.APPLICATION_JSON).bodyValue(r));
     }
 

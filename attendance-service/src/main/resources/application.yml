@@ -33,6 +33,10 @@ services:
     internal-secret: ${INTERNAL_SECRET:platform-secret-dev}
   auth-service:
     url: ${AUTH_SERVICE_URL:http://localhost:8080}
+  platform-service:
+    # Fase 6 (R1): endpoint interno de platform (bucket global de aviso previo del socio).
+    url: ${PLATFORM_SERVICE_URL:http://localhost:8081}
+    internal-secret: ${INTERNAL_SECRET:platform-secret-dev}
 
 scheduling:
   messaging-job-cron: ${MESSAGING_JOB_CRON:0 15 0 * * *}

@@ -5,6 +5,7 @@ import com.gymadmin.attendance.domain.port.out.AsistenciaRepository;
 import com.gymadmin.attendance.domain.validation.PhoneNumberE164Normalizer;
 import com.gymadmin.attendance.infrastructure.adapter.out.core.CoreServiceClient;
 import com.gymadmin.attendance.infrastructure.adapter.out.core.CoreServiceClient.ClientePorVencer;
+import com.gymadmin.attendance.infrastructure.adapter.out.platform.PlatformServiceClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -24,8 +25,12 @@ import java.util.Optional;
  * de vencimiento — y envía plantillas HSM pre-aprobadas vía {@link CoreServiceClient} + el
  * {@code WhatsAppSender}.
  *
- * <p><b>Buckets del socio {3, 0}</b> (aviso previo a 3 días + día del vencimiento), heredados de la
- * lógica existente. Mapeo {@code tipo} → plantilla HSM por {@code modoControl} (calendario/accesos).
+ * <p><b>Buckets del socio {previo, 0}</b> (aviso previo + día del vencimiento). Desde la <b>Fase 6</b>
+ * el bucket <b>previo</b> se lee de {@code saas.notif_buckets_globales} (destinatario {@code socio})
+ * vía el endpoint interno de platform-service ({@link PlatformServiceClient}), con fallback a
+ * {@value #BUCKET_PREVIO_DEFAULT} si platform no responde. Si el bucket está {@code activo=false} el
+ * aviso previo se omite (bucket efectivo 0) pero el día 0 siempre aplica. Mapeo {@code tipo} →
+ * plantilla HSM por {@code modoControl} (calendario/accesos).
  *
  * <p><b>Reglas de envío:</b>
  * <ul>
@@ -46,10 +51,11 @@ public class MensajeriaJob {
 
     private final AsistenciaRepository asistenciaRepository;
     private final CoreServiceClient coreServiceClient;
+    private final PlatformServiceClient platformServiceClient;
     private final MensajeLogService mensajeLogService;
 
-    /** Buckets del socio: aviso previo a 3 días + día del vencimiento. */
-    private static final int BUCKET_PREVIO = 3;
+    /** Fallback del bucket previo del socio si platform-service no responde (Fase 6). */
+    private static final int BUCKET_PREVIO_DEFAULT = 3;
     private static final int BUCKET_DIA_0 = 0;
 
     private static final String CANAL_WHATSAPP = "whatsapp";
@@ -77,27 +83,29 @@ public class MensajeriaJob {
     }
 
     /**
-     * Itera las compañías activas, pide a core sus socios por vencer (buckets {3,0}) y despacha un
-     * aviso por WhatsApp a cada uno. Público para poder verificarlo en unit tests sin reflexión.
+     * Itera las compañías activas, pide a core sus socios por vencer (bucket previo leído de platform,
+     * Fase 6) y despacha un aviso por WhatsApp a cada uno. Público para verificarlo en unit tests.
      */
     public Flux<Void> procesarAusencias() {
-        return asistenciaRepository.findCompaniasActivas()
-                .flatMap(this::procesarCompania);
+        return platformServiceClient.obtenerBucketPrevioSocio(BUCKET_PREVIO_DEFAULT)
+                .flatMapMany(bucketPrevio -> asistenciaRepository.findCompaniasActivas()
+                        .flatMap(idCompania -> procesarCompania(idCompania, bucketPrevio)));
     }
 
-    private Flux<Void> procesarCompania(Integer idCompania) {
+    private Flux<Void> procesarCompania(Integer idCompania, int bucketPrevio) {
         Mono<String> gymNombre = asistenciaRepository.findNombreCompania(idCompania)
                 .defaultIfEmpty("tu gimnasio")
                 .cache();
-        return coreServiceClient.listarClientesPorVencer(idCompania, BUCKET_PREVIO, "todos")
-                .flatMap(cliente -> gymNombre.flatMap(gym -> procesarCliente(idCompania, cliente, gym)));
+        // Techo del ventaneo hacia core: como máximo el bucket previo (el día 0 cae dentro).
+        return coreServiceClient.listarClientesPorVencer(idCompania, bucketPrevio, "todos")
+                .flatMap(cliente -> gymNombre.flatMap(gym -> procesarCliente(idCompania, cliente, gym, bucketPrevio)));
     }
 
     /**
      * Despacha un socio individual: valida opt-in + teléfono, resuelve {@code tipo}+plantilla por
      * {@code modoControl} y bucket, aplica idempotencia y envía. Package-private para tests.
      */
-    Mono<Void> procesarCliente(Integer idCompania, ClientePorVencer cliente, String gymNombre) {
+    Mono<Void> procesarCliente(Integer idCompania, ClientePorVencer cliente, String gymNombre, int bucketPrevio) {
         // RN-05: el endpoint ya excluye congelado; reconfirmar por si el contrato cambia.
         if ("congelado".equals(cliente.getEstadoCliente())) {
             return Mono.empty();
@@ -114,9 +122,9 @@ public class MensajeriaJob {
             return Mono.empty();
         }
 
-        Aviso aviso = resolverAviso(cliente, gymNombre);
+        Aviso aviso = resolverAviso(cliente, gymNombre, bucketPrevio);
         if (aviso == null) {
-            return Mono.empty(); // no cae en ningún bucket {3,0} para su modo
+            return Mono.empty(); // no cae en ningún bucket {previo, 0} para su modo
         }
 
         return mensajeLogService.existsEnviadoHoy(cliente.getIdCliente(), aviso.tipo(), CANAL_WHATSAPP)
@@ -135,10 +143,15 @@ public class MensajeriaJob {
     }
 
     /**
-     * Resuelve el aviso (tipo + plantilla HSM + params) según {@code modoControl} y el bucket.
-     * Devuelve {@code null} si el socio no cae en ningún bucket {3,0} de su modo.
+     * Resuelve el aviso (tipo + plantilla HSM + params) según {@code modoControl} y el bucket previo.
+     * Devuelve {@code null} si el socio no cae en ningún bucket {@code {bucketPrevio, 0}} de su modo.
+     *
+     * <p>Para accesos, el aviso previo dispara cuando quedan <b>exactamente</b> {@code bucketPrevio}
+     * entradas (el previo de accesos es puntual, no un rango); para calendario, cuando faltan entre 1 y
+     * {@code bucketPrevio} días. Si {@code bucketPrevio == 0} (aviso previo desactivado) solo el día 0
+     * (o 0 accesos) dispara.
      */
-    private Aviso resolverAviso(ClientePorVencer c, String gym) {
+    private Aviso resolverAviso(ClientePorVencer c, String gym, int bucketPrevio) {
         String nombre = c.getNombre() != null ? c.getNombre() : "Cliente";
 
         if ("accesos".equals(c.getModoControl())) {
@@ -148,7 +161,7 @@ public class MensajeriaJob {
                 return new Aviso(TIPO_HOY, TPL_ACCESOS_FINAL, List.of(nombre, gym),
                         "Usaste tu última entrada en " + gym + ".");
             }
-            if (restantes == BUCKET_PREVIO) {
+            if (bucketPrevio > 0 && restantes == bucketPrevio) {
                 return new Aviso(TIPO_PREVIO, TPL_ACCESOS_PREVIO,
                         List.of(nombre, String.valueOf(restantes), gym),
                         "Te quedan " + restantes + " entradas en " + gym + ".");
@@ -166,7 +179,7 @@ public class MensajeriaJob {
             return new Aviso(TIPO_HOY, TPL_MEMBRESIA_HOY, List.of(nombre, gym),
                     "Tu membresía en " + gym + " vence hoy.");
         }
-        if (dias >= 1 && dias <= BUCKET_PREVIO) {
+        if (dias >= 1 && dias <= bucketPrevio) {
             return new Aviso(TIPO_PREVIO, TPL_MEMBRESIA_PREVIO,
                     List.of(nombre, gym, fechaTxt, String.valueOf(dias)),
                     "Tu membresía en " + gym + " vence el " + fechaTxt + ", en " + dias + " días.");

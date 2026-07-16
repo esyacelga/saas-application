@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Collection;
@@ -63,6 +64,20 @@ public class CompaniaPersistenceAdapter implements CompaniaRepository {
                     existing.setActivo(compania.getActivo());
                     // trial_usado NO se toca aquí: es irrevocable (RN-01) y se actualiza en el flujo
                     // "activar Trial" de la Sub-fase 1.3.
+                    // acepta_whatsapp/fecha_consentimiento_wa tampoco: ver updateConsentimientoWa.
+                    return repository.save(existing);
+                })
+                .map(this::toDomain);
+    }
+
+    @Override
+    public Mono<Compania> updateConsentimientoWa(Long id, boolean acepta, Instant fecha) {
+        return repository.findById(id)
+                .flatMap(existing -> {
+                    existing.setAceptaWhatsapp(acepta);
+                    existing.setFechaConsentimientoWa(fecha != null
+                            ? OffsetDateTime.ofInstant(fecha, ZoneOffset.UTC)
+                            : null);
                     return repository.save(existing);
                 })
                 .map(this::toDomain);
