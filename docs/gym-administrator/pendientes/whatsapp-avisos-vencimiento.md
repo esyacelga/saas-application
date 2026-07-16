@@ -83,12 +83,19 @@ contratado por el usuario → menor riesgo de rechazo y menor costo por conversa
 
 | Plantilla (`name`) | Body con placeholders | Variables en el envío |
 |---|---|---|
-| `venc_membresia_previo` | `Hola {{1}}, tu membresía en {{2}} vence el {{3}}, en {{4}} días. Acércate a recepción para renovar y sigue sin parar.` | 1=nombre · 2=gym · 3=fecha_fin · 4=días |
+| `recordatorio_vencimiento_membresia` *(antes `venc_membresia_previo`, renombrada 2026-07-16)* | `Hola {{1}}, tu membresía en {{2}} vence el {{3}} ({{4}} días restantes). Para mantener tu acceso activo, puedes renovarla en recepción.` | 1=nombre · 2=gym · 3=fecha_fin · 4=días |
 | `venc_membresia_hoy` | `Hola {{1}}, tu membresía en {{2}} vence hoy. Pásate por recepción para renovarla y no perder tu ritmo.` | 1=nombre · 2=gym |
-| `venc_accesos_previo` | `Hola {{1}}, te quedan {{2}} entradas en tu membresía de {{3}}. Acércate a recepción para renovar antes de que se agoten.` | 1=nombre · 2=accesos · 3=gym |
+| `recordatorio_vencimiento_accesos` *(antes `venc_accesos_previo`, renombrada 2026-07-16)* | `Hola {{1}}, te quedan {{2}} entradas disponibles en tu membresía de {{3}}. Cuando se agoten, tu acceso quedará inactivo. Puedes renovarla en recepción.` | 1=nombre · 2=accesos · 3=gym |
 | `venc_accesos_final` | `Hola {{1}}, usaste tu última entrada en {{2}}. Pásate por recepción para renovar y seguir entrenando.` | 1=nombre · 2=gym |
 
 **Estado de subida a Meta** (identificador exacto = `templateName` en el código, no cambiar):
+
+> **Decisión 2026-07-16 — bodies reformulados para clasificar como `UTILITY`:** Meta reclasifica
+> automáticamente a `MARKETING` las plantillas con lenguaje promocional/motivacional. Se retiró
+> "sigue sin parar" / "antes de que se agoten" (tono de venta) y el CTA se reformuló como
+> **información de consecuencia** ("para mantener tu acceso activo…" / "cuando se agoten, tu acceso
+> quedará inactivo"), sin emoji en el body (resuelve **M1** para el socio: aprobar sin emoji). Las
+> variables y su orden **no cambian** — cero impacto en código.
 
 > **Decisión 2026-07-15 — solo aviso previo (WhatsApp):** al socio se le avisa **únicamente con
 > antelación** (previo a N días o cuando quedan N entradas). **Se retiró el aviso del día del
@@ -98,8 +105,8 @@ contratado por el usuario → menor riesgo de rechazo y menor costo por conversa
 
 | Plantilla (`name`) | Header (texto fijo) | Estado en Meta |
 |---|---|---|
-| `venc_membresia_previo` | `Tu membresía está por vencer` | ✅ Creada (2026-07-15) — pendiente de aprobación |
-| `venc_accesos_previo` | `Tus entradas están por agotarse` | ✅ Creada (2026-07-15) — pendiente de aprobación |
+| `recordatorio_vencimiento_membresia` | `Tu membresía está por vencer` | ✅ Creada (2026-07-15, renombrada 2026-07-16 desde `venc_membresia_previo`; body reformulado como UTILITY) — pendiente de aprobación |
+| `recordatorio_vencimiento_accesos` | `Tus entradas están por agotarse` | ✅ Creada (2026-07-15, renombrada 2026-07-16 desde `venc_accesos_previo`; body reformulado como UTILITY) — pendiente de aprobación |
 | ~~`venc_membresia_hoy`~~ | — | ❌ No se usa (día 0 retirado) |
 | ~~`venc_accesos_final`~~ | — | ❌ No se usa (día 0 retirado) |
 
@@ -107,9 +114,9 @@ contratado por el usuario → menor riesgo de rechazo y menor costo por conversa
 
 | `tipo` (job) | Plantilla HSM | Condición que lo dispara |
 |---|---|---|
-| `vencimiento_3d` (calendario) | `venc_membresia_previo` | `dias_para_vencer` ∈ buckets previos |
+| `vencimiento_3d` (calendario) | `recordatorio_vencimiento_membresia` | `dias_para_vencer` ∈ buckets previos |
 | `vencimiento_hoy` (calendario) | `venc_membresia_hoy` | `dias_para_vencer == 0` |
-| `vencimiento_3d` (accesos) | `venc_accesos_previo` | `accesos_restantes == 3` (bucket previo) |
+| `vencimiento_3d` (accesos) | `recordatorio_vencimiento_accesos` | `accesos_restantes == 3` (bucket previo) |
 | `vencimiento_hoy` (accesos) | `venc_accesos_final` | `accesos_restantes == 0` |
 
 ### Detalles que estos textos exponen (a resolver en implementación)
@@ -117,7 +124,7 @@ contratado por el usuario → menor riesgo de rechazo y menor costo por conversa
 - **Buckets del socio = `3` y `0` días (decidido).** `MensajeriaJob` ya dispara en
   `dias_para_vencer==3` y `==0` (y accesos `==3`/`==0`). Se **mantiene** así: aviso previo a **3
   días** + aviso el **día del vencimiento**; **no** se añade el de 7. El body
-  `venc_membresia_previo` lleva los días como variable `{{4}}`, así que la misma plantilla serviría
+  `recordatorio_vencimiento_membresia` lleva los días como variable `{{4}}`, así que la misma plantilla serviría
   para otros valores si en el futuro se cambian los buckets desde el panel (ver siguiente punto).
 - **El bucket previo NO debe quedar hardcodeado; el `0` sí es fijo.** Hoy los días de aviso (`3`/`0`
   en el socio; `{15,7,3,1,0}` en el dueño) están **fijos en el código del job**. El requisito es que
@@ -178,7 +185,7 @@ Categoría **`UTILITY`** (avisan sobre un servicio ya contratado), idioma `es`:
 
 | Plantilla (`name`) | Body con placeholders | Variables en el envío |
 |---|---|---|
-| `venc_suscripcion_previo` | `Hola {{1}}, tu plan {{2}} de Gym Admin vence el {{3}}, en {{4}} días. Renueva antes de esa fecha para que tu gimnasio siga operando sin interrupciones.` | 1=owner_nombre · 2=plan · 3=fecha_vencimiento · 4=días |
+| `recordatorio_vencimiento_suscripcion` *(antes `venc_suscripcion_previo`, renombrada 2026-07-16)* | `Hola {{1}}, tu plan {{2}} de Gym Admin vence el {{3}} ({{4}} días restantes). Después de esa fecha tu panel y la app de tus socios quedarán inactivos. Puedes renovar reportando tu pago desde Mi suscripción.` | 1=owner_nombre · 2=plan · 3=fecha_vencimiento · 4=días |
 | `venc_suscripcion_hoy` | `Hola {{1}}, tu plan {{2}} de Gym Admin vence hoy. Renueva ya para no perder el acceso a tu panel y a la app de tus socios.` | 1=owner_nombre · 2=plan |
 | `venc_suscripcion_gracia` *(opcional)* | `Hola {{1}}, tu plan {{2}} de Gym Admin venció y estás en periodo de gracia. Regulariza tu pago para no perder acceso.` | 1=owner_nombre · 2=plan |
 
@@ -186,7 +193,7 @@ Categoría **`UTILITY`** (avisan sobre un servicio ya contratado), idioma `es`:
 
 | Plantilla (`name`) | Header (texto fijo) | Estado en Meta |
 |---|---|---|
-| `venc_suscripcion_previo` | `Tu suscripción está por vencer` | ✅ Creada (2026-07-15) — pendiente de aprobación |
+| `recordatorio_vencimiento_suscripcion` | `Tu suscripción está por vencer` | ✅ Creada (2026-07-15, renombrada 2026-07-16 desde `venc_suscripcion_previo`; body reformulado como UTILITY) — pendiente de aprobación |
 | ~~`venc_suscripcion_hoy`~~ | — | ❌ No se usa (WhatsApp día 0 retirado; banner/email siguen) |
 | `venc_suscripcion_gracia` *(opcional)* | — | ⏳ Opcional, no requerida |
 
@@ -203,7 +210,7 @@ Categoría **`UTILITY`** (avisan sobre un servicio ya contratado), idioma `es`:
 
 | `tipo` (job) | Bucket | Plantilla HSM (WhatsApp) |
 |---|---|---|
-| `VENCIMIENTO_TRIAL` / `VENCIMIENTO_PREMIUM` | `3` (previo, configurable) | `venc_suscripcion_previo` (con `{{4}}=días`) |
+| `VENCIMIENTO_TRIAL` / `VENCIMIENTO_PREMIUM` | `3` (previo, configurable) | `recordatorio_vencimiento_suscripcion` (con `{{4}}=días`) |
 | `VENCIMIENTO_TRIAL` / `VENCIMIENTO_PREMIUM` | `0` | ❌ WhatsApp omitido (banner/email siguen) — ~~`venc_suscripcion_hoy`~~ no se usa |
 | *(estado `EN_GRACIA`, si se añade)* | — | `venc_suscripcion_gracia` (opcional) |
 

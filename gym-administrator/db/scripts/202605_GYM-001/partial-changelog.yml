@@ -839,6 +839,17 @@ databaseChangeLog:
             splitStatements: false
 
   - changeSet:
+      id: GYM-001-70
+      author: gesyacelga
+      context: dev, test, prod
+      comment: 'Feature WhatsApp Fase 6 (ex GYM-003) — tabla saas.notif_buckets_globales + seed socio=3/dueno=3'
+      changes:
+        - sqlFile:
+            path: ddl/70_create_table_saas_notif_buckets_globales.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
       id: GYM-001-140
       author: gesyacelga
       context: dev, test, prod

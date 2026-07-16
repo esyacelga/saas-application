@@ -17,6 +17,9 @@ CREATE TABLE tenant.companias (
   -- Trial único por tenant (REQ-SAAS-001, RN-01)
   trial_usado            BOOLEAN      NOT NULL DEFAULT FALSE,
   fecha_trial_usado      TIMESTAMPTZ,
+  -- Opt-in WhatsApp del dueño (ex GYM-002, consolidado en la baseline)
+  acepta_whatsapp         BOOLEAN     NOT NULL DEFAULT FALSE,
+  fecha_consentimiento_wa TIMESTAMPTZ,
   activo                 BOOLEAN      NOT NULL DEFAULT TRUE,
   eliminado              BOOLEAN      NOT NULL DEFAULT FALSE,
   creacion_fecha         TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
@@ -32,3 +35,5 @@ COMMENT ON COLUMN tenant.companias.obligado_contabilidad  IS 'TRUE si la empresa
 COMMENT ON COLUMN tenant.companias.contribuyente_especial IS 'Número de resolución si es contribuyente especial, NULL si no aplica';
 COMMENT ON COLUMN tenant.companias.trial_usado            IS 'Flag irrevocable: TRUE si la compañía ya activó su Trial alguna vez (RN-01)';
 COMMENT ON COLUMN tenant.companias.fecha_trial_usado      IS 'Timestamp del momento en que se activó el Trial por primera y única vez';
+COMMENT ON COLUMN tenant.companias.acepta_whatsapp         IS 'TRUE solo cuando el dueño de la compañía dio opt-in explícito para recibir avisos de vencimiento de suscripción por WhatsApp. FALSE por defecto: sin este flag NUNCA se envía WhatsApp. Se captura en onboarding o config de notificaciones.';
+COMMENT ON COLUMN tenant.companias.fecha_consentimiento_wa IS 'Timestamp del momento en que el dueño aceptó recibir WhatsApp (prueba mínima de opt-in ante Meta). NULL mientras acepta_whatsapp = FALSE.';

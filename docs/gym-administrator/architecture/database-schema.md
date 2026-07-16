@@ -3,15 +3,15 @@
 > **ESTADO:** 🟡 Arquitectura y modelo de negocio. Mezcla lo implementado con lo planeado; para detalle de implementación verificar contra el código. Ver [../../STATUS.md](../../STATUS.md).
 ## Arquitectura Multicompañía / Multisucursal
 
-**Totales actuales (verificados 2026-07-10 contra `gym-administrator/db/scripts/202605_GYM-001/`):** **69 tablas** distribuidas en **12 schemas** (`saas`, `identidad`, `tenant`, `core`, `asistencia`, `finanzas`, `marketing`, `inventario`, `config`, `seguridad`, `sri`, `facturacion`).
+**Totales actuales (verificados 2026-07-16 contra la BD recreada desde cero con `gym-administrator/db/scripts/202605_GYM-001/`):** **69 tablas** distribuidas en **12 schemas** (`saas`, `identidad`, `tenant`, `core`, `asistencia`, `finanzas`, `marketing`, `inventario`, `config`, `seguridad`, `sri`, `facturacion`).
 
 Todas las tablas están consolidadas en una única story Liquibase `202605_GYM-001/`, dividida en tres subcarpetas por dominio:
 
-- **`ddl/`** — 10 schemas base (saas, identidad, tenant, core, asistencia, finanzas, marketing, inventario, config, seguridad) y sus 46 tablas de plataforma / operación.
-- **`ddl-facturacion/`** — Schemas `sri` (6 catálogos oficiales) y `facturacion` (17 tablas de comprobantes electrónicos y flujo SRI Ecuador).
+- **`ddl/`** — 10 schemas base (saas, identidad, tenant, core, asistencia, finanzas, marketing, inventario, config, seguridad) y sus 45 tablas de plataforma / operación (incluye `saas.notif_buckets_globales`, `ddl/70`).
+- **`ddl-facturacion/`** — Schemas `sri` (6 catálogos oficiales) y `facturacion` (16 tablas de comprobantes electrónicos y flujo SRI Ecuador).
 - **`ddl-freemium/`** — Extras para REQ-SAAS-001: `tenant.pagos_pendientes_validacion`, `saas.config_plataforma` y seed inicial de datos bancarios.
 
-Cada tabla se define **una única vez** en su `CREATE TABLE` (sin scripts `ALTER` posteriores) — una base de datos vacía se construye en una sola pasada de Liquibase. Los cambios REQ-SAAS-001 (Sub-fase 1.1) previamente vivían en la story `202608_GYM-003` (retirada); hoy están incorporados directamente al CREATE de las tablas afectadas: `saas.planes`, `tenant.companias`, `tenant.compania_planes`, `tenant.notificaciones_suscripcion`, `saas.actividad_plataforma`.
+Cada tabla se define **una única vez** en su `CREATE TABLE` (sin scripts `ALTER` posteriores) — una base de datos vacía se construye en una sola pasada de Liquibase. Los cambios REQ-SAAS-001 (Sub-fase 1.1) previamente vivían en la story `202608_GYM-003` (retirada); hoy están incorporados directamente al CREATE de las tablas afectadas: `saas.planes`, `tenant.companias`, `tenant.compania_planes`, `tenant.notificaciones_suscripcion`, `saas.actividad_plataforma`. Igualmente, las stories del feature WhatsApp `202607_GYM-002` (opt-in `acepta_whatsapp`/`fecha_consentimiento_wa` en `identidad.personas` y `tenant.companias`) y `202607_GYM-003` (`saas.notif_buckets_globales`) fueron consolidadas en la baseline el 2026-07-16 al recrear la BD desde cero (changeSet `GYM-001-70` = `ddl/70_...`).
 
 ---
 
@@ -220,7 +220,7 @@ Cada tabla se define **una única vez** en su `CREATE TABLE` (sin scripts `ALTER
                                                  ╚══════════════════════════════╝
 
 ╔══════════════════════════════════╗
-║   notif_buckets_globales         ║  ← GLOBAL, story 202607_GYM-003
+║   notif_buckets_globales         ║  ← GLOBAL, baseline ddl/70 (ex GYM-003)
 ╠══════════════════════════════════╣  Configuración de días de aviso
 ║ PK destinatario VARCHAR(10)      ║  (Fase 6 WhatsApp vencimiento)
 ║    CHECK IN('socio','dueno')     ║
@@ -748,9 +748,9 @@ UNIQUE(id_producto,                         ║    tipo               ║
 
 ---
 
-## Resumen de Tablas (70 tablas en 12 schemas)
+## Resumen de Tablas (69 tablas en 12 schemas)
 
-Verificado 2026-07-16 contando los `CREATE TABLE` de `db/scripts/202605_GYM-001/{ddl,ddl-facturacion,ddl-freemium}/` + story `202607_GYM-003` (notif_buckets_globales). Distribución por schema:
+Verificado 2026-07-16 contra `information_schema.tables` de una BD recreada desde cero con la baseline `202605_GYM-001` (incluye `notif_buckets_globales`, consolidada como `ddl/70`). Distribución por schema:
 
 | Schema | Tablas | Propósito |
 |--------|:---:|-----------|
@@ -765,7 +765,7 @@ Verificado 2026-07-16 contando los `CREATE TABLE` de `db/scripts/202605_GYM-001/
 | `marketing` | 4 | Promociones, beneficios y sus asignaciones a clientes |
 | `inventario` | 7 | Categorías, proveedores, productos, stock, ventas, detalle, movimientos |
 | `sri` | 6 | Catálogos oficiales SRI Ecuador (comprobantes, identificación, formas de pago, impuestos, IVA, anulación NC) |
-| `facturacion` | 17 | Facturación electrónica: config, certificados, secuenciales, comprobantes + detalle + impuestos + pagos + info adicional + NC + envíos + cola + notificaciones + anulaciones + ATS |
+| `facturacion` | 16 | Facturación electrónica: config, certificados, puntos de emisión, secuenciales, comprobantes + detalle + impuestos + pagos + info adicional + NC + envíos + cola + notificaciones + anulaciones + ATS |
 | **Total** | **69** | |
 
 **Detalle por dominio** (Tenant = ¿la tabla filtra por `id_compania`?):

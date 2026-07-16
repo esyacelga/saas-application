@@ -114,7 +114,7 @@ class WhatsAppQueueServiceTest {
         verify(whatsAppSender).enviarPlantilla(tel.capture(), tpl.capture(), eq("es"), params.capture());
 
         assertThat(tel.getValue()).isEqualTo("+593987654321");
-        assertThat(tpl.getValue()).isEqualTo("venc_suscripcion_previo");
+        assertThat(tpl.getValue()).isEqualTo("recordatorio_vencimiento_suscripcion");
         assertThat(params.getValue()).containsExactly("Carlos", "Premium", "13/07/2026", "3");
         verify(notificacionRepository).marcarEnviado(500L);
     }

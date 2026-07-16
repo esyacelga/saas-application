@@ -91,7 +91,7 @@ class MensajeriaJobTest {
     }
 
     @Test
-    @DisplayName("Calendario vence en 3 días + opt-in → venc_membresia_previo [nombre, gym, fecha, dias]")
+    @DisplayName("Calendario vence en 3 días + opt-in → recordatorio_vencimiento_membresia [nombre, gym, fecha, dias]")
     void calendarioPrevio_enviaPlantillaPrevio() {
         stubClientes(cliente("calendario", 3, null, "0987654321", true, "proximo_vencer"));
 
@@ -100,7 +100,7 @@ class MensajeriaJobTest {
         ArgumentCaptor<List<String>> params = ArgumentCaptor.forClass(List.class);
         verify(mensajeLogService).enviarWhatsAppJob(eq(COMPANIA), eq(1), eq(10),
                 eq("vencimiento_3d"), eq("whatsapp"), eq("+593987654321"),
-                eq("venc_membresia_previo"), eq("es"), params.capture(), anyString());
+                eq("recordatorio_vencimiento_membresia"), eq("es"), params.capture(), anyString());
         assertThat(params.getValue()).containsExactly("María", GYM, "18/07/2026", "3");
     }
 
@@ -116,7 +116,7 @@ class MensajeriaJobTest {
     }
 
     @Test
-    @DisplayName("Accesos restantes 3 → venc_accesos_previo [nombre, accesos, gym]")
+    @DisplayName("Accesos restantes 3 → recordatorio_vencimiento_accesos [nombre, accesos, gym]")
     void accesosPrevio_enviaPlantillaAccesosPrevio() {
         stubClientes(cliente("accesos", null, 3, "0987654321", true, "proximo_vencer"));
 
@@ -124,7 +124,7 @@ class MensajeriaJobTest {
 
         verify(mensajeLogService).enviarWhatsAppJob(eq(COMPANIA), eq(1), eq(10),
                 eq("vencimiento_3d"), eq("whatsapp"), eq("+593987654321"),
-                eq("venc_accesos_previo"), eq("es"), eq(List.of("María", "3", GYM)), anyString());
+                eq("recordatorio_vencimiento_accesos"), eq("es"), eq(List.of("María", "3", GYM)), anyString());
     }
 
     @Test
@@ -206,7 +206,7 @@ class MensajeriaJobTest {
         ArgumentCaptor<List<String>> params = ArgumentCaptor.forClass(List.class);
         verify(mensajeLogService).enviarWhatsAppJob(eq(COMPANIA), eq(1), eq(10),
                 eq("vencimiento_3d"), eq("whatsapp"), eq("+593987654321"),
-                eq("venc_membresia_previo"), eq("es"), params.capture(), anyString());
+                eq("recordatorio_vencimiento_membresia"), eq("es"), params.capture(), anyString());
         assertThat(params.getValue()).containsExactly("María", GYM, "18/07/2026", "5");
     }
 

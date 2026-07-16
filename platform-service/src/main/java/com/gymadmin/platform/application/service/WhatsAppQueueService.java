@@ -50,7 +50,7 @@ public class WhatsAppQueueService implements ProcesarColaWhatsAppUseCase {
     private static final String IDIOMA = "es";
 
     /** Plantillas HSM del dueño (Meta). Ver docs/gym-administrator/pendientes/whatsapp-avisos-vencimiento.md. */
-    static final String TEMPLATE_PREVIO = "venc_suscripcion_previo";
+    static final String TEMPLATE_PREVIO = "recordatorio_vencimiento_suscripcion";
     static final String TEMPLATE_HOY = "venc_suscripcion_hoy";
 
     /**
@@ -153,7 +153,7 @@ public class WhatsAppQueueService implements ProcesarColaWhatsAppUseCase {
     /**
      * Params en orden según la plantilla:
      * <ul>
-     *   <li>{@code venc_suscripcion_previo}: [nombre, plan, fecha_vencimiento, dias] → {{1}}..{{4}}.</li>
+     *   <li>{@code recordatorio_vencimiento_suscripcion}: [nombre, plan, fecha_vencimiento, dias] → {{1}}..{{4}}.</li>
      *   <li>{@code venc_suscripcion_hoy}: [nombre, plan] → {{1}}, {{2}}.</li>
      * </ul>
      */

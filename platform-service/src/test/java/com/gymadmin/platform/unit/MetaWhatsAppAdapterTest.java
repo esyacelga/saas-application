@@ -58,7 +58,7 @@ class MetaWhatsAppAdapterTest {
                 .setBody("{\"messages\":[{\"id\":\"wamid.XYZ\"}]}"));
 
         StepVerifier.create(adapterConfigurado().enviarPlantilla(
-                        "+593987654321", "venc_suscripcion_previo", "es",
+                        "+593987654321", "recordatorio_vencimiento_suscripcion", "es",
                         List.of("Carlos", "Premium", "30/07/2026", "5")))
                 .verifyComplete();
 
@@ -71,7 +71,7 @@ class MetaWhatsAppAdapterTest {
         assertEquals("whatsapp", body.get("messaging_product").asText());
         assertEquals("template", body.get("type").asText());
         assertEquals("593987654321", body.get("to").asText(), "Meta exige el 'to' sin '+'");
-        assertEquals("venc_suscripcion_previo", body.get("template").get("name").asText());
+        assertEquals("recordatorio_vencimiento_suscripcion", body.get("template").get("name").asText());
         assertEquals("es", body.get("template").get("language").get("code").asText());
 
         JsonNode params = body.get("template").get("components").get(0).get("parameters");

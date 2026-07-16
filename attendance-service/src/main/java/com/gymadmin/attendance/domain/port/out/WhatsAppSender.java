@@ -18,7 +18,7 @@ public interface WhatsAppSender {
 
     /**
      * @param destinatarioE164 teléfono en formato E.164 (p. ej. {@code +593987654321}).
-     * @param templateName     nombre de la plantilla HSM aprobada en Meta (p. ej. {@code venc_membresia_previo}).
+     * @param templateName     nombre de la plantilla HSM aprobada en Meta (p. ej. {@code recordatorio_vencimiento_membresia}).
      * @param idioma           código de idioma de la plantilla (p. ej. {@code es}).
      * @param params           valores de los placeholders {@code {{1}}…{{n}}} en orden.
      * @return {@link Mono#empty()} al enviar con éxito (o cuando no hay credenciales en dev/CI).

@@ -127,6 +127,14 @@ services:
       CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      # WhatsApp / Meta Cloud API (avisos de vencimiento del dueño). Vacío → el
+      # MetaWhatsAppAdapter loguea WARN y no envía (el servicio arranca igual).
+      META_PHONE_NUMBER_ID: ${META_PHONE_NUMBER_ID:-}
+      META_ACCESS_TOKEN: ${META_ACCESS_TOKEN:-}
+      META_API_VERSION: ${META_API_VERSION:-v21.0}
+      META_API_BASE_URL: ${META_API_BASE_URL:-https://graph.facebook.com}
+      # Secreto compartido de los endpoints /internal/v1/ (mismo valor en core/platform/attendance).
+      INTERNAL_SECRET: ${INTERNAL_SECRET:-platform-secret-dev}
     depends_on:
       postgres:
         condition: service_healthy
@@ -161,6 +169,8 @@ services:
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-Y2hhbmdlLW1lLWluLXByb2R1Y3Rpb24tdGhpcy1rZXktbXVzdC1iZS0yNTYtYml0cw==}
       PLATFORM_SERVICE_URL: http://platform-service:8081
+      # Secreto compartido de los endpoints /internal/v1/ (clientes-por-vencer, etc.).
+      INTERNAL_SECRET: ${INTERNAL_SECRET:-platform-secret-dev}
       CLIENT_STATUS_JOB_CRON: ${CLIENT_STATUS_JOB_CRON:-0 10 0 * * *}
       CARNET_PREFIX: ${CARNET_PREFIX:-GYM}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
@@ -200,7 +210,16 @@ services:
       JWT_SECRET: ${JWT_SECRET:-Y2hhbmdlLW1lLWluLXByb2R1Y3Rpb24tdGhpcy1rZXktbXVzdC1iZS0yNTYtYml0cw==}
       CORE_SERVICE_URL: http://core-service:8083
       AUTH_SERVICE_URL: http://auth-service:8080
+      PLATFORM_SERVICE_URL: http://platform-service:8081
       MESSAGING_JOB_CRON: ${MESSAGING_JOB_CRON:-0 15 0 * * *}
+      # WhatsApp / Meta Cloud API (avisos de vencimiento del socio). Vacío → el
+      # MetaWhatsAppAdapter loguea WARN y no envía (el servicio arranca igual).
+      META_PHONE_NUMBER_ID: ${META_PHONE_NUMBER_ID:-}
+      META_ACCESS_TOKEN: ${META_ACCESS_TOKEN:-}
+      META_API_VERSION: ${META_API_VERSION:-v21.0}
+      META_API_BASE_URL: ${META_API_BASE_URL:-https://graph.facebook.com}
+      # Secreto compartido de los endpoints /internal/v1/ (mismo valor en core/platform/attendance).
+      INTERNAL_SECRET: ${INTERNAL_SECRET:-platform-secret-dev}
       CORS_ALLOW_ALL: ${CORS_ALLOW_ALL:-false}
       CORS_ORIGIN_1: ${CORS_ORIGIN_1:-http://localhost:5173}
       CORS_ORIGIN_2: ${CORS_ORIGIN_2:-http://localhost:3000}

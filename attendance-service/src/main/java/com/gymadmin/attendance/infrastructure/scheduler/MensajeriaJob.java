@@ -65,8 +65,8 @@ public class MensajeriaJob {
     private static final DateTimeFormatter FECHA_ES = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     // Plantillas HSM del socio (categoría UTILITY, idioma es).
-    private static final String TPL_MEMBRESIA_PREVIO = "venc_membresia_previo"; // [nombre, gym, fecha, dias]
-    private static final String TPL_ACCESOS_PREVIO = "venc_accesos_previo";     // [nombre, accesos, gym]
+    private static final String TPL_MEMBRESIA_PREVIO = "recordatorio_vencimiento_membresia"; // [nombre, gym, fecha, dias]
+    private static final String TPL_ACCESOS_PREVIO = "recordatorio_vencimiento_accesos"; // [nombre, accesos, gym]
     // Decisión 2026-07-15: solo aviso previo al socio. Las plantillas del día 0
     // (venc_membresia_hoy, venc_accesos_final) y TIPO_HOY quedan retiradas del job.
 

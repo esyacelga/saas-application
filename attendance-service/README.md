@@ -139,7 +139,7 @@ com.gymadmin.attendance/
 El job diario (cron `${MESSAGING_JOB_CRON:0 15 0 * * *}`, hora Guayaquil) avisa por WhatsApp a los socios cuya **membresía** está por vencer, con buckets **{3, 0}** (aviso previo a 3 días + día del vencimiento):
 
 - Consume `clientes-por-vencer` de core (no duplica la detección de vencimiento).
-- Envía **plantillas HSM pre-aprobadas** vía `WhatsAppSender`/`MetaWhatsAppAdapter` (Meta Cloud API): `venc_membresia_previo`/`venc_membresia_hoy` (calendario), `venc_accesos_previo`/`venc_accesos_final` (accesos). Sin credenciales Meta el adaptador loguea WARN y no envía (dev/CI).
+- Envía **plantillas HSM pre-aprobadas** vía `WhatsAppSender`/`MetaWhatsAppAdapter` (Meta Cloud API): `recordatorio_vencimiento_membresia` (calendario; antes `venc_membresia_previo`) y `recordatorio_vencimiento_accesos` (accesos; antes `venc_accesos_previo`) — las de día 0 (`venc_membresia_hoy`/`venc_accesos_final`) están retiradas. Sin credenciales Meta el adaptador loguea WARN y no envía (dev/CI).
 - **Opt-in (R4):** solo envía si `identidad.personas.acepta_whatsapp = TRUE` y el teléfono es normalizable a E.164; si no, omite (attendance no manda emails → sin fallback).
 - **Idempotencia (C2):** `existsEnviadoHoy(idCliente, tipo, 'whatsapp')` evita duplicar el mismo aviso el mismo día.
 - Registra cada envío en `asistencia.mensajes_log` con estado `enviado`/`fallido`.
