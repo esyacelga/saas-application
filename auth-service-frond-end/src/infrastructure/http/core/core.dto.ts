@@ -40,6 +40,8 @@ export interface ClienteListItem {
   telefono: string | null
   estado: EstadoCliente
   membresia_activa: MembresiaResumen | null
+  foto_url: string | null
+  sexo: 'M' | 'F' | 'O' | null
 }
 
 export type EstadoCliente = 'activo' | 'proximo_vencer' | 'vencido' | 'congelado' | 'riesgo_abandono'
@@ -57,6 +59,7 @@ export interface PersonaDetalle {
   correo: string | null
   foto_url: string | null
   sexo: 'M' | 'F' | 'O' | null
+  fecha_nacimiento: string | null
 }
 
 export interface MembresiaActivaDetalle {
@@ -71,7 +74,9 @@ export interface MembresiaActivaDetalle {
 
 export interface ClienteDetalle {
   id: number
+  id_persona: number
   persona: PersonaDetalle
+  sexo: 'M' | 'F' | 'O' | null
   peso_kg: number | null
   altura_cm: number | null
   objetivos: string | null

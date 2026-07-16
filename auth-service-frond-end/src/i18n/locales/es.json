@@ -832,7 +832,14 @@
     "usuarioAppDesactivadoOk": "Cuenta desactivada.",
     "usuarioAppLoginConflict": "El login ya está en uso por otro usuario.",
     "usuarioAppError": "Error al actualizar la cuenta.",
-    "usuarioAppToggleError": "Error al cambiar el estado de la cuenta."
+    "usuarioAppToggleError": "Error al cambiar el estado de la cuenta.",
+    "fieldNacimiento": "Fecha de nacimiento",
+    "editarTitle": "Editar cliente",
+    "editarSubmit": "Guardar cambios",
+    "editarGuardadoOk": "Cliente actualizado correctamente.",
+    "editarFotoBtn": "Cambiar foto",
+    "editarFotoTipoError": "El archivo debe ser una imagen.",
+    "editarFotoTamanoError": "La imagen no puede superar los 5 MB."
   },
   "membresias": {
     "activaTitle": "Membresía activa",

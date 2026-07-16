@@ -6,6 +6,8 @@ public record ClienteListItem(
         String ci,
         String telefono,
         String estado,
+        String fotoUrl,
+        String sexo,
         MembresiaResumen membresiaActiva
 ) {
     public record MembresiaResumen(

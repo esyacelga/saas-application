@@ -4,11 +4,13 @@ import com.gymadmin.core.domain.model.ClienteDetalle;
 
 import java.math.BigDecimal;
 
-// Jackson SNAKE_CASE serializa: pesoKg→peso_kg, alturaCm→altura_cm, fechaIngreso→fecha_ingreso,
-// codigoCarnet→codigo_carnet, membresiaActiva→membresia_activa, modoControl→modo_control,
-// fechaInicio→fecha_inicio, fechaFin→fecha_fin, diasRestantes→dias_restantes, fotoUrl→foto_url
+// Jackson SNAKE_CASE serializa: idPersona→id_persona, pesoKg→peso_kg, alturaCm→altura_cm,
+// fechaIngreso→fecha_ingreso, codigoCarnet→codigo_carnet, membresiaActiva→membresia_activa,
+// modoControl→modo_control, fechaInicio→fecha_inicio, fechaFin→fecha_fin,
+// diasRestantes→dias_restantes, fotoUrl→foto_url, fechaNacimiento→fecha_nacimiento
 public record ClienteDetalleResponse(
         Long id,
+        Long idPersona,
         PersonaDto persona,
         BigDecimal pesoKg,
         BigDecimal alturaCm,
@@ -20,7 +22,7 @@ public record ClienteDetalleResponse(
         String sexo,
         MembresiaActivaDto membresiaActiva
 ) {
-    public record PersonaDto(String ci, String nombre, String telefono, String correo, String fotoUrl) {}
+    public record PersonaDto(String ci, String nombre, String telefono, String correo, String fotoUrl, String fechaNacimiento) {}
 
     public record MembresiaActivaDto(
             Long id,
@@ -36,7 +38,8 @@ public record ClienteDetalleResponse(
         PersonaDto persona = new PersonaDto(
                 d.persona().ci(), d.persona().nombre(),
                 d.persona().telefono(), d.persona().correo(),
-                null   // foto_url no existe en la tabla aún
+                d.persona().fotoUrl(),
+                d.persona().fechaNacimiento() != null ? d.persona().fechaNacimiento().toString() : null
         );
         MembresiaActivaDto mem = null;
         if (d.membresiaActiva() != null) {
@@ -45,7 +48,7 @@ public record ClienteDetalleResponse(
                     m.fechaInicio(), m.fechaFin(), m.diasRestantes(), m.estado());
         }
         return new ClienteDetalleResponse(
-                d.id(), persona, d.pesoKg(), d.alturaCm(),
+                d.id(), d.idPersona(), persona, d.pesoKg(), d.alturaCm(),
                 d.objetivos(), d.lesiones(), d.estado(),
                 d.fechaIngreso(), d.codigoCarnet(), d.sexo(), mem
         );

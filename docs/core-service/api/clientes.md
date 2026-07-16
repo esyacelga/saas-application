@@ -15,6 +15,50 @@ Las respuestas usan **snake_case** (Jackson `SNAKE_CASE` global configurado en `
 | POST   | `/api/v1/clientes`      | Registra un nuevo cliente (crea persona si no existe) |
 | GET    | `/api/v1/clientes/{id}` | Detalle de cliente con membresía activa          |
 | PUT    | `/api/v1/clientes/{id}` | Actualiza peso, altura, objetivos, lesiones      |
+
+### GET /api/v1/clientes — campos de foto y sexo (2026-07-16)
+
+Cada item del listado incluye ahora `foto_url` y `sexo` (JOIN con `identidad.personas` para la foto; `sexo` viene de `core.clientes`):
+
+```json
+{
+  "id": 10,
+  "nombre": "Juan Pérez",
+  "ci": "1712345678",
+  "telefono": "0991234567",
+  "estado": "activo",
+  "foto_url": "https://res.cloudinary.com/.../foto.jpg",
+  "sexo": "M",
+  "membresia_activa": { "...": "..." }
+}
+```
+
+`foto_url` puede ser `null` — el frontend cae al avatar genérico por sexo (`VITE_AVATAR_HOMBRE_URL` / `VITE_AVATAR_MUJER_URL`).
+
+### GET /api/v1/clientes/{id} — campos añadidos (2026-07-16)
+
+El detalle expone ahora `id_persona` (raíz) y, dentro de `persona`: `foto_url` (antes se serializaba `null` fijo) y `fecha_nacimiento`:
+
+```json
+{
+  "id": 10,
+  "id_persona": 5,
+  "persona": {
+    "ci": "1712345678",
+    "nombre": "Juan Pérez",
+    "telefono": "0991234567",
+    "correo": "juan@mail.com",
+    "foto_url": "https://res.cloudinary.com/.../foto.jpg",
+    "fecha_nacimiento": "1990-05-20"
+  },
+  "sexo": "M",
+  "...": "..."
+}
+```
+
+`id_persona` permite al frontend editar los datos de identidad y subir la foto vía auth-service (`PUT /api/v1/personas/{id_persona}` y `POST /api/v1/personas/{id_persona}/foto`).
+
+> **Nota sobre `sexo`:** existe en dos tablas con constraints distintos — `core.clientes.sexo` acepta `M/F/O`, pero `identidad.personas.sexo` solo `M/F` (CHECK). El PUT de personas en auth-service fallaría con `O`; por eso el modal de edición del panel admin solo ofrece M/F.
 | GET    | `/api/v1/clientes/mi-perfil` | Perfil del cliente autenticado             |
 | GET    | `/api/v1/clientes/my-id`    | ID del cliente autenticado                  |
 | POST   | `/api/v1/clientes/app`      | Registro desde app móvil                    |

@@ -832,7 +832,14 @@
     "usuarioAppDesactivadoOk": "Account deactivated.",
     "usuarioAppLoginConflict": "This login is already in use by another user.",
     "usuarioAppError": "Error updating the account.",
-    "usuarioAppToggleError": "Error changing account status."
+    "usuarioAppToggleError": "Error changing account status.",
+    "fieldNacimiento": "Date of birth",
+    "editarTitle": "Edit member",
+    "editarSubmit": "Save changes",
+    "editarGuardadoOk": "Member updated successfully.",
+    "editarFotoBtn": "Change photo",
+    "editarFotoTipoError": "The file must be an image.",
+    "editarFotoTamanoError": "The image cannot exceed 5 MB."
   },
   "membresias": {
     "activaTitle": "Active membership",

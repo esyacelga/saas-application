@@ -141,7 +141,9 @@ POST /api/v1/auto-registro
 
 ---
 
-## Flujo de usuario — 4 pasos
+## Flujo de usuario — 3 pasos
+
+> **ACTUALIZACIÓN 2026-07-16:** El wizard original de 4 pasos fue consolidado a **3 pasos**. El Paso 2 (Sucursal) fue eliminado; su contenido (dirección) se integró al Paso 1. Ver [registro-mejoras-implementadas.md](../registro-mejoras-implementadas.md) para detalles.
 
 ```
 [Login Page]
@@ -150,24 +152,18 @@ POST /api/v1/auto-registro
         ▼
 ┌─────────────────────────────────────────────────────┐
 │  PASO 1 — Tu gimnasio                               │
-│  Nombre del gimnasio · RUC · Correo · Tel · WA      │
+│  Nombre · Correo (opt.) · Dirección (opt.)          │
 └──────────────────────┬──────────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────────┐
-│  PASO 2 — Sede principal                            │
-│  Nombre de la sede · Dirección                      │
-└──────────────────────┬──────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│  PASO 3 — Elige tu plan                             │
+│  PASO 2 — Elige tu plan                             │
 │  Tarjetas de planes (incluye plan gratuito)         │
 └──────────────────────┬──────────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────────┐
-│  PASO 4 — Tus datos                                 │
+│  PASO 3 — Tus datos                                 │
 │  Nombre · CI · Correo · Contraseña · Confirmar      │
 └──────────────────────┬──────────────────────────────┘
                        │
@@ -255,55 +251,26 @@ Ubicada en la parte superior del card, visible en todos los pasos.
 | Campo | Tipo | Required | Notas |
 |-------|------|----------|-------|
 | Nombre del gimnasio | text | Sí | Placeholder: "CrossFit Central, Sport Zone..." |
-| RUC | text | Sí | Placeholder: "1234567890001" · Min 10, Max 20 |
 | Correo corporativo | email | No | Placeholder: "contacto@migimnasio.com" |
-| Teléfono | text | No | |
-| WhatsApp | text | No | |
+| Dirección | text | No | Placeholder: "Av. Amazonas N23-45..." · Dónde entrenan los clientes |
 
-**Validación Zod (reusa `wizardStep1Schema`):**
+**Validación Zod (schema propio del auto-registro público):**
 ```typescript
 z.object({
-  nombre: z.string().min(2).max(150),
-  ruc: z.string().min(10).max(20),
-  correo: z.string().email().optional().or(z.literal('')),
-  telefono: z.string().optional().or(z.literal('')),
-  whatsapp: z.string().optional().or(z.literal('')),
+  nombre: z.string().min(2, 'Nombre del gimnasio requerido').max(150),
+  correo: z.string().email('Correo no válido').optional().or(z.literal('')),
+  direccion: z.string().optional().or(z.literal('')),
 })
 ```
 
 **UX notes:**
-- Los campos opcionales se muestran todos desde el inicio (no hay "mostrar más"). El formulario no es tan largo como para ocultarlos.
-- El label "RUC" puede variar según el país — si hay internacionalización futura se puede generalizar a "Documento fiscal".
+- **RUC, teléfono y WhatsApp ya no se solicitan en el registro público** (se eliminaron aplicando el principio de disclosure progresivo — ver [registro-quitar-ruc.md](../registro-quitar-ruc.md) y [registro-mejoras-implementadas.md](../registro-mejoras-implementadas.md)).
+- La dirección es opcional y reemplaza al Paso 2 (Sucursal) que fue eliminado: la mayoría de gyms tienen un solo local que se llama igual que el gimnasio.
+- Los campos opcionales muestran etiqueta "(opcional)" en gris junto al label.
 
 ---
 
-### PASO 2 — Sede principal
-
-**Título del paso:** "Sede principal"  
-**Subtítulo:** "¿Dónde está ubicado tu gimnasio?"
-
-**Campos:**
-
-| Campo | Tipo | Required | Notas |
-|-------|------|----------|-------|
-| Nombre de la sede | text | Sí | Placeholder: "Sede Central, Sucursal Norte..." |
-| Dirección | text | No | Placeholder: "Av. Amazonas N23-45..." |
-
-**Validación Zod (reusa `wizardStep2Schema`):**
-```typescript
-z.object({
-  nombreSucursal: z.string().min(2).max(150),
-  direccionSucursal: z.string().optional().or(z.literal('')),
-})
-```
-
-**UX notes:**
-- Solo 2 campos. El paso se completa rápido — refuerza la sensación de progreso.
-- Hint debajo del nombre: "Puedes agregar más sedes desde el panel una vez registrado."
-
----
-
-### PASO 3 — Elige tu plan
+### PASO 2 — Elige tu plan
 
 **Título del paso:** "Elige tu plan"  
 **Subtítulo:** "Selecciona el plan que mejor se adapte a tu gimnasio. Puedes cambiarlo cuando quieras."
@@ -364,7 +331,7 @@ z.object({
 
 ---
 
-### PASO 4 — Tus datos
+### PASO 3 — Tus datos
 
 **Título del paso:** "Tus datos"  
 **Subtítulo:** "Serás el administrador principal del gimnasio."
@@ -395,13 +362,20 @@ z.object({
 })
 ```
 
+**Validación de correo asíncrona (onBlur):**
+- Al salir del campo correo: si es válido (formato email), el frontend consulta `GET /auth/app-usuarios/check-email/{correo}` al backend.
+- Posibles respuestas:
+  - `200` + `disponible: true` → mostrar ✓ "Correo disponible" (verde).
+  - `200` + `disponible: false` → mostrar ⚠ "Este correo ya está registrado" (rojo) + link "Inicia sesión".
+  - Error de red → se ignora silenciosamente; el backend validará en el submit.
+
 **UX notes:**
 - Hint debajo del correo: "Este correo será tu usuario de acceso al panel."
 - Hint debajo del CI: "Tu número de cédula de identidad."
 - El ícono de ojo (mostrar/ocultar) en ambos campos de contraseña, igual que en `LoginPage`.
-- A diferencia del Step4 del wizard de plataforma, **no hay búsqueda de persona existente** — el registrante siempre ingresa todos sus datos desde cero.
-- Si el correo o CI ya existen, el backend devuelve 409 al hacer submit del paso 4 (no se puede validar antes sin exponer un endpoint de "verificar disponibilidad"). El error se muestra en un banner rojo en la parte **superior del Paso 4**, no en el campo específico (ya que viene del backend, no de Zod). El usuario puede corregir el campo y reintentar sin perder el resto del formulario.
-- **El Paso 4 guarda su estado local** — si el usuario vuelve al Paso 3 y regresa al 4, los campos mantienen lo que había escrito (React Hook Form con `defaultValues` del estado acumulado en el orquestador).
+- A diferencia del Paso 3 del wizard de plataforma, **no hay búsqueda de persona existente** — el registrante siempre ingresa todos sus datos desde cero.
+- Si el correo o CI ya existen, el backend devuelve 409 al hacer submit (error duro). El error se muestra en un banner rojo en la parte **superior del Paso 3**, no en el campo específico (ya que viene del backend, no de Zod). El usuario puede corregir el campo y reintentar sin perder el resto del formulario.
+- **El Paso 3 guarda su estado local** — si el usuario vuelve al Paso 2 y regresa al 3, los campos mantienen lo que había escrito (React Hook Form con `defaultValues` del estado acumulado en el orquestador).
 
 ---
 
@@ -414,8 +388,8 @@ z.object({
 ```
 
 - **Paso 1:** solo "Siguiente" (no hay Atrás). También: enlace "← Volver al login" en esquina superior izquierda del card.
-- **Pasos 2-3:** "Volver" + "Siguiente".
-- **Paso 4:** "Volver" + "Crear mi cuenta" (texto final, no "Siguiente").
+- **Pasos 2:** "Volver" + "Siguiente".
+- **Paso 3:** "Volver" + "Crear mi cuenta" (texto final, no "Siguiente").
 - **Botón Siguiente / Crear mi cuenta:**
   - Estilo: `bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2.5 px-5 rounded-lg text-sm`.
   - Estado loading: `<PulsingDots size="sm" />` + texto "Creando cuenta…" (usa el componente de IMPL_16 si ya está; si no, `Loader2` provisorio).
@@ -477,16 +451,16 @@ Cuando el endpoint `POST /auto-registro` devuelve error, se lee el campo `confli
 
 | Status | `conflicto` | Mensaje al usuario | Dónde aparece |
 |--------|------------|-------------------|---------------|
-| 409 | `correo` | "Este correo ya está registrado. ¿Ya tienes una cuenta? [Inicia sesión →]" | Banner rojo al tope del Paso 4 |
-| 409 | `ci` | "Esta cédula ya está registrada en el sistema." | Banner rojo al tope del Paso 4 |
-| 409 | `ruc` | "Ya existe una empresa registrada con ese RUC." | Banner rojo al tope del Paso 1 + el wizard retrocede al Paso 1 automáticamente |
-| 400 | `idPlan` | "El plan seleccionado no está disponible." | Banner rojo al tope del Paso 3 + retrocede al Paso 3 |
-| 429 | — | "Demasiados intentos. Espera unos minutos e intenta de nuevo." | Banner al tope del Paso 4, botón deshabilitado 60s |
-| 5xx | — | "Ocurrió un error inesperado. Por favor intenta de nuevo." | Banner al tope del Paso 4 |
+| 409 | `correo` | "Este correo ya está registrado. [Inicia sesión →]" | Banner rojo al tope del Paso 3 |
+| 409 | `ci` | "Esta cédula ya está registrada en el sistema." | Banner rojo al tope del Paso 3 |
+| 409 | `idPlan` | "El plan seleccionado no está disponible. Por favor elige otro." | Banner rojo global + retrocede al Paso 2 automáticamente |
+| 429 | — | "Demasiados intentos. Espera unos minutos e intenta de nuevo." | Banner global al tope del Paso 3 |
+| 5xx | — | "Ocurrió un error inesperado. Por favor intenta de nuevo." | Banner global al tope |
 
 **Comportamiento del banner de error:**
 - Componente `div` con ícono `AlertCircle` (igual a `LoginPage`).
-- Si el error indica un paso anterior (ej. RUC duplicado), el wizard retrocede al paso afectado y muestra el banner ahí — el usuario no tiene que adivinar qué cambiar.
+- Los errores de Paso 3 (correo/CI duplicado) se muestran solo en ese paso.
+- El error de `idPlan` hace que el wizard retroceda al Paso 2 automáticamente para que el usuario reelija.
 - El link "Inicia sesión →" del error de correo duplicado navega a `/login` usando `<Link>` de react-router.
 
 **Ubicación del banner en el layout del card:**

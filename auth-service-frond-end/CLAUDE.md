@@ -76,13 +76,13 @@ All instances share the same interceptor pattern: attach `Authorization: Bearer 
 
 Use cases are **thin orchestrators** — each is a class wrapping one repository, with methods that call repo methods directly with no added business logic. They live under `src/application/<feature>/`. Groups:
 - **auth** (5): `LoginStaff`, `LoginPlatform`, `RefreshToken`, `Logout`, `AutoRegistro`
-- **platform** (9): `GetPlanes`, `GestionarPlan`, `GetCaracteristicas`, `GestionarCompania`, `GestionarSucursal`, `GestionarSuscripcion`, `GestionarPago`, `GestionarNotifConfig`, `RegistrarGymWizard`
+- **platform** (10): `GetPlanes`, `GestionarPlan`, `GetCaracteristicas`, `GestionarCompania`, `GestionarSucursal`, `GestionarSuscripcion`, `GestionarPago`, `GestionarNotifConfig`, `GestionarNotifBuckets`, `RegistrarGymWizard`
 - **core**: no use case layer — pages call `coreRepository` directly. Methods group into: tipos de membresía (CRUD + deactivate), clientes (CRUD + search by CI + plataforma variants), membresías (sell, cancel, update prior attendances), congelamientos (freeze, reactivate, list).
 - **attendance**: no use case layer — pages call `attendanceRepository` directly. Methods: `getAsistenciasHoy`, `getEstadisticas`, `getAsistenciasUltimos30`, `getHistorialCliente`, `getRachaPerfecta`, `registrarManual`.
 
 ### Domain entities
 
-`src/domain/platform/entities/Plan.entity.ts` defines 8 types: `Plan`, `Caracteristica`, `PlanActivo`, `Compania`, `Sucursal`, `CompaniaPlan`, `Pago`, `NotifConfig`. The filename doesn't reflect its full scope.
+`src/domain/platform/entities/Plan.entity.ts` defines 9 types: `Plan`, `Caracteristica`, `PlanActivo`, `Compania`, `Sucursal`, `CompaniaPlan`, `Pago`, `NotifConfig`, `ConsentimientoWaResponse`. The filename doesn't reflect its full scope. `ConsentimientoWaResponse` represents the WhatsApp consent status for a gym (opt-in to receive WhatsApp alerts).
 
 `src/domain/platform/ports/PlatformRepository.port.ts` is a single large interface with 35+ methods spanning all platform entities — it's the single port for the entire platform domain.
 
@@ -96,6 +96,8 @@ Use cases are **thin orchestrators** — each is a class wrapping one repository
 **State management** — Zustand store at `src/infrastructure/store/auth/auth.store.ts` holds `accessToken`, `user`, and `initialized`. Prefer the computed hooks (`useIsAuthenticated`, `useCurrentUser`, `useHasPermission`, `useIsPlatformUser`) over reading store state directly. `useHasPermission(permiso)` is staff-only — it returns `false` for all other token types.
 
 **Platform store** — `src/infrastructure/store/platform/platform.store.ts` holds `companias[]`, `selectedCompania`, `planes[]`, `caracteristicas[]`. It is pure client state with no auto-refresh; populate it explicitly in page effects and update it after mutations.
+
+**Limit Plan Modal store** — `src/infrastructure/store/plan/useLimitPlanModalStore.ts` (Zustand) manages subscription limit warnings. When a plan limit is reached (e.g., max clients/staff/branches), call `openModal({ recurso, actual, maximo, planActual })` to display the `UpgradeModal`. The store emits messages in the selected theme and navigates to subscription settings on CTA click.
 
 **Loader store** — `src/infrastructure/store/loader/loader.store.ts` tracks in-flight Axios requests (`start()` / `done()` / `isLoading()`). Wired into all four Axios interceptors automatically; drives the `TopLoader` progress bar in the layout headers. Do not call `start()`/`done()` manually from components.
 
@@ -126,6 +128,7 @@ Shared page-level components in `src/ui/components/`:
 - `PageHeader` — title + optional description + optional action slot; use at the top of every admin page
 - `ConfirmDialog` — reusable confirmation modal with `destructive` flag; prefer this over PrimeReact's `confirmDialog()` imperative API for consistency
 - `PrintQrModal` — QR code print dialog (reusable)
+- `UpgradeModal` — subscription limit warning modal; shown when a plan limit is reached (e.g., max clients, staff users, or branches). Displays icon + title + subtitle + benefit description + CTA to view/upgrade subscription. Powered by `useLimitPlanModalStore` (Zustand); call `openModal({ recurso, actual, maximo, planActual })` to open it.
 - `VenderMembresiaModal` (`src/ui/features/core/components/`) — sells a membership to an existing client; accepts `idCliente`, `nombreCliente`, `open`, `onClose`, `onVendida`; usable from any page
 
 **PrimeReact DataTable global styles** — `src/index.css` contains a generic rule targeting `.p-datatable .p-datatable-tbody > tr > td` that sets `font-size`, `padding`, `line-height`, and `vertical-align` for all tables. Do not add per-column `fontSize` styles; the global rule handles it. Use `pt` (passthrough) on action icon buttons to add `!py-0.5 !px-1` — otherwise PrimeReact's default button height inflates row height.

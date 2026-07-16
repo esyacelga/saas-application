@@ -44,6 +44,7 @@ public class ClientePersistenceAdapter implements ClienteRepository {
         String sinMembresiaClause = Boolean.TRUE.equals(sinMembresia) ? "AND m.id IS NULL " : "";
 
         String sql = "SELECT c.id, p.nombre, p.ci, p.telefono, c.estado, " +
+                     "p.foto_url, c.sexo, " +
                      "m.id AS membresia_id, tm.nombre AS membresia_tipo, " +
                      "tm.modo_control AS membresia_modo_control, " +
                      "m.fecha_fin AS membresia_fecha_fin, " +
@@ -60,6 +61,7 @@ public class ClientePersistenceAdapter implements ClienteRepository {
                      "AND (:buscar IS NULL OR lower(p.nombre) LIKE :buscar OR lower(p.ci) LIKE :buscar) " +
                      sinMembresiaClause +
                      "GROUP BY c.id, p.nombre, p.ci, p.telefono, c.estado, " +
+                     "p.foto_url, c.sexo, " +
                      "m.id, tm.nombre, tm.modo_control, m.fecha_fin, m.dias_acceso_total " +
                      "ORDER BY c.id DESC LIMIT :limit OFFSET :offset";
 
@@ -102,8 +104,8 @@ public class ClientePersistenceAdapter implements ClienteRepository {
     @Override
     public Mono<ClienteDetalle> findDetalleById(Long id, Long idCompania) {
         return databaseClient.sql("""
-            SELECT c.id,
-                   p.ci, p.nombre, p.telefono, p.correo,
+            SELECT c.id, c.id_persona,
+                   p.ci, p.nombre, p.telefono, p.correo, p.foto_url, p.fecha_nacimiento,
                    c.peso_kg, c.altura_cm, c.objetivos, c.lesiones,
                    c.estado, c.fecha_ingreso, c.codigo_carnet, c.sexo,
                    m.id               AS membresia_id,
@@ -142,11 +144,14 @@ public class ClientePersistenceAdapter implements ClienteRepository {
                 LocalDate fechaIngreso = row.get("fecha_ingreso", LocalDate.class);
                 return new ClienteDetalle(
                         row.get("id", Long.class),
+                        row.get("id_persona", Long.class),
                         new ClienteDetalle.Persona(
                                 row.get("ci", String.class),
                                 row.get("nombre", String.class),
                                 row.get("telefono", String.class),
-                                row.get("correo", String.class)
+                                row.get("correo", String.class),
+                                row.get("foto_url", String.class),
+                                row.get("fecha_nacimiento", LocalDate.class)
                         ),
                         row.get("peso_kg", java.math.BigDecimal.class),
                         row.get("altura_cm", java.math.BigDecimal.class),
@@ -275,6 +280,8 @@ public class ClientePersistenceAdapter implements ClienteRepository {
                 row.get("ci", String.class),
                 row.get("telefono", String.class),
                 row.get("estado", String.class),
+                row.get("foto_url", String.class),
+                row.get("sexo", String.class),
                 membresia
         );
     }

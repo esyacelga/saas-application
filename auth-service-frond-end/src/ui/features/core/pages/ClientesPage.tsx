@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { toast } from 'sonner'
 import { isAxiosError } from 'axios'
-import { Users, Search, User, CreditCard, Snowflake, History, RefreshCw, Activity, CalendarCheck, Flame, TrendingUp, Smartphone, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Users, Search, User, CreditCard, Snowflake, History, RefreshCw, Activity, CalendarCheck, Flame, TrendingUp, Smartphone, Eye, EyeOff, Loader2, Pencil } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column'
 import { Button } from 'primereact/button'
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
 import { PageHeader } from '@/ui/components/PageHeader'
+import { IfPermission } from '@/ui/router/guards/PermissionGuard'
 import { authRepository } from '@/infrastructure/http/auth/AuthHttpRepository'
 import type { AppUsuario } from '@/infrastructure/http/auth/auth.dto'
 import { coreRepository } from '@/infrastructure/http/core/CoreRepository'
@@ -17,10 +18,12 @@ import type {
 } from '@/infrastructure/http/core/core.dto'
 import { attendanceRepository } from '@/infrastructure/http/attendance/AttendanceHttpRepository'
 import type { Ultimos30DiasAdminResult, AsistenciaAdminItem } from '@/infrastructure/http/attendance/AttendanceHttpRepository'
+import { getAvatarUrl } from '@/lib/avatar'
 import { RegistrarClienteModal } from '../components/RegistrarClienteModal'
 import { VenderMembresiaModal } from '../components/VenderMembresiaModal'
 import { CongelarMembresiaModal } from '../components/CongelarMembresiaModal'
 import { CargarAsistenciasModal } from '../components/CargarAsistenciasModal'
+import { EditarClienteModal } from '../components/EditarClienteModal'
 
 // ── Badges ───────────────────────────────────────────────────────────────────
 
@@ -618,6 +621,7 @@ export function ClientesPage() {
   const [venderOpen, setVenderOpen] = useState(false)
   const [congelarOpen, setCongelarOpen] = useState(false)
   const [cargarAsistOpen, setCargarAsistOpen] = useState(false)
+  const [editarOpen, setEditarOpen] = useState(false)
 
   const cargarLista = useCallback(async () => {
     setLoading(true)
@@ -814,6 +818,19 @@ export function ClientesPage() {
     </div>
   )
 
+  const fotoTemplate = (c: ClienteListItem) => {
+    const src = getAvatarUrl(c.foto_url, c.sexo)
+    const fallback = getAvatarUrl(null, c.sexo)
+    return (
+      <img
+        src={src}
+        alt={c.nombre}
+        className="w-9 h-9 rounded-full object-cover flex-shrink-0"
+        onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = fallback }}
+      />
+    )
+  }
+
   const nombreTemplate = (c: ClienteListItem) => (
     <span className="flex items-center gap-1.5">
       {seleccionado?.id === c.id && (
@@ -923,6 +940,7 @@ export function ClientesPage() {
             paginator rows={15} rowsPerPageOptions={[10, 15, 25]}
             stripedRows showGridlines={false} size="small"
           >
+            <Column header="" body={fotoTemplate} style={{ width: '3.5rem', padding: '0.25rem 0.5rem' }} />
             <Column field="nombre" header={t('clientes.colNombre')} body={nombreTemplate} sortable />
             <Column field="ci" header={t('clientes.colCi')} style={{ color: 'var(--page-muted)' }} />
             <Column field="telefono" header={t('clientes.colTelefono')} style={{ color: 'var(--page-muted)' }} />
@@ -939,9 +957,15 @@ export function ClientesPage() {
           <div className="flex items-center justify-between px-5 py-3 flex-shrink-0"
             style={{ borderBottom: '1px solid var(--page-border)' }}>
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                {seleccionado.nombre[0]?.toUpperCase()}
-              </div>
+              <img
+                src={detalle ? getAvatarUrl(detalle.persona.foto_url, detalle.sexo ?? detalle.persona.sexo) : getAvatarUrl(seleccionado.foto_url, seleccionado.sexo)}
+                alt={seleccionado.nombre}
+                className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+                onError={e => {
+                  e.currentTarget.onerror = null
+                  e.currentTarget.src = getAvatarUrl(null, detalle?.sexo ?? detalle?.persona.sexo ?? seleccionado.sexo)
+                }}
+              />
               <div>
                 <p className="text-xs font-semibold" style={{ color: 'var(--page-text)' }}>{seleccionado.nombre}</p>
                 <p className="text-xs" style={{ color: 'var(--page-muted)' }}>{seleccionado.ci}</p>
@@ -1000,6 +1024,21 @@ export function ClientesPage() {
               <>
                 {detTab === 'perfil' && detalle && (
                   <div className="p-4 grid grid-cols-2 gap-4">
+                    <div className="col-span-2 flex justify-end">
+                      {/* clientes:editar no existe como permiso — la página entera opera bajo clientes:leer
+                          (el seed lo describe como "Registrar y editar clientes"); el backend valida recepción+ */}
+                      <IfPermission permiso="clientes:leer">
+                        <Button
+                          label={t('common.edit')}
+                          icon={<Pencil size={12} className="mr-1" />}
+                          size="small"
+                          severity="warning"
+                          text
+                          onClick={() => setEditarOpen(true)}
+                          pt={{ root: { className: '!text-[0.65rem] !px-2 !py-1' } }}
+                        />
+                      </IfPermission>
+                    </div>
                     <div className="rounded-lg p-3 col-span-2"
                       style={{ background: 'var(--page-surface)', border: '1px solid var(--page-border)' }}>
                       <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--page-muted)' }}>
@@ -1011,7 +1050,8 @@ export function ClientesPage() {
                           [t('clientes.fieldNombre'), detalle.persona.nombre],
                           [t('clientes.fieldTelefono'), detalle.persona.telefono ?? '—'],
                           [t('clientes.fieldCorreo'), detalle.persona.correo ?? '—'],
-                          [t('clientes.fieldSexo'), detalle.persona.sexo === 'M' ? t('clientes.sexoM') : detalle.persona.sexo === 'F' ? t('clientes.sexoF') : detalle.persona.sexo === 'O' ? t('clientes.sexoO') : '—'],
+                          [t('clientes.fieldSexo'), (detalle.sexo ?? detalle.persona.sexo) === 'M' ? t('clientes.sexoM') : (detalle.sexo ?? detalle.persona.sexo) === 'F' ? t('clientes.sexoF') : (detalle.sexo ?? detalle.persona.sexo) === 'O' ? t('clientes.sexoO') : '—'],
+                          [t('clientes.fieldNacimiento'), detalle.persona.fecha_nacimiento ?? '—'],
                         ].map(([l, v]) => (
                           <div key={l}>
                             <span style={{ color: 'var(--page-muted)' }}>{l}: </span>
@@ -1106,6 +1146,19 @@ export function ClientesPage() {
         onClose={() => setRegistrarOpen(false)}
         onRegistrado={id => { setRegistrarOpen(false); cargarLista(); toast.success(t('clientes.registerSuccess')) }}
       />
+
+      {seleccionado && detalle && (
+        <EditarClienteModal
+          open={editarOpen}
+          detalle={detalle}
+          onClose={() => setEditarOpen(false)}
+          onGuardado={() => {
+            setEditarOpen(false)
+            cargarLista()
+            cargarDetalle(seleccionado)
+          }}
+        />
+      )}
 
       {seleccionado && (
         <>
