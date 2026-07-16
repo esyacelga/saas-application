@@ -6,15 +6,27 @@
 
 ---
 
-## ✅ Actualización 2026-07-10 (tarde): consolidación de migraciones
+## ✅ Actualización 2026-07-16 (consolidación final de migraciones WhatsApp)
 
-Commits `e5ff46f`, `5d9fc88`, `78579bf`: las tres stories de migración (`202605_GYM-001` core, `202607_GYM-002` facturación, `202608_GYM-003` freemium) se **fusionaron en una única story `202605_GYM-001`** con tres subcarpetas por dominio:
+**Fase de consolidación completada:** La BD se recreó desde cero eliminando el volumen Docker. Las stories incrementales `202607_GYM-002` (opt-in WhatsApp para consentimiento) y `202607_GYM-003` (tabla `saas.notif_buckets_globales` para buckets globales de aviso) fueron **consolidadas directamente en la baseline `202605_GYM-001`** al aplicar las migraciones:
 
-- `ddl/` — 10 schemas base + 46 tablas (saas, identidad, tenant, core, asistencia, finanzas, marketing, inventario, config, seguridad).
-- `ddl-facturacion/` — schemas `sri` + `facturacion` y sus 23 tablas.
+- `202607_GYM-002` → Sus columnas `acepta_whatsapp BOOLEAN NOT NULL DEFAULT FALSE` + `fecha_consentimiento_wa TIMESTAMPTZ` ahora están integradas en los `CREATE TABLE` de:
+  - `gym-administrator/db/scripts/202605_GYM-001/ddl/14_create_table_identidad_personas.sql` (schema `identidad.personas`)
+  - `gym-administrator/db/scripts/202605_GYM-001/ddl/16_create_table_tenant_companias.sql` (schema `tenant.companias`)
+
+- `202607_GYM-003` → Su tabla `saas.notif_buckets_globales` ahora es el script de baseline:
+  - `gym-administrator/db/scripts/202605_GYM-001/ddl/70_create_table_saas_notif_buckets_globales.sql` (changeSet `GYM-001-70`, seed `socio=3, dueno=3`)
+
+- `main-changelog.yml` tiene un único include: `202605_GYM-001/partial-changelog.yml` con 98 changesets (`GYM-001-01..98`).
+- BD recreada desde cero: 69 tablas verificadas contra `information_schema.tables`, 98/98 changesets "up to date".
+
+**Consolidación anterior (2026-07-10):** Las tres stories de migración (`202605_GYM-001` core, `202607_GYM-002` facturación, `202608_GYM-003` freemium) se **fusionaron en una única story `202605_GYM-001`** con tres subcarpetas por dominio:
+
+- `ddl/` — 10 schemas base + 45 tablas CREATE (saas, identidad, tenant, core, asistencia, finanzas, marketing, inventario, config, seguridad).
+- `ddl-facturacion/` — schemas `sri` + `facturacion` y sus 22 tablas CREATE.
 - `ddl-freemium/` — extras REQ-SAAS-001 (`tenant.pagos_pendientes_validacion`, `saas.config_plataforma`, seed).
 
-Ya no existen scripts `ALTER`: cada tabla se define una sola vez en su `CREATE TABLE`. Totales actuales: **69 tablas / 12 schemas**. IDs de changeset unificados como `GYM-001-XX` (rango extendido a 141 para dar espacio a los inserts de `ddl-freemium/`).
+Ya no existen scripts `ALTER`: cada tabla se define una sola vez en su `CREATE TABLE`. Totales: **69 tablas / 12 schemas**. IDs de changeset unificados como `GYM-001-XX`.
 
 ## ✅ Actualización 2026-07-10 (mañana): REQ-SAAS-001 Sub-fases 1.1–1.5 documentadas
 
@@ -73,7 +85,7 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 | Migraciones Liquibase (`gym-administrator/db/`) | ✅ Implementadas — **69 tablas, 12 schemas** (consolidadas en `202605_GYM-001/` desde 2026-07-10, commit `e5ff46f`) |
 | Schemas `finanzas` | ✅ Tablas creadas en BD y **consumidas por `finance-service`** (verificado 2026-07-14): `categorias_ingreso`, `ingresos` (inmutables), `categorias_egreso`, `egresos` (soft-delete). |
 | Schemas `marketing`, `inventario` | ✅ Tablas creadas en BD, pero 📋 sin servicio que las use aún |
-| Schemas `sri`, `facturacion` (billing) | ✅ Tablas creadas en BD (6 + 17 tablas) y consumidas por `billing-service`. **Extendido 2026-07-13** (story `202607_GYM-002`, Fase 3 · G10): columna `bancarizada` en `sri.formas_pago` marcando los códigos 16-20 del catálogo SRI. |
+| Schemas `sri`, `facturacion` (billing) | ✅ Tablas creadas en BD (6 + 16 tablas) y consumidas por `billing-service`. **Extendido 2026-07-13** (Fase 3 · G10): columna `bancarizada` en `sri.formas_pago` marcando los códigos 16-20 del catálogo SRI (consolidada en baseline `ddl-facturacion/05_create_table_sri_formas_pago.sql`, changeSet `GYM-001-54`). |
 
 ---
 

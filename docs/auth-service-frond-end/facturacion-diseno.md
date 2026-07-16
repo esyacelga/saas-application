@@ -328,7 +328,7 @@ El select muestra solo la etiqueta UI, nunca el código SRI ni el nombre en `SCR
 
 > ⚠️ **Ojo — el código 17 NO es "transferencia bancaria".** Es `DINERO_ELECTRONICO`. La transferencia bancaria cae en el `20` (*otros con utilización del sistema financiero*). Confundirlos hace que el XML declare al SRI un medio de pago distinto del real. Los códigos correctos están en el seed [`09_insert_seed_sri.sql`](../../gym-administrator/db/scripts/202605_GYM-001/ddl-facturacion/09_insert_seed_sri.sql), que es la única fuente de verdad — el `gap-analysis-sri-2026.md` §G10 los lista **mal**, no te guíes por él.
 
-> 📌 **La columna "¿Bancarizada?" no se hardcodea en el frontend.** El backend expone el flag `bancarizada` en el catálogo (`sri.formas_pago`, story `202607_GYM-002`). La UI debe **leerlo del endpoint de catálogos**, no replicar esta tabla en el código. Si mañana el SRI reclasifica un código, se cambia en la BD y el frontend se entera solo. La tabla de arriba es documentación, no una constante a copiar.
+> 📌 **La columna "¿Bancarizada?" no se hardcodea en el frontend.** El backend expone el flag `bancarizada` en el catálogo (`sri.formas_pago`, consolidada en baseline `ddl-facturacion/05_create_table_sri_formas_pago.sql`, Fase 3 · G10). La UI debe **leerlo del endpoint de catálogos**, no replicar esta tabla en el código. Si mañana el SRI reclasifica un código, se cambia en la BD y el frontend se entera solo. La tabla de arriba es documentación, no una constante a copiar.
 
 **Lógica de bancarización (G10) — validación en cliente:**
 

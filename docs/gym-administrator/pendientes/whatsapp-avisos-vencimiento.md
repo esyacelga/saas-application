@@ -1,11 +1,12 @@
 # Pendiente — Avisos por WhatsApp de vencimiento (socios y dueños)
 
-> **Estado:** 🟢 **Fases 1–6 cerradas (6 de 6)** — migración de consentimiento `202607_GYM-002` +
+> **Estado:** 🟢 **Fases 1–6 cerradas (6 de 6)** — migraciones de consentimiento + buckets consolidadas en baseline
+> `202605_GYM-001` (2026-07-16) +
 > adaptador Meta/normalizador E.164 + **cola WhatsApp del dueño** (`WhatsAppQueueService`, buckets {3,0},
 > R2/R3/R4, cross-day día 0) + **endpoint interno `clientes-por-vencer`** en core (C3 + zona Guayaquil C4,
 > IT 13/13) + **`MensajeriaJob` del socio cableado** en attendance (consume el endpoint, plantillas HSM
 > `venc_membresia_*`/`venc_accesos_*`, opt-in R4, idempotencia C2, unit 29/29) + **FASE 6 BACKEND CERRADO:**
-> tabla `saas.notif_buckets_globales` (story `202607_GYM-003`, seed `socio=3`/`dueno=3`, buckets configurables
+> tabla `saas.notif_buckets_globales` (consolidada en baseline `ddl/70`, changeSet `GYM-001-70`, seed `socio=3`/`dueno=3`, buckets configurables
 > **R1 resuelto**) + endpoints `GET/PUT /api/v1/plataforma/notif-buckets` + endpoint interno
 > `GET /internal/v1/notif-buckets/{destinatario}` (consumed by attendance) + jobs leyendo buckets dinámicos
 > (**R2 resuelto definitivamente**) + endpoints PATCH opt-in en auth-service + platform-service (captura de
@@ -717,8 +718,8 @@ Crear/verificar WABA + `phone_number_id` y **subir las plantillas HSM a aprobaci
 - **Aceptación:** migración corre limpia contra BD limpia y con datos; ningún test existente se rompe;
   el flag aparece como campo en las respuestas actuales de personas y compañías.
 - **Depende de:** nada. Resuelve **C5**.
-- [x] **Fase 1 cerrada** (2026-07-15). Story `202607_GYM-002` (`ddl/01_add_consentimiento_whatsapp.sql`
-      + `partial-changelog.yml` con rollback, apendada a `main-changelog.yml`). Entidades: `PersonaEntity`
+- [x] **Fase 1 cerrada** (2026-07-15, consolidada el 2026-07-16). Story `202607_GYM-002` (originalmente como story independiente con `ddl/01_add_consentimiento_whatsapp.sql` + `partial-changelog.yml`, 
+      **ahora consolidada en baseline `202605_GYM-001/14_create_table_identidad_personas.sql` y `16_create_table_tenant_companias.sql`** al recrear la BD desde cero el 2026-07-16). Entidades: `PersonaEntity`
       (auth + platform), `CompaniaEntity` (platform); dominio `Persona` (auth) + `Compania` (platform) +
       mapeos (`PersonaMapper`, `CompaniaPersistenceAdapter` — el opt-in **no** se toca en `update()`, como
       `trial_usado`). Flag mapeado **solo en dominio/persistencia**, no en los DTOs de respuesta (coherente
@@ -869,8 +870,7 @@ Crear/verificar WABA + `phone_number_id` y **subir las plantillas HSM a aprobaci
 
 ### Fase 6 — Panel super_admin + buckets configurables + UIs de opt-in (bloque E completo) — BACKEND CERRADO
 
-- **Alcance BACKEND (2026-07-16):** tabla `saas.notif_buckets_globales` (**R1** ✅ resuelto), story nueva
-  `202607_GYM-003`. Seed idempotente: `(socio, 3, true)` + `(dueno, 3, true)` (ambos activos, día 0 fijo
+- **Alcance BACKEND (2026-07-16):** tabla `saas.notif_buckets_globales` (**R1** ✅ resuelto), **consolidada en baseline `202605_GYM-001/70_create_table_saas_notif_buckets_globales.sql` (changeSet `GYM-001-70`), story `202607_GYM-003` retirada**. Seed idempotente: `(socio, 3, true)` + `(dueno, 3, true)` (ambos activos, día 0 fijo
   en código). DDL: `destinatario VARCHAR(10) PK CHECK IN('socio','dueno')`, `dias_previo INT DEFAULT 3
   CHECK BETWEEN 1 AND 30`, `activo BOOLEAN DEFAULT TRUE`, auditoría (`modificado_por`, `modificado_at`,
   `creacion_fecha`, `creacion_usuario`). Endpoint **GET/PUT** en platform-service:

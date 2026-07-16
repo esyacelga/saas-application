@@ -7,11 +7,15 @@
 
 Todas las tablas están consolidadas en una única story Liquibase `202605_GYM-001/`, dividida en tres subcarpetas por dominio:
 
-- **`ddl/`** — 10 schemas base (saas, identidad, tenant, core, asistencia, finanzas, marketing, inventario, config, seguridad) y sus 45 tablas de plataforma / operación (incluye `saas.notif_buckets_globales`, `ddl/70`).
+- **`ddl/`** — 10 schemas base (saas, identidad, tenant, core, asistencia, finanzas, marketing, inventario, config, seguridad) y sus 45 tablas de plataforma / operación (incluye `saas.notif_buckets_globales`, changeSet `GYM-001-70`).
 - **`ddl-facturacion/`** — Schemas `sri` (6 catálogos oficiales) y `facturacion` (16 tablas de comprobantes electrónicos y flujo SRI Ecuador).
 - **`ddl-freemium/`** — Extras para REQ-SAAS-001: `tenant.pagos_pendientes_validacion`, `saas.config_plataforma` y seed inicial de datos bancarios.
 
-Cada tabla se define **una única vez** en su `CREATE TABLE` (sin scripts `ALTER` posteriores) — una base de datos vacía se construye en una sola pasada de Liquibase. Los cambios REQ-SAAS-001 (Sub-fase 1.1) previamente vivían en la story `202608_GYM-003` (retirada); hoy están incorporados directamente al CREATE de las tablas afectadas: `saas.planes`, `tenant.companias`, `tenant.compania_planes`, `tenant.notificaciones_suscripcion`, `saas.actividad_plataforma`. Igualmente, las stories del feature WhatsApp `202607_GYM-002` (opt-in `acepta_whatsapp`/`fecha_consentimiento_wa` en `identidad.personas` y `tenant.companias`) y `202607_GYM-003` (`saas.notif_buckets_globales`) fueron consolidadas en la baseline el 2026-07-16 al recrear la BD desde cero (changeSet `GYM-001-70` = `ddl/70_...`).
+Cada tabla se define **una única vez** en su `CREATE TABLE` (sin scripts `ALTER` posteriores) — una base de datos vacía se construye en una sola pasada de Liquibase. Los cambios REQ-SAAS-001 (Sub-fase 1.1) previamente vivían en la story `202608_GYM-003` (retirada); hoy están incorporados directamente al CREATE de las tablas afectadas: `saas.planes`, `tenant.companias`, `tenant.compania_planes`, `tenant.notificaciones_suscripcion`, `saas.actividad_plataforma`. 
+
+**Consolidación de stories WhatsApp (2026-07-16):** Las stories del feature WhatsApp `202607_GYM-002` (opt-in de consentimiento) y `202607_GYM-003` (buckets globales de vencimiento) fueron consolidadas en la baseline al recrear la BD desde cero:
+- `202607_GYM-002` → columnas `acepta_whatsapp` + `fecha_consentimiento_wa` integradas en `ddl/14_create_table_identidad_personas.sql` (`identidad.personas`) y `ddl/16_create_table_tenant_companias.sql` (`tenant.companias`)
+- `202607_GYM-003` → tabla `saas.notif_buckets_globales` en `ddl/70_create_table_saas_notif_buckets_globales.sql` (changeSet `GYM-001-70`, seed `socio=3, dueno=3`)
 
 ---
 
@@ -223,7 +227,7 @@ Cada tabla se define **una única vez** en su `CREATE TABLE` (sin scripts `ALTER
 ║   notif_buckets_globales         ║  ← GLOBAL, baseline ddl/70 (ex GYM-003)
 ╠══════════════════════════════════╣  Configuración de días de aviso
 ║ PK destinatario VARCHAR(10)      ║  (Fase 6 WhatsApp vencimiento)
-║    CHECK IN('socio','dueno')     ║
+║    CHECK IN('socio','dueno')     ║  Consolidada 2026-07-16
 ║    dias_previo INT DEFAULT 3     ║  1..30, el aviso del día 0 es fijo
 ║    activo BOOLEAN DEFAULT TRUE   ║  cuando FALSE → solo día 0
 ║    modificado_por, modificado_at ║  auditoría
@@ -231,6 +235,7 @@ Cada tabla se define **una única vez** en su `CREATE TABLE` (sin scripts `ALTER
 ╚══════════════════════════════════╝
  Seed idempotente: socio=3, dueno=3 (ambos activos, día 0 siempre fijo)
  Los jobs (dueño y socio) leen dias_previo dinámicamente; fallback 3 si ausente
+ Nota: Esta tabla formó parte de la story `202607_GYM-003`, consolidada en la baseline el 2026-07-16.
 
 ╔══════════════════════════════════╗
 ║   config_notif_suscripcion       ║  ← una fila por umbral configurado

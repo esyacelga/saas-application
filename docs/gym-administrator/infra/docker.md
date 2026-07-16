@@ -122,7 +122,7 @@ db/scripts/
         └── 03    seed saas.config_plataforma (7 claves pago.banco.*)
 ```
 
-**Baseline invariant:** cada tabla se define una sola vez en su `CREATE TABLE`. No hay scripts `ALTER` posteriores en la story consolidada. Los cambios REQ-SAAS-001 (Sub-fase 1.1), antes en la story `202608_GYM-003`, están incorporados directamente al `CREATE` de las tablas afectadas (`saas.planes`, `tenant.companias`, `tenant.compania_planes`, `tenant.notificaciones_suscripcion`, `saas.actividad_plataforma`).
+**Baseline invariant:** cada tabla se define una sola vez en su `CREATE TABLE`. No hay scripts `ALTER` posteriores en la story consolidada. Los cambios REQ-SAAS-001 (Sub-fase 1.1), antes en la story `202608_GYM-003`, están incorporados directamente al `CREATE` de las tablas afectadas (`saas.planes`, `tenant.companias`, `tenant.compania_planes`, `tenant.notificaciones_suscripcion`, `saas.actividad_plataforma`). Asimismo, los cambios de las stories WhatsApp `202607_GYM-002` (consentimiento) y `202607_GYM-003` (buckets globales) fueron consolidados en la baseline el 2026-07-16 al recrear la BD desde cero.
 
 ## Schemas creados (12)
 
