@@ -209,10 +209,7 @@ export function TiposMembresiaPage() {
   const activos = tipos.filter(t => t.activo).length
   const inactivos = tipos.length - activos
 
-  // Determine empty message: rich empty state only when no filter is active
-  const emptyMessage = globalFilter === ''
-    ? <EmptyStateEnriquecido onSelectPlantilla={handleSelectPlantilla} onAddSimple={handleAbrirNuevo} />
-    : <EmptyStateSimple onAdd={handleAbrirNuevo} />
+  const sinTiposCreados = !loading && tipos.length === 0
 
   return (
     <div className="flex flex-col h-full" style={{ color: 'var(--page-text)' }}>
@@ -222,57 +219,67 @@ export function TiposMembresiaPage() {
         title={t('tiposMembresia.title')}
         description={t('tiposMembresia.description')}
         action={
-          <Button label={t('tiposMembresia.createTitle')} icon="pi pi-plus"
-            severity="warning" size="small" onClick={handleAbrirNuevo} />
+          sinTiposCreados ? undefined : (
+            <Button label={t('tiposMembresia.createTitle')} icon="pi pi-plus"
+              severity="warning" size="small" onClick={handleAbrirNuevo} />
+          )
         }
       />
 
-      {/* Stats bar */}
-      <div className="flex items-center gap-6 px-6 py-3 flex-shrink-0"
-        style={{ borderBottom: '1px solid var(--page-border)' }}>
-        <div className="flex items-center gap-2">
-          <CreditCard size={16} style={{ color: 'var(--page-muted)' }} />
-          <span className="text-2xl font-bold" style={{ color: 'var(--page-text)' }}>{tipos.length}</span>
-          <span className="text-xs" style={{ color: 'var(--page-muted)' }}>{t('tiposMembresia.statTotal')}</span>
+      {sinTiposCreados ? (
+        <div className="flex-1 overflow-auto p-4">
+          <EmptyStateEnriquecido onSelectPlantilla={handleSelectPlantilla} onAddSimple={handleAbrirNuevo} />
         </div>
-        <div className="h-4 w-px" style={{ background: 'var(--page-border)' }} />
-        <div className="flex items-center gap-2">
-          <span className="text-2xl font-bold text-green-500">{activos}</span>
-          <span className="text-xs" style={{ color: 'var(--page-muted)' }}>{t('tiposMembresia.statActivos')}</span>
-        </div>
-        <div className="h-4 w-px" style={{ background: 'var(--page-border)' }} />
-        <div className="flex items-center gap-2">
-          <span className="text-2xl font-bold text-red-400">{inactivos}</span>
-          <span className="text-xs" style={{ color: 'var(--page-muted)' }}>{t('tiposMembresia.statInactivos')}</span>
-        </div>
-      </div>
+      ) : (
+        <>
+          {/* Stats bar */}
+          <div className="flex items-center gap-6 px-6 py-3 flex-shrink-0"
+            style={{ borderBottom: '1px solid var(--page-border)' }}>
+            <div className="flex items-center gap-2">
+              <CreditCard size={16} style={{ color: 'var(--page-muted)' }} />
+              <span className="text-2xl font-bold" style={{ color: 'var(--page-text)' }}>{tipos.length}</span>
+              <span className="text-xs" style={{ color: 'var(--page-muted)' }}>{t('tiposMembresia.statTotal')}</span>
+            </div>
+            <div className="h-4 w-px" style={{ background: 'var(--page-border)' }} />
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-bold text-green-500">{activos}</span>
+              <span className="text-xs" style={{ color: 'var(--page-muted)' }}>{t('tiposMembresia.statActivos')}</span>
+            </div>
+            <div className="h-4 w-px" style={{ background: 'var(--page-border)' }} />
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-bold text-red-400">{inactivos}</span>
+              <span className="text-xs" style={{ color: 'var(--page-muted)' }}>{t('tiposMembresia.statInactivos')}</span>
+            </div>
+          </div>
 
-      <div className="flex-1 overflow-auto p-4">
-        <DataTable
-          value={tipos}
-          loading={loading}
-          globalFilter={globalFilter}
-          globalFilterFields={['nombre', 'modo_control']}
-          header={tableHeader}
-          emptyMessage={emptyMessage}
-          paginator
-          rows={10}
-          rowsPerPageOptions={[5, 10, 25]}
-          sortField="nombre"
-          defaultSortOrder={1}
-          stripedRows
-          showGridlines={false}
-          size="small"
-        >
-          <Column field="nombre" header={t('tiposMembresia.colNombre')} sortable
-            style={{ fontWeight: 600, color: 'var(--page-text)' }} />
-          <Column field="modo_control" header={t('tiposMembresia.colModo')} body={modoTemplate} />
-          <Column field="duracion_valor" header={t('tiposMembresia.colDuracion')} body={duracionTemplate} />
-          <Column field="precio" header={t('tiposMembresia.colPrecio')} body={precioTemplate} sortable />
-          <Column field="activo" header={t('tiposMembresia.colEstado')} body={activoTemplate} />
-          <Column header={t('common.actions')} body={accionesTemplate} style={{ width: '10rem' }} />
-        </DataTable>
-      </div>
+          <div className="flex-1 overflow-auto p-4">
+            <DataTable
+              value={tipos}
+              loading={loading}
+              globalFilter={globalFilter}
+              globalFilterFields={['nombre', 'modo_control']}
+              header={tableHeader}
+              emptyMessage={<EmptyStateSimple onAdd={handleAbrirNuevo} />}
+              paginator
+              rows={10}
+              rowsPerPageOptions={[5, 10, 25]}
+              sortField="nombre"
+              defaultSortOrder={1}
+              stripedRows
+              showGridlines={false}
+              size="small"
+            >
+              <Column field="nombre" header={t('tiposMembresia.colNombre')} sortable
+                style={{ fontWeight: 600, color: 'var(--page-text)' }} />
+              <Column field="modo_control" header={t('tiposMembresia.colModo')} body={modoTemplate} />
+              <Column field="duracion_valor" header={t('tiposMembresia.colDuracion')} body={duracionTemplate} />
+              <Column field="precio" header={t('tiposMembresia.colPrecio')} body={precioTemplate} sortable />
+              <Column field="activo" header={t('tiposMembresia.colEstado')} body={activoTemplate} />
+              <Column header={t('common.actions')} body={accionesTemplate} style={{ width: '10rem' }} />
+            </DataTable>
+          </div>
+        </>
+      )}
 
       <CrearTipoMembresiaModal
         open={crearOpen}

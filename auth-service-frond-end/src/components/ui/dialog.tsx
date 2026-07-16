@@ -42,6 +42,7 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  style,
   ...props
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
@@ -58,6 +59,7 @@ function DialogContent({
           transform: 'translate(-50%, -50%)',
           maxHeight: '90vh',
           zIndex: 50,
+          ...style,
         }}
         className={cn(
           "flex w-full max-w-[calc(100%-2rem)] flex-col gap-4 overflow-y-auto rounded-xl p-4 text-sm outline-none sm:max-w-sm",
