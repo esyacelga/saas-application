@@ -140,8 +140,8 @@ class NotificacionVencimientoJobTest {
     }
 
     @Test
-    @DisplayName("Vence hoy (0 días) → bucket 0 (R2: igualdad, no cae al previo)")
-    void venceHoy_bucket0() throws Exception {
+    @DisplayName("Vence hoy (0 días) + config WHATSAPP → día 0 NO manda whatsapp (decisión 2026-07-15), solo banner")
+    void venceHoy_bucket0_sinWhatsapp() throws Exception {
         when(companiaPlanRepository.findActivosAndEnGracia()).thenReturn(Flux.just(cp(0)));
         when(planRepository.findById(100L)).thenReturn(Mono.just(planTrial()));
         when(companiaRepository.findById(1L)).thenReturn(Mono.just(compania(true, "0987654321")));
@@ -156,9 +156,9 @@ class NotificacionVencimientoJobTest {
         ArgumentCaptor<EncolarNotificacionCommand> cap = ArgumentCaptor.forClass(EncolarNotificacionCommand.class);
         verify(enviarUseCase, org.mockito.Mockito.atLeastOnce()).encolar(cap.capture());
         assertThat(cap.getAllValues()).allSatisfy(c -> assertThat(c.diasAntes()).isEqualTo(0));
-        // WHATSAPP → whatsapp + banner (no email)
+        // Día 0: WhatsApp omitido; queda solo el banner (siempre presente).
         assertThat(cap.getAllValues()).extracting(EncolarNotificacionCommand::canal)
-                .containsExactlyInAnyOrder("banner", "whatsapp");
+                .containsExactly("banner");
     }
 
     @Test
@@ -229,7 +229,7 @@ class NotificacionVencimientoJobTest {
     }
 
     @Test
-    @DisplayName("Fase 6: bucket previo activo=FALSE → aviso previo omitido, pero día 0 SÍ dispara")
+    @DisplayName("Fase 6: bucket previo activo=FALSE → previo omitido; día 0 dispara banner/email (whatsapp aparte)")
     void bucketPrevioDesactivado_soloDia0() throws Exception {
         when(notifBucketRepository.findByDestinatario(Destinatario.DUENO))
                 .thenReturn(Mono.just(new NotifBucketGlobal(Destinatario.DUENO, 3, false)));

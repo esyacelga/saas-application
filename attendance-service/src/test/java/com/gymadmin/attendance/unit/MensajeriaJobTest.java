@@ -105,15 +105,14 @@ class MensajeriaJobTest {
     }
 
     @Test
-    @DisplayName("Calendario vence hoy (0) → venc_membresia_hoy [nombre, gym]")
-    void calendarioHoy_enviaPlantillaHoy() {
+    @DisplayName("Calendario vence hoy (0) → NO se envía (solo aviso previo, decisión 2026-07-15)")
+    void calendarioHoy_noEnvia() {
         stubClientes(cliente("calendario", 0, null, "0987654321", true, "proximo_vencer"));
 
         StepVerifier.create(job.procesarAusencias()).verifyComplete();
 
-        verify(mensajeLogService).enviarWhatsAppJob(eq(COMPANIA), eq(1), eq(10),
-                eq("vencimiento_hoy"), eq("whatsapp"), eq("+593987654321"),
-                eq("venc_membresia_hoy"), eq("es"), eq(List.of("María", GYM)), anyString());
+        verify(mensajeLogService, never()).enviarWhatsAppJob(anyInt(), any(), anyInt(), anyString(),
+                anyString(), anyString(), anyString(), anyString(), any(), any());
     }
 
     @Test
@@ -129,15 +128,14 @@ class MensajeriaJobTest {
     }
 
     @Test
-    @DisplayName("Accesos restantes 0 → venc_accesos_final [nombre, gym]")
-    void accesosFinal_enviaPlantillaAccesosFinal() {
+    @DisplayName("Accesos restantes 0 → NO se envía (solo aviso previo, decisión 2026-07-15)")
+    void accesosFinal_noEnvia() {
         stubClientes(cliente("accesos", null, 0, "0987654321", true, "proximo_vencer"));
 
         StepVerifier.create(job.procesarAusencias()).verifyComplete();
 
-        verify(mensajeLogService).enviarWhatsAppJob(eq(COMPANIA), eq(1), eq(10),
-                eq("vencimiento_hoy"), eq("whatsapp"), eq("+593987654321"),
-                eq("venc_accesos_final"), eq("es"), eq(List.of("María", GYM)), anyString());
+        verify(mensajeLogService, never()).enviarWhatsAppJob(anyInt(), any(), anyInt(), anyString(),
+                anyString(), anyString(), anyString(), anyString(), any(), any());
     }
 
     @Test
@@ -213,21 +211,17 @@ class MensajeriaJobTest {
     }
 
     @Test
-    @DisplayName("Fase 6: bucket previo = 0 (desactivado) → previo omitido, pero día 0 SÍ dispara")
-    void bucketPrevioDesactivado_previoOmitido_dia0Envia() {
+    @DisplayName("Fase 6: bucket previo = 0 (desactivado) → nada se envía (día 0 tampoco avisa)")
+    void bucketPrevioDesactivado_nadaEnvia() {
         when(platformServiceClient.obtenerBucketPrevioSocio(anyInt())).thenReturn(Mono.just(0));
-        // Un socio a 3 días queda fuera; uno a 0 días (vence hoy) SÍ dispara.
+        // Previo desactivado y el día 0 ya no avisa → ni el de 3 días ni el que vence hoy salen.
         stubClientes(
                 cliente("calendario", 3, null, "0987654321", true, "proximo_vencer"),
                 clienteHoy());
 
         StepVerifier.create(job.procesarAusencias()).verifyComplete();
 
-        // Solo el de "vence hoy" debe salir (venc_membresia_hoy).
-        verify(mensajeLogService).enviarWhatsAppJob(eq(COMPANIA), anyInt(), eq(20),
-                eq("vencimiento_hoy"), eq("whatsapp"), eq("+593999888777"),
-                eq("venc_membresia_hoy"), eq("es"), eq(List.of("Juan", GYM)), anyString());
-        verify(mensajeLogService, never()).enviarWhatsAppJob(anyInt(), any(), eq(10), anyString(),
+        verify(mensajeLogService, never()).enviarWhatsAppJob(anyInt(), any(), anyInt(), anyString(),
                 anyString(), anyString(), anyString(), anyString(), any(), any());
     }
 

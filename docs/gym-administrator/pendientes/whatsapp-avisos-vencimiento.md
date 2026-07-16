@@ -88,6 +88,21 @@ contratado por el usuario → menor riesgo de rechazo y menor costo por conversa
 | `venc_accesos_previo` | `Hola {{1}}, te quedan {{2}} entradas en tu membresía de {{3}}. Acércate a recepción para renovar antes de que se agoten.` | 1=nombre · 2=accesos · 3=gym |
 | `venc_accesos_final` | `Hola {{1}}, usaste tu última entrada en {{2}}. Pásate por recepción para renovar y seguir entrenando.` | 1=nombre · 2=gym |
 
+**Estado de subida a Meta** (identificador exacto = `templateName` en el código, no cambiar):
+
+> **Decisión 2026-07-15 — solo aviso previo (WhatsApp):** al socio se le avisa **únicamente con
+> antelación** (previo a N días o cuando quedan N entradas). **Se retiró el aviso del día del
+> vencimiento (día/entrada 0)** por WhatsApp. En consecuencia, las plantillas `venc_membresia_hoy` y
+> `venc_accesos_final` **ya no se usan** — no es necesario subirlas a Meta (créalas solo si en el
+> futuro se reactiva el día 0). El código de `MensajeriaJob` ya no las referencia.
+
+| Plantilla (`name`) | Header (texto fijo) | Estado en Meta |
+|---|---|---|
+| `venc_membresia_previo` | `Tu membresía está por vencer` | ✅ Creada (2026-07-15) — pendiente de aprobación |
+| `venc_accesos_previo` | `Tus entradas están por agotarse` | ✅ Creada (2026-07-15) — pendiente de aprobación |
+| ~~`venc_membresia_hoy`~~ | — | ❌ No se usa (día 0 retirado) |
+| ~~`venc_accesos_final`~~ | — | ❌ No se usa (día 0 retirado) |
+
 **Mapeo `tipo` → plantilla HSM** (el `tipo` ya existe en `MensajeriaJob`; se añaden los de accesos):
 
 | `tipo` (job) | Plantilla HSM | Condición que lo dispara |
@@ -167,17 +182,30 @@ Categoría **`UTILITY`** (avisan sobre un servicio ya contratado), idioma `es`:
 | `venc_suscripcion_hoy` | `Hola {{1}}, tu plan {{2}} de Gym Admin vence hoy. Renueva ya para no perder el acceso a tu panel y a la app de tus socios.` | 1=owner_nombre · 2=plan |
 | `venc_suscripcion_gracia` *(opcional)* | `Hola {{1}}, tu plan {{2}} de Gym Admin venció y estás en periodo de gracia. Regulariza tu pago para no perder acceso.` | 1=owner_nombre · 2=plan |
 
+**Estado de subida a Meta** (identificador exacto = `templateName` en el código, no cambiar):
+
+| Plantilla (`name`) | Header (texto fijo) | Estado en Meta |
+|---|---|---|
+| `venc_suscripcion_previo` | `Tu suscripción está por vencer` | ✅ Creada (2026-07-15) — pendiente de aprobación |
+| ~~`venc_suscripcion_hoy`~~ | — | ❌ No se usa (WhatsApp día 0 retirado; banner/email siguen) |
+| `venc_suscripcion_gracia` *(opcional)* | — | ⏳ Opcional, no requerida |
+
 > **Botón/URL:** Meta permite un botón de tipo *URL* en la plantilla. Si se quiere el "👉 Reporta tu
 > pago", va como **componente botón** (no en el body) apuntando a `url_reportar_pago`. Decidir al
 > redactar la solicitud: body limpio + botón URL es lo más pro y lo mejor visto por Meta.
 
 **Mapeo `tipo`/bucket → plantilla HSM:**
 
-| `tipo` (job) | Bucket | Plantilla HSM |
+> **Decisión 2026-07-15 — WhatsApp solo aviso previo (dueño):** el canal **WhatsApp** del dueño se
+> envía **solo como aviso previo**; en el bucket `0` (día del vencimiento) se **omite WhatsApp**. El
+> **banner y el email del día 0 se mantienen** (no cambian). Por eso `venc_suscripcion_hoy` **ya no
+> se usa** por WhatsApp — no es necesario subirla a Meta.
+
+| `tipo` (job) | Bucket | Plantilla HSM (WhatsApp) |
 |---|---|---|
 | `VENCIMIENTO_TRIAL` / `VENCIMIENTO_PREMIUM` | `3` (previo, configurable) | `venc_suscripcion_previo` (con `{{4}}=días`) |
-| `VENCIMIENTO_TRIAL` / `VENCIMIENTO_PREMIUM` | `0` | `venc_suscripcion_hoy` |
-| *(estado `EN_GRACIA`, si se añade)* | — | `venc_suscripcion_gracia` |
+| `VENCIMIENTO_TRIAL` / `VENCIMIENTO_PREMIUM` | `0` | ❌ WhatsApp omitido (banner/email siguen) — ~~`venc_suscripcion_hoy`~~ no se usa |
+| *(estado `EN_GRACIA`, si se añade)* | — | `venc_suscripcion_gracia` (opcional) |
 
 ### Detalles que estos textos exponen (a resolver en implementación)
 

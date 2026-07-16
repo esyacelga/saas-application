@@ -25,12 +25,14 @@ import java.util.Optional;
  * de vencimiento — y envía plantillas HSM pre-aprobadas vía {@link CoreServiceClient} + el
  * {@code WhatsAppSender}.
  *
- * <p><b>Buckets del socio {previo, 0}</b> (aviso previo + día del vencimiento). Desde la <b>Fase 6</b>
- * el bucket <b>previo</b> se lee de {@code saas.notif_buckets_globales} (destinatario {@code socio})
- * vía el endpoint interno de platform-service ({@link PlatformServiceClient}), con fallback a
- * {@value #BUCKET_PREVIO_DEFAULT} si platform no responde. Si el bucket está {@code activo=false} el
- * aviso previo se omite (bucket efectivo 0) pero el día 0 siempre aplica. Mapeo {@code tipo} →
- * plantilla HSM por {@code modoControl} (calendario/accesos).
+ * <p><b>Solo aviso previo</b> (decisión 2026-07-15): al socio se le avisa únicamente con antelación
+ * (previo a N días o cuando quedan N entradas); <b>no</b> se envía aviso el día del vencimiento
+ * (día/entrada 0). Desde la <b>Fase 6</b> el bucket <b>previo</b> se lee de
+ * {@code saas.notif_buckets_globales} (destinatario {@code socio}) vía el endpoint interno de
+ * platform-service ({@link PlatformServiceClient}), con fallback a {@value #BUCKET_PREVIO_DEFAULT} si
+ * platform no responde. Si el bucket está {@code activo=false} el aviso previo se omite (bucket
+ * efectivo 0) y entonces no se envía nada. Mapeo {@code tipo} → plantilla HSM por {@code modoControl}
+ * (calendario/accesos).
  *
  * <p><b>Reglas de envío:</b>
  * <ul>
@@ -64,13 +66,12 @@ public class MensajeriaJob {
 
     // Plantillas HSM del socio (categoría UTILITY, idioma es).
     private static final String TPL_MEMBRESIA_PREVIO = "venc_membresia_previo"; // [nombre, gym, fecha, dias]
-    private static final String TPL_MEMBRESIA_HOY = "venc_membresia_hoy";       // [nombre, gym]
     private static final String TPL_ACCESOS_PREVIO = "venc_accesos_previo";     // [nombre, accesos, gym]
-    private static final String TPL_ACCESOS_FINAL = "venc_accesos_final";       // [nombre, gym]
+    // Decisión 2026-07-15: solo aviso previo al socio. Las plantillas del día 0
+    // (venc_membresia_hoy, venc_accesos_final) y TIPO_HOY quedan retiradas del job.
 
-    // Tipos lógicos (los mismos que ya usa mensajes_log): distinguen previo vs día del vencimiento.
+    // Tipo lógico (el mismo que ya usa mensajes_log) para el aviso previo.
     private static final String TIPO_PREVIO = "vencimiento_3d";
-    private static final String TIPO_HOY = "vencimiento_hoy";
 
     /** Diariamente a las 00:15 (hora Guayaquil, JVM). Cron sobreescribible por env var. */
     @Scheduled(cron = "${scheduling.messaging-job-cron:0 15 0 * * *}")
@@ -157,10 +158,7 @@ public class MensajeriaJob {
         if ("accesos".equals(c.getModoControl())) {
             Integer restantes = c.getAccesosRestantes();
             if (restantes == null) return null;
-            if (restantes == BUCKET_DIA_0) {
-                return new Aviso(TIPO_HOY, TPL_ACCESOS_FINAL, List.of(nombre, gym),
-                        "Usaste tu última entrada en " + gym + ".");
-            }
+            // Solo aviso previo (decisión 2026-07-15): el día/entrada 0 no dispara aviso al socio.
             if (bucketPrevio > 0 && restantes == bucketPrevio) {
                 return new Aviso(TIPO_PREVIO, TPL_ACCESOS_PREVIO,
                         List.of(nombre, String.valueOf(restantes), gym),
@@ -175,10 +173,7 @@ public class MensajeriaJob {
         LocalDate fechaFin = parseFecha(c.getFechaFin());
         String fechaTxt = fechaFin != null ? fechaFin.format(FECHA_ES) : "N/A";
 
-        if (dias == BUCKET_DIA_0) {
-            return new Aviso(TIPO_HOY, TPL_MEMBRESIA_HOY, List.of(nombre, gym),
-                    "Tu membresía en " + gym + " vence hoy.");
-        }
+        // Solo aviso previo (decisión 2026-07-15): el día 0 (vence hoy) no dispara aviso al socio.
         if (dias >= 1 && dias <= bucketPrevio) {
             return new Aviso(TIPO_PREVIO, TPL_MEMBRESIA_PREVIO,
                     List.of(nombre, gym, fechaTxt, String.valueOf(dias)),

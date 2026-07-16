@@ -49,7 +49,9 @@ import java.util.Optional;
  * <p><b>Canal WhatsApp (Fase 3):</b> el canal a encolar sale de {@code config_notif_suscripcion.canal}
  * del tenant ({@code email}/{@code whatsapp}/{@code ambos}); el {@code banner} se mantiene siempre.
  * <b>R4</b>: solo se encola {@code whatsapp} si {@code compania.acepta_whatsapp = TRUE} y el teléfono
- * es normalizable a E.164; en otro caso se omite ese canal (sin error).
+ * es normalizable a E.164; en otro caso se omite ese canal (sin error). <b>Decisión 2026-07-15</b>:
+ * WhatsApp se envía solo como <b>aviso previo</b>; en el bucket {@code 0} (día del vencimiento) se
+ * omite el canal whatsapp, pero {@code banner} y {@code email} del día 0 se mantienen intactos.
  */
 @Component
 public class NotificacionVencimientoJob {
@@ -204,7 +206,9 @@ public class NotificacionVencimientoJob {
                     if (quiereEmail) {
                         canales.add(NotificacionSuscripcion.CANAL_EMAIL);
                     }
-                    if (quiereWhatsapp && puedeRecibirWhatsapp(compania, idCompania)) {
+                    // Decisión 2026-07-15: WhatsApp solo se envía como aviso previo, no el día del
+                    // vencimiento (bucket 0). Banner/email del día 0 se mantienen intactos.
+                    if (bucket != BUCKET_DIA_0 && quiereWhatsapp && puedeRecibirWhatsapp(compania, idCompania)) {
                         canales.add(NotificacionSuscripcion.CANAL_WHATSAPP);
                     }
                     return canales;
