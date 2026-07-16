@@ -59,13 +59,20 @@ For the folder layout, stack, main domains, and endpoint list, see [README.md](R
 
 ### External dependencies
 
-Two WebClient beans are configured in `WebClientConfig`:
+Three WebClient beans are configured in `WebClientConfig`:
 
-- **`CoreServiceClient`** — calls Core Service at `CORE_SERVICE_URL` (default `http://localhost:8082`). Three methods:
+- **`CoreServiceClient`** — calls Core Service at `CORE_SERVICE_URL` (default `http://localhost:8082`). Four methods:
   - `validarAcceso(idPersona, idCompania, token)` → `ValidarAccesoResponse` (permitido, razon, idCliente, idMembresia, modoControl, diasAccesoRestantes, fechaFin, tipoMembresia, accesosUsados)
   - `buscarSucursalPorQr(qrToken, bearerToken)` → `SucursalQrResponse` (idSucursal, idCompania, nombreSucursal, qrTokenExpira)
   - `buscarIdClientePropio(idPersona, token)` → client ID for `/asistencias/me` endpoints
+  - `listarClientesPorVencer(idCompania, dias, modo)` → list of clients expiring in the next `dias` days (feature WhatsApp avisos vencimiento, Fase 6). Sends the `X-Internal-Call` header from the injected `internal-secret`.
+- **`PlatformServiceClient`** — calls Platform Service at `PLATFORM_SERVICE_URL` (env var, default `http://localhost:8081`). One method:
+  - `obtenerBucketPrevioSocio(fallback)` → reads `GET /internal/v1/notif-buckets/socio` (`{destinatario, dias_previo, activo}`) and returns the effective previo bucket for the socio; `activo=false` → 0, and any error / missing row / unreachable platform → the `fallback` value so the job never breaks (Fase 6). Sends the `X-Internal-Call` header from the injected `internal-secret`.
 - **`AuthServiceClient`** — calls Auth Service at `AUTH_SERVICE_URL` (default `http://localhost:8080`). Used to resolve QR tokens to sucursal via `buscarSucursalPorQr`.
+
+Configuration (from `application.yml`):
+- `services.platform-service.url` — Platform Service base URL (env var `PLATFORM_SERVICE_URL`, default `http://localhost:8081`)
+- `services.platform-service.internal-secret` — shared secret for `/internal/v1/` endpoints (env var `INTERNAL_SECRET`, default `platform-secret-dev`; same value across core/platform/attendance)
 
 The override endpoint (`POST /asistencias/manual/override`) bypasses Core Service validation entirely.
 

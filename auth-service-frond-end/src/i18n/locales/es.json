@@ -190,7 +190,8 @@
     "tiposMembresia": "Tipos de membresía",
     "configuracion": "Configuración",
     "pagosPendientes": "Pagos pendientes",
-    "miSuscripcion": "Mi suscripción"
+    "miSuscripcion": "Mi suscripción",
+    "notifBuckets": "Avisos WhatsApp"
   },
   "dashboard": {
     "welcome": "Bienvenido",
@@ -590,6 +591,33 @@
       "loadError": "Error al cargar configuración de notificaciones",
       "saveSuccess": "Configuración guardada",
       "saveError": "Error al guardar la configuración"
+    },
+    "notifBuckets": {
+      "title": "Configuración de avisos WhatsApp",
+      "description": "Ventanas globales de recordatorio de vencimiento por WhatsApp (aplica a todos los gimnasios)",
+      "loadError": "Error al cargar la configuración de avisos",
+      "saveSuccess": "Configuración guardada",
+      "saveError": "Error al guardar la configuración",
+      "validationError": "Valor fuera de rango",
+      "diasPrevioLabel": "Días previos al vencimiento (1–30)",
+      "activoOn": "Aviso habilitado",
+      "activoOff": "Aviso deshabilitado",
+      "diaVencimientoInfo": "Adicionalmente, se envía un aviso el día del vencimiento (día {{dia}}) — fijo, no configurable",
+      "guardar": "Guardar",
+      "empty": "No hay configuración disponible",
+      "destSocio": "Aviso al socio",
+      "destDueno": "Aviso al dueño del gimnasio",
+      "info": "Los avisos globales aplican a todos los gimnasios activos con WhatsApp habilitado. Cada bucket envía un mensaje X días antes del vencimiento de la membresía."
+    },
+    "consentimientoWa": {
+      "title": "Opt-in WhatsApp (dueño del gimnasio)",
+      "description": "Controla si el propietario del gimnasio acepta recibir avisos de vencimiento por WhatsApp",
+      "label": "Recibir avisos de vencimiento por WhatsApp",
+      "loadError": "Error al cargar el consentimiento",
+      "saveSuccess": "Preferencia de WhatsApp actualizada",
+      "saveError": "Error al actualizar la preferencia",
+      "fechaConsentimiento": "Consentimiento registrado el {{fecha}}",
+      "sinFecha": "Sin fecha de consentimiento"
     },
     "caracteristicas": {
       "title": "Características del sistema",

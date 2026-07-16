@@ -220,6 +220,19 @@ Cada tabla se define **una única vez** en su `CREATE TABLE` (sin scripts `ALTER
                                                  ╚══════════════════════════════╝
 
 ╔══════════════════════════════════╗
+║   notif_buckets_globales         ║  ← GLOBAL, story 202607_GYM-003
+╠══════════════════════════════════╣  Configuración de días de aviso
+║ PK destinatario VARCHAR(10)      ║  (Fase 6 WhatsApp vencimiento)
+║    CHECK IN('socio','dueno')     ║
+║    dias_previo INT DEFAULT 3     ║  1..30, el aviso del día 0 es fijo
+║    activo BOOLEAN DEFAULT TRUE   ║  cuando FALSE → solo día 0
+║    modificado_por, modificado_at ║  auditoría
+║    creacion_fecha, creacion_user ║
+╚══════════════════════════════════╝
+ Seed idempotente: socio=3, dueno=3 (ambos activos, día 0 siempre fijo)
+ Los jobs (dueño y socio) leen dias_previo dinámicamente; fallback 3 si ausente
+
+╔══════════════════════════════════╗
 ║   config_notif_suscripcion       ║  ← una fila por umbral configurado
 ╠══════════════════════════════════╣
 ║ PK (id_compania, dias_antes)     ║
@@ -735,13 +748,13 @@ UNIQUE(id_producto,                         ║    tipo               ║
 
 ---
 
-## Resumen de Tablas (69 tablas en 12 schemas)
+## Resumen de Tablas (70 tablas en 12 schemas)
 
-Verificado 2026-07-10 contando los `CREATE TABLE` de `db/scripts/202605_GYM-001/{ddl,ddl-facturacion,ddl-freemium}/`. Distribución por schema:
+Verificado 2026-07-16 contando los `CREATE TABLE` de `db/scripts/202605_GYM-001/{ddl,ddl-facturacion,ddl-freemium}/` + story `202607_GYM-003` (notif_buckets_globales). Distribución por schema:
 
 | Schema | Tablas | Propósito |
 |--------|:---:|-----------|
-| `saas` | 6 | Catálogos globales de plataforma (planes, características, usuarios root, actividad, config) |
+| `saas` | 7 | Catálogos globales de plataforma (planes, características, usuarios root, actividad, config, notif buckets) |
 | `identidad` | 3 | Personas globales, credenciales de app móvil, biometría |
 | `tenant` | 7 | Compañías, sucursales, suscripciones, pagos, notificaciones, pagos pendientes |
 | `core` | 4 | Clientes, tipos de membresía, membresías, congelamientos |
@@ -765,68 +778,69 @@ Verificado 2026-07-10 contando los `CREATE TABLE` de `db/scripts/202605_GYM-001/
 | 4 | `saas.usuarios_plataforma` | SaaS Global | `id` | — | No |
 | 5 | `saas.actividad_plataforma` | SaaS Global | `id` | `id_compania` (nullable) | Parcial |
 | 6 | `saas.config_plataforma` | SaaS Global | `clave` | `modificado_por` | No |
-| 7 | `identidad.personas` | Identidad Global | `id` | — | No |
-| 8 | `identidad.usuarios_app` | Identidad Global | `id` | `id_persona` (**FK real**) | No |
-| 9 | `identidad.biometria` | Identidad Global | `id` | `id_persona` (**FK real**) | No |
-| 10 | `tenant.companias` | Multitenancy | `id` | — | No |
-| 11 | `tenant.sucursales` | Multitenancy | `id` | `id_compania` (**FK real**) | Parcial |
-| 12 | `tenant.compania_planes` | Multitenancy | `id` | `id_compania`, `id_plan`, `id_compania_plan_orig` (self-FK) | No |
-| 13 | `tenant.pagos_suscripcion` | Multitenancy | `id` | `id_compania_plan` (**FK real**) | No |
-| 14 | `tenant.config_notif_suscripcion` | Multitenancy | `(id_compania, dias_antes)` | — | No |
-| 15 | `tenant.notificaciones_suscripcion` | Multitenancy | `id` | `id_compania_plan`, `id_compania` (**FK real**) | No |
-| 16 | `tenant.pagos_pendientes_validacion` | Multitenancy | `id` | `id_compania`, `id_plan_destino`, `aprobado_por` | No |
-| 17 | `core.clientes` | Clientes | `id` | `id_persona` (**FK real**) | Sí |
-| 18 | `core.tipos_membresia` | Membresías | `id` | — | Sí |
-| 19 | `core.membresias` | Membresías | `id` | `id_cliente`, `id_tipo_membresia`, `id_metodo_pago` | Sí |
-| 20 | `core.congelamientos` | Membresías | `id` | `id_membresia` | Sí |
-| 21 | `asistencia.asistencias` | Asistencia | `id` | `id_cliente`, `id_membresia` | Sí |
-| 22 | `asistencia.plantillas_mensajes` | Mensajería | `id` | — | Sí |
-| 23 | `asistencia.mensajes_log` | Mensajería | `id` | `id_cliente`, `id_plantilla` | Sí |
-| 24 | `finanzas.categorias_ingreso` | Finanzas | `id` | — | Sí |
-| 25 | `finanzas.ingresos` | Finanzas | `id` | `id_categoria`, `id_membresia`, `id_venta`, `id_comprobante` | Sí |
-| 26 | `finanzas.categorias_egreso` | Finanzas | `id` | — | Sí |
-| 27 | `finanzas.egresos` | Finanzas | `id` | `id_categoria` | Sí |
-| 28 | `marketing.promociones` | Promociones | `id` | — | Sí |
-| 29 | `marketing.cliente_promociones` | Promociones | `id` | `id_promocion`, `id_cliente`, `id_membresia` | Sí |
-| 30 | `marketing.reglas_beneficios` | Beneficios | `id` | — | Sí |
-| 31 | `marketing.cliente_beneficios` | Beneficios | `id` | `id_regla`, `id_cliente` | Sí |
-| 32 | `seguridad.roles` | Usuarios | `id` | — | Sí |
-| 33 | `seguridad.permisos` | Usuarios | `id` | — | Sí |
-| 34 | `seguridad.rol_permisos` | Usuarios | `(id_rol, id_permiso)` | `id_rol`, `id_permiso` | Sí |
-| 35 | `seguridad.usuarios` | Usuarios | `id` | `id_rol`, `id_persona` | Sí |
-| 36 | `seguridad.bitacora_accesos` | Usuarios | `id` | `id_usuario` | Sí |
-| 37 | `seguridad.refresh_tokens` | Usuarios | `id` | `id_usuario` | Sí |
-| 38 | `config.gym_config` | Configuración | `(clave, id_compania, id_sucursal)` | — | Sí |
-| 39 | `config.metodos_pago` | Configuración | `id` | — | Sí |
-| 40 | `inventario.categorias_producto` | Inventario | `id` | — | Sí |
-| 41 | `inventario.proveedores` | Inventario | `id` | — | Sí |
-| 42 | `inventario.productos` | Inventario | `id` | `id_categoria`, `id_proveedor` | Sí |
-| 43 | `inventario.stock` | Inventario | `id` | `id_producto` | Sí |
-| 44 | `inventario.movimientos_inventario` | Inventario | `id` | `id_producto`, `id_proveedor`, `id_venta` | Sí |
-| 45 | `inventario.ventas` | Inventario | `id` | `id_cliente`, `id_metodo_pago` | Sí |
-| 46 | `inventario.detalle_ventas` | Inventario | `id` | `id_venta`, `id_producto` | Sí |
-| 47 | `sri.tipos_comprobante` | SRI Catálogo | `codigo` | — | No |
-| 48 | `sri.tipos_identificacion_comprador` | SRI Catálogo | `codigo` | — | No |
-| 49 | `sri.formas_pago` | SRI Catálogo | `codigo` | — | No |
-| 50 | `sri.tipos_impuesto` | SRI Catálogo | `codigo` | — | No |
-| 51 | `sri.tarifas_iva` | SRI Catálogo | `codigo` | — | No |
-| 52 | `sri.motivos_anulacion_nc` | SRI Catálogo | `codigo` | — | No |
-| 53 | `facturacion.config_sri` | Facturación | `id_compania` | — | Sí |
-| 54 | `facturacion.certificados` | Facturación | `id` | `id_compania` | Sí |
-| 55 | `facturacion.puntos_emision` | Facturación | `id` | `id_compania`, `id_sucursal` | Sí |
-| 56 | `facturacion.secuenciales` | Facturación | `id` | `id_punto_emision` | Sí |
-| 57 | `facturacion.comprobantes` | Facturación | `id` | `id_compania`, `id_sucursal`, `id_punto_emision`, `id_cliente` | Sí |
-| 58 | `facturacion.comprobantes_detalle` | Facturación | `id` | `id_comprobante` | Sí |
-| 59 | `facturacion.comprobante_detalle_impuestos` | Facturación | `id` | `id_detalle` | Sí |
-| 60 | `facturacion.comprobante_impuestos_totales` | Facturación | `id` | `id_comprobante` | Sí |
-| 61 | `facturacion.comprobante_pagos` | Facturación | `id` | `id_comprobante` | Sí |
-| 62 | `facturacion.comprobante_info_adicional` | Facturación | `id` | `id_comprobante` | Sí |
-| 63 | `facturacion.notas_credito_referencias` | Facturación | `id` | `id_nota_credito`, `id_comprobante_referenciado` | Sí |
-| 64 | `facturacion.envios_sri` | Facturación | `id` | `id_comprobante` | Sí |
-| 65 | `facturacion.cola_envio` | Facturación | `id` | `id_comprobante` | Sí |
-| 66 | `facturacion.notificaciones_receptor` | Facturación | `id` | `id_comprobante` | Sí |
-| 67 | `facturacion.anulaciones` | Facturación | `id` | `id_comprobante` | Sí |
-| 68 | `facturacion.reportes_ats` | Facturación | `id` | `id_compania` | Sí |
+| 7 | `saas.notif_buckets_globales` | SaaS Global | `destinatario` | — | No |
+| 8 | `identidad.personas` | Identidad Global | `id` | — | No |
+| 9 | `identidad.usuarios_app` | Identidad Global | `id` | `id_persona` (**FK real**) | No |
+| 10 | `identidad.biometria` | Identidad Global | `id` | `id_persona` (**FK real**) | No |
+| 11 | `tenant.companias` | Multitenancy | `id` | — | No |
+| 12 | `tenant.sucursales` | Multitenancy | `id` | `id_compania` (**FK real**) | Parcial |
+| 13 | `tenant.compania_planes` | Multitenancy | `id` | `id_compania`, `id_plan`, `id_compania_plan_orig` (self-FK) | No |
+| 14 | `tenant.pagos_suscripcion` | Multitenancy | `id` | `id_compania_plan` (**FK real**) | No |
+| 15 | `tenant.config_notif_suscripcion` | Multitenancy | `(id_compania, dias_antes)` | — | No |
+| 16 | `tenant.notificaciones_suscripcion` | Multitenancy | `id` | `id_compania_plan`, `id_compania` (**FK real**) | No |
+| 17 | `tenant.pagos_pendientes_validacion` | Multitenancy | `id` | `id_compania`, `id_plan_destino`, `aprobado_por` | No |
+| 18 | `core.clientes` | Clientes | `id` | `id_persona` (**FK real**) | Sí |
+| 19 | `core.tipos_membresia` | Membresías | `id` | — | Sí |
+| 20 | `core.membresias` | Membresías | `id` | `id_cliente`, `id_tipo_membresia`, `id_metodo_pago` | Sí |
+| 21 | `core.congelamientos` | Membresías | `id` | `id_membresia` | Sí |
+| 22 | `asistencia.asistencias` | Asistencia | `id` | `id_cliente`, `id_membresia` | Sí |
+| 23 | `asistencia.plantillas_mensajes` | Mensajería | `id` | — | Sí |
+| 24 | `asistencia.mensajes_log` | Mensajería | `id` | `id_cliente`, `id_plantilla` | Sí |
+| 25 | `finanzas.categorias_ingreso` | Finanzas | `id` | — | Sí |
+| 26 | `finanzas.ingresos` | Finanzas | `id` | `id_categoria`, `id_membresia`, `id_venta`, `id_comprobante` | Sí |
+| 27 | `finanzas.categorias_egreso` | Finanzas | `id` | — | Sí |
+| 28 | `finanzas.egresos` | Finanzas | `id` | `id_categoria` | Sí |
+| 29 | `marketing.promociones` | Promociones | `id` | — | Sí |
+| 30 | `marketing.cliente_promociones` | Promociones | `id` | `id_promocion`, `id_cliente`, `id_membresia` | Sí |
+| 31 | `marketing.reglas_beneficios` | Beneficios | `id` | — | Sí |
+| 32 | `marketing.cliente_beneficios` | Beneficios | `id` | `id_regla`, `id_cliente` | Sí |
+| 33 | `seguridad.roles` | Usuarios | `id` | — | Sí |
+| 34 | `seguridad.permisos` | Usuarios | `id` | — | Sí |
+| 35 | `seguridad.rol_permisos` | Usuarios | `(id_rol, id_permiso)` | `id_rol`, `id_permiso` | Sí |
+| 36 | `seguridad.usuarios` | Usuarios | `id` | `id_rol`, `id_persona` | Sí |
+| 37 | `seguridad.bitacora_accesos` | Usuarios | `id` | `id_usuario` | Sí |
+| 38 | `seguridad.refresh_tokens` | Usuarios | `id` | `id_usuario` | Sí |
+| 39 | `config.gym_config` | Configuración | `(clave, id_compania, id_sucursal)` | — | Sí |
+| 40 | `config.metodos_pago` | Configuración | `id` | — | Sí |
+| 41 | `inventario.categorias_producto` | Inventario | `id` | — | Sí |
+| 42 | `inventario.proveedores` | Inventario | `id` | — | Sí |
+| 43 | `inventario.productos` | Inventario | `id` | `id_categoria`, `id_proveedor` | Sí |
+| 44 | `inventario.stock` | Inventario | `id` | `id_producto` | Sí |
+| 45 | `inventario.movimientos_inventario` | Inventario | `id` | `id_producto`, `id_proveedor`, `id_venta` | Sí |
+| 46 | `inventario.ventas` | Inventario | `id` | `id_cliente`, `id_metodo_pago` | Sí |
+| 47 | `inventario.detalle_ventas` | Inventario | `id` | `id_venta`, `id_producto` | Sí |
+| 48 | `sri.tipos_comprobante` | SRI Catálogo | `codigo` | — | No |
+| 49 | `sri.tipos_identificacion_comprador` | SRI Catálogo | `codigo` | — | No |
+| 50 | `sri.formas_pago` | SRI Catálogo | `codigo` | — | No |
+| 51 | `sri.tipos_impuesto` | SRI Catálogo | `codigo` | — | No |
+| 52 | `sri.tarifas_iva` | SRI Catálogo | `codigo` | — | No |
+| 53 | `sri.motivos_anulacion_nc` | SRI Catálogo | `codigo` | — | No |
+| 54 | `facturacion.config_sri` | Facturación | `id_compania` | — | Sí |
+| 55 | `facturacion.certificados` | Facturación | `id` | `id_compania` | Sí |
+| 56 | `facturacion.puntos_emision` | Facturación | `id` | `id_compania`, `id_sucursal` | Sí |
+| 57 | `facturacion.secuenciales` | Facturación | `id` | `id_punto_emision` | Sí |
+| 58 | `facturacion.comprobantes` | Facturación | `id` | `id_compania`, `id_sucursal`, `id_punto_emision`, `id_cliente` | Sí |
+| 59 | `facturacion.comprobantes_detalle` | Facturación | `id` | `id_comprobante` | Sí |
+| 60 | `facturacion.comprobante_detalle_impuestos` | Facturación | `id` | `id_detalle` | Sí |
+| 61 | `facturacion.comprobante_impuestos_totales` | Facturación | `id` | `id_comprobante` | Sí |
+| 62 | `facturacion.comprobante_pagos` | Facturación | `id` | `id_comprobante` | Sí |
+| 63 | `facturacion.comprobante_info_adicional` | Facturación | `id` | `id_comprobante` | Sí |
+| 64 | `facturacion.notas_credito_referencias` | Facturación | `id` | `id_nota_credito`, `id_comprobante_referenciado` | Sí |
+| 65 | `facturacion.envios_sri` | Facturación | `id` | `id_comprobante` | Sí |
+| 66 | `facturacion.cola_envio` | Facturación | `id` | `id_comprobante` | Sí |
+| 67 | `facturacion.notificaciones_receptor` | Facturación | `id` | `id_comprobante` | Sí |
+| 68 | `facturacion.anulaciones` | Facturación | `id` | `id_comprobante` | Sí |
+| 69 | `facturacion.reportes_ats` | Facturación | `id` | `id_compania` | Sí |
 
 > **Tenant = Sí** → tabla incluye `id_compania INT` e `id_sucursal INT` sin restricción FK.
 > **Tenant = No** → tabla de plataforma / catálogo global, sin filtrado por compañía.

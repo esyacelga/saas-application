@@ -230,6 +230,14 @@
     "logout": "Cerrar sesión",
     "success": {
       "logout": "Sesión cerrada"
+    },
+    "whatsapp": {
+      "title": "Avisos por WhatsApp",
+      "label": "Recibir avisos de vencimiento por WhatsApp",
+      "saving": "Guardando preferencia…",
+      "saveSuccess": "Preferencia de WhatsApp actualizada",
+      "saveError": "Error al actualizar la preferencia",
+      "fechaConsentimiento": "Consentimiento registrado el {{fecha}}"
     }
   },
   "forgotPassword": {

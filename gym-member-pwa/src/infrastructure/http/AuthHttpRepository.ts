@@ -5,6 +5,7 @@ import type {
   LoginAppResponse, RefreshResponse,
   ForgotPasswordRequest, ResetPasswordRequest, GymByQrResponse,
   RegistroAppRequest, PersonaResponse, ActualizarPersonaRequest,
+  ConsentimientoWaPersonaResponse,
 } from '@/application/usecase/auth.types'
 
 class AuthHttpRepository implements AuthRepository {
@@ -67,6 +68,15 @@ class AuthHttpRepository implements AuthRepository {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     return data
+  }
+
+  async patchConsentimientoWaPersona(id: number, acepta: boolean): Promise<ConsentimientoWaPersonaResponse> {
+    const { data } = await api.patch<Record<string, unknown>>(`/personas/${id}/consentimiento-wa`, { acepta })
+    return {
+      idPersona: (data.id_persona ?? data.idPersona) as number,
+      aceptaWhatsapp: (data.acepta_whatsapp ?? data.aceptaWhatsapp) as boolean,
+      fechaConsentimientoWa: (data.fecha_consentimiento_wa ?? data.fechaConsentimientoWa ?? null) as string | null,
+    }
   }
 }
 

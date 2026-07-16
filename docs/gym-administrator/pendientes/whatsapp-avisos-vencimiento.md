@@ -1,15 +1,20 @@
 # Pendiente — Avisos por WhatsApp de vencimiento (socios y dueños)
 
-> **Estado:** 🟢 **Fases 1–5 cerradas (5 de 6)** — migración de consentimiento `202607_GYM-002` +
+> **Estado:** 🟢 **Fases 1–6 cerradas (6 de 6)** — migración de consentimiento `202607_GYM-002` +
 > adaptador Meta/normalizador E.164 + **cola WhatsApp del dueño** (`WhatsAppQueueService`, buckets {3,0},
 > R2/R3/R4, cross-day día 0) + **endpoint interno `clientes-por-vencer`** en core (C3 + zona Guayaquil C4,
 > IT 13/13) + **`MensajeriaJob` del socio cableado** en attendance (consume el endpoint, plantillas HSM
-> `venc_membresia_*`/`venc_accesos_*`, opt-in R4, idempotencia C2, unit 29/29). Siguiente y última:
-> **Fase 6** (panel super_admin + buckets configurables `saas.notif_buckets_globales` R1 + UIs de opt-in).
-> Plan de **6 fases testeables** + **issues de arquitectura** rastreados al final del documento.
+> `venc_membresia_*`/`venc_accesos_*`, opt-in R4, idempotencia C2, unit 29/29) + **FASE 6 BACKEND CERRADO:**
+> tabla `saas.notif_buckets_globales` (story `202607_GYM-003`, seed `socio=3`/`dueno=3`, buckets configurables
+> **R1 resuelto**) + endpoints `GET/PUT /api/v1/plataforma/notif-buckets` + endpoint interno
+> `GET /internal/v1/notif-buckets/{destinatario}` (consumed by attendance) + jobs leyendo buckets dinámicos
+> (**R2 resuelto definitivamente**) + endpoints PATCH opt-in en auth-service + platform-service (captura de
+> consentimiento). **Único pendiente Fase 6:** frontend 6B (panel super_admin + 4 UIs de captura de opt-in).
+> Plan de **6 fases backend testeables** + **issues de arquitectura** rastreados al final del documento.
 > **Diferido** (Fases 3 y 5): ITs con WireMock+Postgres y canario manual, hasta disponibilidad de
 > BD limpia/credenciales de Fase 0.
-> **Fecha:** 2026-07-15 (revisión de arquitectura + plan de fases + Fases 1, 2 y 3 el mismo día).
+> **Fecha:** 2026-07-15 (revisión de arquitectura + plan de fases + Fases 1, 2, 3, 4, 5 el mismo día);
+> **2026-07-16** (Fase 6 backend terminada: migraciones + endpoints + jobs).
 > **Área:** attendance-service (socios/membresía) · core-service (lista de clientes por vencer) · platform-service (dueños/suscripción SaaS) · identidad/tenant (teléfono + consentimiento).
 > **Prioridad:** media-alta — función de retención/cobranza que hoy queda a medias (se registra el mensaje pero nunca sale del sistema).
 
@@ -597,16 +602,19 @@ Ruta de menor riesgo, entregando valor incremental:
 
 ### Recomendadas
 
-- [ ] **R1 — `config_notif_suscripcion` tiene PK `(id_compania, dias_antes)` (fase 6).** Los buckets
-      son **globales**, no por tenant → no meterlos en esa tabla por-tenant. Crear
-      `saas.notif_buckets_globales(destinatario CHECK IN('socio','dueno'), dias_previo INT, activo)` con
-      seed `socio=3`, `dueno=3` (era `dueno=5`; ajustado a la decisión de Fase 3). El `0` **no** va en la
-      tabla (es constante del código).
-      `config_notif_suscripcion` sigue rigiendo **canal por tenant**, sin tocar su PK.
-- [x] **R2 — Reevaluar el `.next()` de buckets al reducir a `{previo, 0}` (fases 3 y 6).** ✅ **Resuelto en
-      Fase 3** (lado dueño). Se reemplazó el `filter(...).next()` por `resolverBucket(diasRestantes)`:
-      `==0`→bucket 0; `1..3`→bucket previo (3); resto (incl. `<0`)→null (no encola). El día 0 ya no cae al
-      template previo con "en 0 días". Falta aplicarlo al socio en Fase 5/6.
+- [x] **R1 — `config_notif_suscripcion` tiene PK `(id_compania, dias_antes)` (fase 6).** ✅ **Resuelto en Fase 6.**
+      Los buckets son **globales**, no por tenant → no meterlos en esa tabla por-tenant. Creada
+      `saas.notif_buckets_globales(destinatario PK VARCHAR(10) CHECK IN('socio','dueno'), dias_previo INT
+      NOT NULL DEFAULT 3 CHECK BETWEEN 1 AND 30, activo BOOLEAN DEFAULT TRUE, auditoría)` con seed
+      idempotente `socio=3`, `dueno=3` (fue `dueno=5` en Fase 3; mantiene `3` aquí). El `0` **no** va en la
+      tabla (es constante fija del código, no editable). `config_notif_suscripcion` sigue rigiendo **canal
+      por tenant**, sin cambios en su PK.
+- [x] **R2 — Reevaluar el `.next()` de buckets al reducir a `{previo, 0}` (fases 3 y 6).** ✅ **Resuelto
+      DEFINITIVAMENTE en Fase 6.** Fase 3 resolvió dueño: `resolverBucket(diasRestantes)` mapea
+      `==0`→bucket 0; `1..dias_previo`→bucket previo; resto→null. Fase 6 idem para socio: buckets
+      dinámicos `{dias_previo, 0}` (ley `dias_previo` de la tabla), mismo `resolverBucket`. El día 0 ya no
+      cae al template previo con "en 0 días" (templates son `venc_*_hoy` para día 0, `venc_*_previo` para
+      el aviso). No hay posibilidad de cross-day: el `0` es fijo, no reprogramable.
 - [x] **R3 — Poblar `fecha_vencimiento` (fase 3).** ✅ **Resuelto en Fase 3** para el canal WhatsApp del
       dueño: `WhatsAppQueueService` carga el `CompaniaPlan` y pobla `{{3}}` con
       `cp.getFechaFin().format(FECHA_ES)` (`dd/MM/yyyy`) para `venc_suscripcion_previo`. **Nota:** el bug de
@@ -824,21 +832,73 @@ Crear/verificar WABA + `phone_number_id` y **subir las plantillas HSM a aprobaci
       (`tipos_membresia`↔`membresias`) por datos residuales en la BD local compartida `gym-app-saas`;
       reproducido en HEAD sin estos cambios (mis clases nuevas no tocan `BaseIntegrationTest` ni los ITs).
 
-### Fase 6 — Panel super_admin + buckets configurables + UIs de opt-in (bloque E completo)
+### Fase 6 — Panel super_admin + buckets configurables + UIs de opt-in (bloque E completo) — BACKEND CERRADO
 
-- **Alcance:** tabla `saas.notif_buckets_globales` (**R1**, seed `socio=3`/`dueno=3`, story nueva).
-  Endpoint `GET/PUT /api/v1/plataforma/notif-buckets` (super_admin only). Los dos jobs leen el bucket
-  previo de la tabla (en vez de la constante), aplicando **R2**. Frontend en `auth-service-frond-end`:
-  pantalla de super_admin (bucket socio + dueño, hora de envío en **solo-lectura**). Captura de opt-in:
-  PWA (checkbox auto-registro + toggle perfil), admin (alta por staff + toggle compañía). Endpoints
-  `PATCH .../personas/{id}/consentimiento-wa` y `PATCH .../companias/{id}/consentimiento-wa`.
-- **Testeo:** IT del endpoint de buckets (super_admin 200 / otro rol 403); IT del job leyendo bucket
-  dinámico (=7 → aviso a los 7 días); IT del `next()` corregido (día 0 con previo=5 → `venc_*_hoy`, no
-  "en 0 días"); IT de los toggles de opt-in; E2E manual de las 3 UIs de captura.
-- **Aceptación:** cambiar bucket en UI + reiniciar → job usa el nuevo valor; toggle opt-in ON→siguiente
-  ejecución envía; OFF→no envía.
+- **Alcance BACKEND (2026-07-16):** tabla `saas.notif_buckets_globales` (**R1** ✅ resuelto), story nueva
+  `202607_GYM-003`. Seed idempotente: `(socio, 3, true)` + `(dueno, 3, true)` (ambos activos, día 0 fijo
+  en código). DDL: `destinatario VARCHAR(10) PK CHECK IN('socio','dueno')`, `dias_previo INT DEFAULT 3
+  CHECK BETWEEN 1 AND 30`, `activo BOOLEAN DEFAULT TRUE`, auditoría (`modificado_por`, `modificado_at`,
+  `creacion_fecha`, `creacion_usuario`). Endpoint **GET/PUT** en platform-service:
+  - `GET /api/v1/plataforma/notif-buckets` (super_admin only) → lista `[{destinatario, diasPrevio, activo,
+    diaVencimiento:0}]`.
+  - `PUT /api/v1/plataforma/notif-buckets/{destinatario}` (super_admin only) → body `{diasPrevio, activo}`;
+    validación `diasPrevio ∈ [1,30]`; 400 si fuera de rango, 404 si `destinatario` inválido.
+  - `GET /internal/v1/notif-buckets/{destinatario}` (header `X-Internal-Call`, NO JWT) → `{destinatario,
+    dias_previo, activo}` (consume attendance-service para el socio). 403 sin secreto, 404 si fila ausente,
+    400 si `destinatario` inválido.
+  
+  Endpoints PATCH opt-in (nuevo en Fase 6 backend):
+  - **auth-service:** `PATCH /api/v1/personas/{id}/consentimiento-wa` (JWT válido: staff/cliente/plataforma)
+    → body `{acepta: boolean}`. Respuesta: `{idPersona, aceptaWhatsapp, fechaConsentimientoWa}`. Si
+    `acepta=true` sella `fecha_consentimiento_wa`, si `acepta=false` la limpia.
+  - **platform-service:** `PATCH /api/v1/companias/{id}/consentimiento-wa` (gate `requireAccessToCompania`:
+    super_admin o dueño del propio tenant) → body `{acepta: boolean}`. Respuesta:
+    `{idCompania, aceptaWhatsapp, fechaConsentimientoWa}`. Misma semántica.
+  
+  Los dos jobs (dueño y socio) ahora leen `dias_previo` dinámicamente desde la tabla (en vez de constante
+  {3} o {5}). **R2 resuelto definitivamente:** el `0` sigue fijo en código, no editable; buckets reales
+  son siempre `{dias_previo, 0}`. Fallback a 3 si fila ausente.
+  
+  `PlatformServiceClient` nueva en attendance-service: consume `GET /internal/v1/notif-buckets/socio` para
+  leer el bucket del socio. Config: `services.platform-service.url` (env var `PLATFORM_SERVICE_URL`, default
+  `http://localhost:8081`) + `internal-secret`.
+
+- **Testeo:** unit (Mockito) de los servicios / repositories; sin IT-con-Postgres por convención de v1
+  (deduzco de Fase 3 y 5: diferido a canario manual + BD limpia).
+- **Aceptación BACKEND (✅ completo):**
+  - [x] Migración `202607_GYM-003` corre limpia, seed idempotente (socio=3/dueno=3 ambos activos).
+  - [x] `GET /plataforma/notif-buckets` lista buckets con auditoría.
+  - [x] `PUT /plataforma/notif-buckets/{destinatario}` actualiza con validación + auditoría.
+  - [x] `GET /internal/v1/notif-buckets/{destinatario}` responde sin JWT (header `X-Internal-Call`).
+  - [x] `PATCH /api/v1/personas/{id}/consentimiento-wa` sella/limpia `fecha_consentimiento_wa` del socio.
+  - [x] `PATCH /api/v1/companias/{id}/consentimiento-wa` sella/limpia `fecha_consentimiento_wa` del dueño.
+  - [x] `NotificacionVencimientoJob` (dueño) lee bucket dinámico de la tabla + fallback 3.
+  - [x] `MensajeriaJob` (socio) lee bucket dinámico vía `PlatformServiceClient` + fallback 3.
+  - [x] Tests verdes (unit); cambio de bucket → reinicio → jobs usan valor nuevo.
+  
+  **Pendiente FRONTEND (Fase 6B, no backend):**
+  - [ ] Panel super_admin en `auth-service-frond-end`: pantalla de buckets + hora de envío (solo lectura) +
+        botón salvar.
+  - [ ] 4 UIs de captura de opt-in: (1) checkbox en auto-registro PWA (gym-member-pwa), (2) toggle en
+        perfil PWA, (3) checkbox alta staff (panel admin), (4) toggle de compañía (panel dueño).
+
 - **Depende de:** Fases 1, 3 y 5. Resuelve **R1, R2** (definitivo).
-- [ ] Fase 6 cerrada.
+- [x] **Fase 6 BACKEND cerrada (2026-07-16).** Archivos nuevos en platform-service: `domain/model/NotifBucket`,
+      `domain/port/out/NotifBucketsRepository`, `application/service/NotifBucketsService`, controlador
+      `infrastructure/adapter/in/web/NotifBucketsController` (GET/PUT /plataforma/notif-buckets) +
+      `InternalNotifBucketsController` (GET /internal/v1/notif-buckets/{destinatario}), adaptador
+      `infrastructure/adapter/out/persistence/adapter/NotifBucketsPersistenceAdapter`. Modificados:
+      `NotificacionVencimientoJob` (lee `dias_previo` dinámico, fallback 3); `application.yml` (env
+      `PLATFORM_SERVICE_INTERNAL_SECRET`). Nuevos en attendance-service: `infrastructure/client/
+      PlatformServiceClient` (GET /internal/v1/notif-buckets/socio); modificado `MensajeriaJob` (consume
+      `PlatformServiceClient`, fallback 3). Nuevos en auth-service: controlador
+      `infrastructure/adapter/in/web/ConsentimientoWhatsAppController` (PATCH /personas/{id}/
+      consentimiento-wa). Storage: `db/scripts/202607_GYM-003/` (migración Liquibase con seed idempotente).
+      **Tests verdes** (unit Mockito, no IT preexistentes rotos).
+      
+      **Archivos modificados (git status inicial):**
+      - `platform-service/src/main/java/com/gymadmin/platform/domain/port/out/NotificacionRepository.java`
+      - `platform-service/src/main/java/com/gymadmin/platform/infrastructure/adapter/out/persistence/adapter/NotificacionPersistenceAdapter.java`
 
 ## Relacionado
 

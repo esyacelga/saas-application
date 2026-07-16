@@ -8,6 +8,8 @@ import type {
   NotifConfig,
   UsoLimitesResponse,
   PagoPendienteResponse,
+  NotifBucket,
+  ConsentimientoWaResponse,
 } from '@/domain/platform/entities/Plan.entity'
 import type {
   CrearPlanDto,
@@ -85,4 +87,11 @@ export interface PlatformRepository {
   getPagosPendientesRoot(params: { estado?: string; pagina: number; limit: number }): Promise<{ total: number; pagina: number; limit: number; datos: PagoPendienteResponse[] }>
   aprobarPagoPendiente(id: number): Promise<{ id_pago: number; id_compania_plan: number; estado: string }>
   rechazarPagoPendiente(id: number, motivo: string): Promise<void>
+
+  // WhatsApp notification buckets (global platform config)
+  getNotifBuckets(): Promise<NotifBucket[]>
+  updateNotifBucket(destinatario: string, body: { diasPrevio: number; activo: boolean }): Promise<NotifBucket>
+
+  // WhatsApp opt-in (compania owner)
+  patchConsentimientoWaCompania(idCompania: number, acepta: boolean): Promise<ConsentimientoWaResponse>
 }

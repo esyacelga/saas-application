@@ -77,6 +77,23 @@ export interface NotifConfig {
   activo: boolean
 }
 
+// ── WhatsApp notification buckets (global, platform-level) ───────────────────
+
+export type NotifBucketDestinatario = 'socio' | 'dueno'
+
+export interface NotifBucket {
+  destinatario: NotifBucketDestinatario
+  diasPrevio: number
+  activo: boolean
+  diaVencimiento: number   // always 0 — informational, not editable
+}
+
+export interface ConsentimientoWaResponse {
+  idCompania: number
+  aceptaWhatsapp: boolean
+  fechaConsentimientoWa: string | null
+}
+
 // REQ-SAAS-001: Uso y límites del plan — respuesta de GET /companias/{id}/uso-limites
 export interface UsoLimitesRecurso {
   actual: number

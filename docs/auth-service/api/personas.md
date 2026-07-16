@@ -19,6 +19,7 @@ La entidad `Persona` es el registro de identidad centralizado. Todos los tipos d
 - [POST /personas](#post-personas)
 - [PUT /personas/{id}](#put-personasid)
 - [POST /personas/{id}/foto](#post-personasidfoto)
+- [PATCH /personas/{id}/consentimiento-wa](#patch-personasidconsentimiento-wa)
 - [GET /personas/{idPersona}/usuarios-staff](#get-personasidpersonausuarios-staff)
 - [GET /personas/{idPersona}/usuarios-app](#get-personasidpersonausuarios-app)
 - [GET /personas/{idPersona}/usuarios-plataforma](#get-personasidpersonausuarios-plataforma)
@@ -281,6 +282,55 @@ Content-Type: multipart/form-data
 ### Response 200
 
 Objeto `PersonaResponse` con `fotoUrl` actualizado a la nueva URL de Cloudinary.
+
+---
+
+## PATCH /personas/{id}/consentimiento-wa
+
+Actualiza el opt-in de consentimiento para recibir mensajes por WhatsApp. Sella o limpia la fecha de consentimiento según el valor de `acepta`.
+
+**Seguridad:** requiere token autenticado (cualquier tipo: staff, cliente, plataforma).
+
+### Request
+
+```http
+PATCH /api/v1/personas/10/consentimiento-wa
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+```
+
+```json
+{
+  "acepta": true
+}
+```
+
+| Campo | Tipo | Requerido | Descripción |
+|---|---|---|---|
+| `acepta` | boolean | Sí | `true` para opt-in, `false` para opt-out |
+
+### Response 200
+
+```json
+{
+  "idPersona": 10,
+  "aceptaWhatsapp": true,
+  "fechaConsentimientoWa": "2026-07-16T14:30:00Z"
+}
+```
+
+| Campo | Descripción |
+|---|---|
+| `idPersona` | ID de la persona |
+| `aceptaWhatsapp` | `true` si ha dado consentimiento; `false` si lo revocó |
+| `fechaConsentimientoWa` | Timestamp del momento en que aceptó/revocó. `null` si `aceptaWhatsapp=false` |
+
+### Errores
+
+| Código | Cuándo |
+|---|---|
+| 404 | No existe una persona con ese ID |
+| 400 | `acepta` inválido o ausente |
 
 ---
 

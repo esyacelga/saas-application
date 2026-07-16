@@ -12,7 +12,7 @@ import { PulseBackground } from '@/ui/components/PulseBackground'
 import { authRepository } from '@/infrastructure/http/AuthHttpRepository'
 import { ThemeSelector } from './ThemeSelector'
 import { LangToggle } from '@/ui/components/LangToggle'
-import type { PersonaResponse } from '@/application/usecase/auth.types'
+import type { PersonaResponse, ConsentimientoWaPersonaResponse } from '@/application/usecase/auth.types'
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
@@ -58,6 +58,9 @@ export function ProfilePage() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [saving, setSaving] = useState(false)
   const photoRef = useRef<HTMLInputElement>(null)
+
+  const [waConsent, setWaConsent] = useState<ConsentimientoWaPersonaResponse | null>(null)
+  const [savingWa, setSavingWa] = useState(false)
 
   const form = useForm<ProfileFormData>({ resolver: zodResolver(profileSchema) })
   const currentSexo = form.watch('sexo')
@@ -303,6 +306,26 @@ export function ProfilePage() {
           )}
         </div>
 
+        {/* WhatsApp opt-in */}
+        <WhatsAppConsentBlock
+          idPersona={user?.id_persona ?? null}
+          consent={waConsent}
+          saving={savingWa}
+          onToggle={async (acepta) => {
+            if (!user?.id_persona) return
+            setSavingWa(true)
+            try {
+              const res = await authRepository.patchConsentimientoWaPersona(user.id_persona, acepta)
+              setWaConsent(res)
+              toast.success(t('profile.whatsapp.saveSuccess'))
+            } catch {
+              toast.error(t('profile.whatsapp.saveError'))
+            } finally {
+              setSavingWa(false)
+            }
+          }}
+        />
+
         <ThemeSelector />
 
         <div className="rounded-xl bg-slate-800 border border-slate-700 p-4 space-y-3">
@@ -318,6 +341,66 @@ export function ProfilePage() {
         </button>
 
       </div>
+    </div>
+  )
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+interface WhatsAppConsentBlockProps {
+  idPersona: number | null
+  consent: ConsentimientoWaPersonaResponse | null
+  saving: boolean
+  onToggle: (acepta: boolean) => Promise<void>
+}
+
+function WhatsAppConsentBlock({ consent, saving, onToggle }: WhatsAppConsentBlockProps) {
+  const { t } = useTranslation()
+
+  const checked = consent?.aceptaWhatsapp ?? false
+
+  const fechaStr = consent?.fechaConsentimientoWa
+    ? new Date(consent.fechaConsentimientoWa).toLocaleDateString('es', {
+        day: '2-digit', month: 'short', year: 'numeric',
+      })
+    : null
+
+  return (
+    <div className="rounded-xl bg-slate-800 border border-slate-700 p-4 space-y-3">
+      <h2 className="text-sm font-semibold text-slate-300">{t('profile.whatsapp.title')}</h2>
+
+      <div className="flex items-center justify-between gap-4">
+        <div className="space-y-0.5">
+          <p className="text-sm text-slate-200">{t('profile.whatsapp.label')}</p>
+          {fechaStr && (
+            <p className="text-xs text-slate-500">
+              {t('profile.whatsapp.fechaConsentimiento', { fecha: fechaStr })}
+            </p>
+          )}
+        </div>
+
+        {/* Custom toggle using accent-* classes */}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={checked}
+          disabled={saving}
+          onClick={() => onToggle(!checked)}
+          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:opacity-50 ${
+            checked ? 'bg-accent-600' : 'bg-slate-600'
+          }`}
+        >
+          <span
+            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+              checked ? 'translate-x-5' : 'translate-x-0'
+            }`}
+          />
+        </button>
+      </div>
+
+      {saving && (
+        <p className="text-xs text-slate-400 animate-pulse">{t('profile.whatsapp.saving')}</p>
+      )}
     </div>
   )
 }

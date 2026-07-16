@@ -230,6 +230,14 @@
     "logout": "Sign out",
     "success": {
       "logout": "Signed out"
+    },
+    "whatsapp": {
+      "title": "WhatsApp Alerts",
+      "label": "Receive expiry alerts via WhatsApp",
+      "saving": "Saving preference…",
+      "saveSuccess": "WhatsApp preference updated",
+      "saveError": "Error updating preference",
+      "fechaConsentimiento": "Consent recorded on {{fecha}}"
     }
   },
   "forgotPassword": {

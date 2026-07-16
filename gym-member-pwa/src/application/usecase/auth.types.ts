@@ -72,3 +72,9 @@ export interface ActualizarPersonaRequest {
   sexo?: string
   fecha_nacimiento?: string
 }
+
+export interface ConsentimientoWaPersonaResponse {
+  idPersona: number
+  aceptaWhatsapp: boolean
+  fechaConsentimientoWa: string | null
+}

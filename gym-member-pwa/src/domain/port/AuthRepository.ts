@@ -3,6 +3,7 @@ import type {
   LoginAppResponse, RefreshResponse,
   ForgotPasswordRequest, ResetPasswordRequest, GymByQrResponse,
   RegistroAppRequest, PersonaResponse, ActualizarPersonaRequest,
+  ConsentimientoWaPersonaResponse,
 } from '@/application/usecase/auth.types'
 
 export interface AuthRepository {
@@ -18,4 +19,5 @@ export interface AuthRepository {
   getPersona(id: number): Promise<PersonaResponse>
   actualizarPersona(id: number, req: ActualizarPersonaRequest): Promise<PersonaResponse>
   subirFotoMiembro(id: number, file: File): Promise<PersonaResponse>
+  patchConsentimientoWaPersona(id: number, acepta: boolean): Promise<ConsentimientoWaPersonaResponse>
 }

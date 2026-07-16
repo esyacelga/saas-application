@@ -10,6 +10,8 @@ import type {
   NotifConfig,
   UsoLimitesResponse,
   PagoPendienteResponse,
+  NotifBucket,
+  ConsentimientoWaResponse,
 } from '@/domain/platform/entities/Plan.entity'
 import type {
   CrearPlanDto,
@@ -484,6 +486,44 @@ class PlatformHttpRepositoryImpl implements PlatformRepository {
   // REQ-SAAS-001 ítem #4: Rechazar pago pendiente
   async rechazarPagoPendiente(id: number, motivo: string): Promise<void> {
     await api.post(`/plataforma/pagos-pendientes/${id}/rechazar`, { motivo })
+  }
+
+  // WhatsApp notification buckets (global platform config)
+  async getNotifBuckets(): Promise<NotifBucket[]> {
+    const { data } = await api.get<unknown[]>('/plataforma/notif-buckets')
+    return data.map(r => {
+      const d = r as Record<string, unknown>
+      return {
+        destinatario: d.destinatario as NotifBucket['destinatario'],
+        diasPrevio: (d.dias_previo ?? d.diasPrevio) as number,
+        activo: d.activo as boolean,
+        diaVencimiento: (d.dia_vencimiento ?? d.diaVencimiento ?? 0) as number,
+      }
+    })
+  }
+
+  async updateNotifBucket(destinatario: string, body: { diasPrevio: number; activo: boolean }): Promise<NotifBucket> {
+    const { data } = await api.put<unknown>(`/plataforma/notif-buckets/${destinatario}`, {
+      dias_previo: body.diasPrevio,
+      activo: body.activo,
+    })
+    const d = data as Record<string, unknown>
+    return {
+      destinatario: d.destinatario as NotifBucket['destinatario'],
+      diasPrevio: (d.dias_previo ?? d.diasPrevio) as number,
+      activo: d.activo as boolean,
+      diaVencimiento: (d.dia_vencimiento ?? d.diaVencimiento ?? 0) as number,
+    }
+  }
+
+  // WhatsApp opt-in (compania owner)
+  async patchConsentimientoWaCompania(idCompania: number, acepta: boolean): Promise<ConsentimientoWaResponse> {
+    const { data } = await api.patch<Record<string, unknown>>(`/companias/${idCompania}/consentimiento-wa`, { acepta })
+    return {
+      idCompania: (data.id_compania ?? data.idCompania) as number,
+      aceptaWhatsapp: (data.acepta_whatsapp ?? data.aceptaWhatsapp) as boolean,
+      fechaConsentimientoWa: (data.fecha_consentimiento_wa ?? data.fechaConsentimientoWa ?? null) as string | null,
+    }
   }
 }
 

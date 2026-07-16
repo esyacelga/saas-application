@@ -190,7 +190,8 @@
     "tiposMembresia": "Membership types",
     "configuracion": "Settings",
     "pagosPendientes": "Pending payments",
-    "miSuscripcion": "My subscription"
+    "miSuscripcion": "My subscription",
+    "notifBuckets": "WhatsApp Alerts"
   },
   "dashboard": {
     "welcome": "Welcome",
@@ -590,6 +591,33 @@
       "loadError": "Error loading notification configuration",
       "saveSuccess": "Configuration saved",
       "saveError": "Error saving configuration"
+    },
+    "notifBuckets": {
+      "title": "WhatsApp Alert Configuration",
+      "description": "Global WhatsApp expiry reminder windows (applies to all gyms)",
+      "loadError": "Error loading alert configuration",
+      "saveSuccess": "Configuration saved",
+      "saveError": "Error saving configuration",
+      "validationError": "Value out of range",
+      "diasPrevioLabel": "Days before expiry (1–30)",
+      "activoOn": "Alert enabled",
+      "activoOff": "Alert disabled",
+      "diaVencimientoInfo": "Additionally, an alert is sent on the expiry day (day {{dia}}) — fixed, not configurable",
+      "guardar": "Save",
+      "empty": "No configuration available",
+      "destSocio": "Alert to member",
+      "destDueno": "Alert to gym owner",
+      "info": "Global alerts apply to all active gyms with WhatsApp enabled. Each bucket sends a message X days before membership expiry."
+    },
+    "consentimientoWa": {
+      "title": "WhatsApp Opt-in (Gym owner)",
+      "description": "Controls whether the gym owner accepts receiving expiry alerts via WhatsApp",
+      "label": "Receive expiry alerts via WhatsApp",
+      "loadError": "Error loading consent",
+      "saveSuccess": "WhatsApp preference updated",
+      "saveError": "Error updating preference",
+      "fechaConsentimiento": "Consent recorded on {{fecha}}",
+      "sinFecha": "No consent date"
     },
     "caracteristicas": {
       "title": "System features",
