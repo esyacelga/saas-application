@@ -25,20 +25,20 @@ Fuente de verdad del enrutamiento: `AsistenciaController`, `MensajeLogController
 # Build
 mvn clean package
 
-# Run unit + endpoint integration tests (excludes *IT.java)
+# Run ONLY unit tests (excludes *IntegrationTest.java and *IT.java)
 mvn test
 
-# Run everything including repository IT tests (*IT.java)
+# Run everything: unit + endpoint IT (*IntegrationTest) + repository IT (*IT)
 mvn test -P fulltest
 
 # Run only the repository IT tests
 mvn test -P fulltest -Dtest='*RepositoryIT'
 
-# Run a single test class
-mvn test -Dtest=AsistenciaManualIntegrationTest
+# Run a single integration test class
+mvn test -P fulltest -Dtest=AsistenciaManualIntegrationTest
 
 # Run a single test method
-mvn test -Dtest="AsistenciaManualIntegrationTest#duenoRegistraOverride"
+mvn test -P fulltest -Dtest="AsistenciaManualIntegrationTest#duenoRegistraOverride"
 
 # Run dev server (listens on port 8084)
 mvn spring-boot:run
@@ -50,8 +50,8 @@ Tests require a `.env` file at the project root — the `DotEnvInitializer` load
 
 | Comando | Qué corre |
 |---|---|
-| `mvn test` | Unit tests + endpoint `*IntegrationTest.java` — excluye `*IT.java` |
-| `mvn test -P fulltest` | Todo lo anterior + repository IT (`*RepositoryIT.java`) — requiere `.env` con `DB_*` válido |
+| `mvn test` | Solo unit tests — excluye `*IntegrationTest.java` y `*IT.java` (convención monorepo 2026-07-16) |
+| `mvn test -P fulltest` | Todo: unit + endpoint `*IntegrationTest.java` + repository `*IT.java` — requiere `.env` con `DB_*` válido |
 
 ## Architecture
 
@@ -156,8 +156,8 @@ Supported template variables: `{nombre}`, `{dias}`, `{fecha_vencimiento}`, `{acc
 
 Three flavors coexist under `src/test/java/`:
 
-- `unit/*Test.java` — Mockito unit tests (no Spring context).
-- `integration/*IntegrationTest.java` — endpoint-level integration via `WebTestClient`, run by default with `mvn test`.
+- `unit/*Test.java` — Mockito unit tests (no Spring context). **The only ones run by default with `mvn test`.**
+- `integration/*IntegrationTest.java` — endpoint-level integration via `WebTestClient` against the real local Postgres. Excluded by default; run with `mvn test -P fulltest`.
 - `integration/repository/*RepositoryIT.java` — R2DBC repository integration against the real local Postgres. Excluded by default; run with `mvn test -P fulltest`.
 
 `BaseIntegrationTest` provides:

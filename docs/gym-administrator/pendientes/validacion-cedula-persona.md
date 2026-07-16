@@ -1,8 +1,9 @@
 # Pendiente — Validación de cédula de `identidad.personas` (`ci_validada`)
 
-> **Estado:** 🟡 **Parcial** — escritura al crear persona **ya implementada**; falta el
-> **backfill** de personas existentes y el recálculo al editar `ci`.
-> **Fecha:** 2026-07-14 (creado) · 2026-07-14 (escritura implementada).
+> **Estado:** 🟡 **Parcial** — escritura al crear persona **ya implementada** en ruta específica
+> (platform-service auto-register wizard); falta el **backfill** de personas existentes,
+> recálculo al editar `ci`, exposición REST, e implementación en otras rutas de creación.
+> **Fecha:** 2026-07-14 (creado) · 2026-07-14 (escritura implementada) · 2026-07-16 (verificado scope).
 > **Área:** identidad / core (personas) — la escritura vive en **platform-service**.
 
 ## Requerimiento
@@ -26,29 +27,42 @@ ci_validada  BOOLEAN  NOT NULL  DEFAULT FALSE
 Se plegó en el `CREATE TABLE` de la baseline (no como `ALTER` en story aparte), coherente
 con que la BD sigue en desarrollo y la Neon se recrea desde cero.
 
-## Lo que YA está hecho (escritura al crear persona) ✅
+## Lo que YA está hecho (escritura al crear persona — ruta específica) ✅
 
 El **2026-07-14** se implementó la población del campo al **crear** la persona en
-platform-service:
+**platform-service auto-register wizard solamente**:
 
 - **Algoritmo replicado en el backend:**
-  `platform-service/src/main/java/com/gymadmin/platform/domain/validation/CedulaEcuatoriana.java`
-  — réplica exacta de `validarCedula.ts` (mismo módulo 10, mismos coeficientes → mismo
-  veredicto front/back).
-- **Se puebla el flag:** `PersonaPersistenceAdapter.resolverIdPersona(...)` hace
-  `entity.setCiValidada(CedulaEcuatoriana.esValida(ci))` al crear la persona → `TRUE` solo
+  `platform-service/src/main/java/com/gymadmin/platform/domain/validation/CedulaEcuatoriana.java:28-59`
+  — réplica exacta de `validarCedula.ts` (módulo 10 Registro Civil, mismos coeficientes
+  `[2,1,2,1,2,1,2,1,2]`, provincia 01–24 o 30 → mismo veredicto front/back).
+- **Se puebla al INSERT:** `PersonaPersistenceAdapter.resolverIdPersona(...)` (línea 32) hace
+  `entity.setCiValidada(CedulaEcuatoriana.esValida(ci))` al **crear** la persona → `TRUE` solo
   si `ci` pasa el algoritmo; `FALSE` en cualquier otro caso (documento no-EC, cédula
-  inválida). Nunca rechaza el registro.
+  inválida, o dígito verificador incorrecto). Nunca rechaza el registro.
 - **Mapeo R2DBC:** `PersonaEntity.ciValidada` mapea la columna `ci_validada`.
+- **Alcance limitado:** El cálculo ocurre **solo** cuando platform-service crea una persona
+  nueva vía `resolverIdPersona` (upsert por CI). Personas creadas por otras rutas
+  (auth-service `POST /personas`, admin-created via core-service, importación desde otros
+  servicios) **no** cálculan el flag hoy — quedan con el default de BD (`FALSE`).
 
 ## Lo que falta (implementación) 📋
 
-1. **Recálculo al editar `ci`.** La escritura de hoy solo cubre la **creación** vía
-   `resolverIdPersona` (upsert por CI). Si en el futuro se permite **editar** el `ci` de una
-   persona existente, hay que recalcular el flag en esa ruta también.
-2. **Backfill de personas existentes.** Recorrer una vez las personas ya guardadas y
-   recalcular `ci_validada` (migración de datos, no de esquema). Pendiente porque la escritura
-   nueva solo aplica a personas creadas de aquí en adelante.
+1. **Extensión a otras rutas de creación de persona** (auth-service `POST /personas`,
+   admin-created vía core-service, etc.). Hoy solo platform-service calcula el flag.
+
+2. **UPDATE path — recálculo al editar `ci`.** Si se permite **editar** el `ci` de una
+   persona existente (no hay endpoint hoy), hay que recalcular `ci_validada` en esa ruta.
+
+3. **Backfill de personas existentes.** Recorrer personas ya guardadas (antes de 2026-07-14)
+   y recalcular `ci_validada` (migración de datos, no de esquema). Pendiente porque la
+   escritura nueva solo aplica a personas creadas de aquí en adelante.
+
+4. **Exposición REST del flag.** Hoy `ci_validada` no se retorna en:
+   - `core-service` → `ClienteDetalleResponse` (no incluye el campo)
+   - `auth-service` → ningún endpoint de personas lo expone
+   - `platform-service` → idem
+   - Frontend no puede leer el valor para reflejar estado de validación al usuario.
 
 ### Notas de implementación
 

@@ -30,14 +30,17 @@ mvn clean package
 # Run (requires PostgreSQL and Redis)
 mvn spring-boot:run
 
-# Run all tests
+# Run ONLY unit tests (excludes *IntegrationTest.java — convención monorepo 2026-07-16)
 mvn test
 
-# Run a single test class
-mvn test -Dtest=ClienteIntegrationTest
+# Run everything: unit + integration tests (*IntegrationTest — requieren PostgreSQL+Redis reales)
+mvn test -P fulltest
+
+# Run a single integration test class
+mvn test -P fulltest -Dtest=ClienteIntegrationTest
 
 # Run a single test method
-mvn test -Dtest=ClienteIntegrationTest#methodName
+mvn test -P fulltest -Dtest=ClienteIntegrationTest#methodName
 ```
 
 ## Architecture
@@ -140,7 +143,9 @@ This distinction drives branching logic in `MembresiaService` and the `ValidarAc
 
 ## Testing
 
-Tests are integration tests using `WebTestClient` + a real PostgreSQL + Redis (configured in `application-test.yml`). `BaseIntegrationTest` provides shared setup. `DotEnvInitializer` loads `.env` for test context. There are no unit tests — only integration tests.
+Two test flavors coexist:
+- `*Test.java` — Mockito unit tests (no Spring context). **The only ones run by default with `mvn test`.**
+- `*IntegrationTest.java` — `WebTestClient` + a real PostgreSQL + Redis (configured in `application-test.yml`). **Excluded by default; run with `mvn test -P fulltest`** (convención monorepo 2026-07-16). `BaseIntegrationTest` provides shared setup. `DotEnvInitializer` loads `.env` for test context.
 
 `BaseIntegrationTest` helpers:
 - Seed methods: `seedPersona()`, `seedCliente()`, `seedTipoCalendario()`, `seedTipoAccesos()`, `seedMembresia()`, `seedMembresiaAccesos()`
