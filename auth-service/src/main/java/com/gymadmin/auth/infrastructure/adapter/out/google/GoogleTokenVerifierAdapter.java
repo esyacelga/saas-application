@@ -1,6 +1,7 @@
 package com.gymadmin.auth.infrastructure.adapter.out.google;
 
 import com.gymadmin.auth.domain.exception.AuthException;
+import com.gymadmin.auth.domain.model.OAuthProfile;
 import com.gymadmin.auth.domain.port.out.GoogleTokenVerifierPort;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -18,8 +19,17 @@ public class GoogleTokenVerifierAdapter implements GoogleTokenVerifierPort {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Mono<String> verifyAndGetEmail(String idToken) {
+        return verifyTokenInfo(idToken).map(OAuthProfile::email);
+    }
+
+    @Override
+    public Mono<OAuthProfile> verifyAndGetProfile(String idToken) {
+        return verifyTokenInfo(idToken);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Mono<OAuthProfile> verifyTokenInfo(String idToken) {
         return webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/tokeninfo")
@@ -27,15 +37,18 @@ public class GoogleTokenVerifierAdapter implements GoogleTokenVerifierPort {
                         .build())
                 .retrieve()
                 .onStatus(status -> !status.is2xxSuccessful(),
-                        response -> Mono.error(new AuthException("Token de Google inválido")))
+                        response -> Mono.error(new AuthException("Token de Google invalido")))
                 .bodyToMono(Map.class)
                 .flatMap(map -> {
                     String email = (String) map.get("email");
                     String emailVerified = (String) map.get("email_verified");
                     if (email == null || !"true".equals(emailVerified)) {
-                        return Mono.error(new AuthException("Token de Google inválido o email no verificado"));
+                        return Mono.error(new AuthException("Token de Google invalido o email no verificado"));
                     }
-                    return Mono.just(email);
+                    // El endpoint tokeninfo de Google incluye el claim "name" cuando el usuario
+                    // otorgo el scope "profile" al iniciar sesion; puede venir null.
+                    String nombre = (String) map.get("name");
+                    return Mono.just(new OAuthProfile(email, nombre));
                 });
     }
 }

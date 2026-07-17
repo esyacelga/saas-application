@@ -18,6 +18,13 @@ subscription:
   job:
     cron: "-"
 
+notificacion:
+  vencimiento:
+    cron: "-"
+
+jobs:
+  run-on-startup: false
+
 logging:
   level:
     com.gymadmin.platform: DEBUG

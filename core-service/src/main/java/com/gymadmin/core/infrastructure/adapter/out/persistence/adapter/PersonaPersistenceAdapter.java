@@ -41,8 +41,11 @@ public class PersonaPersistenceAdapter implements PersonaRepository {
                 .bind("ci", command.ci())
                 .bind("nombre", command.nombre())
                 .bind("telefono", command.telefono() != null ? command.telefono() : "")
-                .bind("correo", command.correo() != null ? command.correo() : "")
-                .bind("fechaNacimiento", command.fechaNacimiento() != null ? command.fechaNacimiento() : LocalDate.of(1900, 1, 1));
+                .bind("correo", command.correo() != null ? command.correo() : "");
+
+        spec = command.fechaNacimiento() != null
+                ? spec.bind("fechaNacimiento", command.fechaNacimiento())
+                : spec.bindNull("fechaNacimiento", LocalDate.class);
 
         spec = command.fotoUrl() != null
                 ? spec.bind("fotoUrl", command.fotoUrl())

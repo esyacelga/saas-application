@@ -22,6 +22,9 @@ client:
     job:
       cron: "-"
 
+jobs:
+  run-on-startup: false
+
 carnet:
   prefix: ${CARNET_PREFIX:GYM}
 

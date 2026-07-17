@@ -146,9 +146,11 @@ Required environment variables: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_
 
 ### MensajeriaJob
 
-Fires on cron `${scheduling.messaging-job-cron}` (default `0 15 0 * * *` — 00:15 UTC daily). **In tests the cron is set to `"-"` to disable it.**
+Fires on cron `${scheduling.messaging-job-cron}` (default `0 15 0 * * *` — 00:15 Guayaquil time, JVM en `America/Guayaquil`). Avisa por WhatsApp a los socios cuya membresía está próxima a vencer (Fase 5/6). **Solo aviso previo** — no envía notificación el día del vencimiento. Idempotente: ✅ Sí — usa `existsEnviadoHoy()` antes de enviar. Startup hook: ✅ Sí — si `jobs.run-on-startup=true`.
 
-Before sending, the job checks `MensajeLogService.contarEnviadosDesde()` to skip re-sending a notification type that was already sent since the client's last attendance (anti-spam deduplication).
+**In tests the cron is set to `"-"` to disable it.**
+
+Ver doc centralizado: [`../../docs/gym-administrator/architecture/scheduled-jobs.md`](../../docs/gym-administrator/architecture/scheduled-jobs.md).
 
 Supported template variables: `{nombre}`, `{dias}`, `{fecha_vencimiento}`, `{accesos_restantes}`, `{gym_nombre}`. Falls back to hardcoded default templates if no custom `PlantillaMensaje` exists for a given `tipo` (`ausencia_2d`, `recuperacion_5d`, `recuperacion_10d`, `recuperacion_15d`, `vencimiento_3d`, `vencimiento_hoy`).
 

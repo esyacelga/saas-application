@@ -97,7 +97,14 @@ ReactiveSecurityContextHolder.getContext()
 
 **Module check cache** — Redis was removed for Cloud Run deployment without external dependencies (see [docs/REDIS_REMOVAL.md](../docs/REDIS_REMOVAL.md) if it exists, and the stub at `infrastructure/adapter/out/cache/RedisModuloCheckCache.java`). The `ModuloCheckCache` port is currently implemented as a no-op stub: `get` returns `Mono.empty()`, `put`/`evict` do nothing, and `invalidateByCompania` returns `0`. Consequence: every call to `/api/v1/modulos/check` hits Postgres directly (small join over `saas.plan_caracteristicas × saas.caracteristicas`). Consumers that need caching (e.g. billing-service's `ModuloGatingFilter`) implement their own in-JVM cache (Caffeine). Redis is **not required** to start the service.
 
-**Scheduled job** — `SubscriptionJobService` runs daily at 00:05 (`SUBSCRIPTION_JOB_CRON`) to check and update subscription states. Controlled by `@EnableScheduling`.
+**Scheduled jobs** — Platform-service tiene 4 jobs cron-based e idempotentes (todos con startup hook para recuperar ventana perdida) + 2 fixed-delay para procesar colas:
+
+1. `SubscriptionJobService.runSubscriptionJob()` (cron `0 5 0 * * *`, 00:05 UTC) — activa suscripciones PROGRAMADAS, degrada VENCIDAS, procesa notificaciones
+2. `NotificacionVencimientoJob.ejecutar()` (cron `0 15 3 * * *`, 03:15 UTC) — encola notificaciones de vencimiento del dueño (buckets {previo, 0})
+3. `WhatsAppQueueProcessorJob.procesarLote()` (fixed-delay 30s) — procesa cola de mensajes WhatsApp pendientes
+4. `EmailQueueProcessorJob.procesarLote()` (fixed-delay 30s) — procesa cola de emails pendientes con retry exponencial
+
+Ver doc centralizado: [`../../docs/gym-administrator/architecture/scheduled-jobs.md`](../../docs/gym-administrator/architecture/scheduled-jobs.md).
 
 **QR tokens** — 32-char random tokens (configurable via `QR_TOKEN_LENGTH`) issued per sucursal for mobile app entry validation. Endpoint `/api/v1/modulos/check` is public (no auth).
 

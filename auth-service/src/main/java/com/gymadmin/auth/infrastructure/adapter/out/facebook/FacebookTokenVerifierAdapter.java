@@ -1,6 +1,7 @@
 package com.gymadmin.auth.infrastructure.adapter.out.facebook;
 
 import com.gymadmin.auth.domain.exception.AuthException;
+import com.gymadmin.auth.domain.model.OAuthProfile;
 import com.gymadmin.auth.domain.port.out.FacebookTokenVerifierPort;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -18,17 +19,26 @@ public class FacebookTokenVerifierAdapter implements FacebookTokenVerifierPort {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Mono<String> verifyAndGetEmail(String accessToken) {
+        return fetchProfile(accessToken).map(OAuthProfile::email);
+    }
+
+    @Override
+    public Mono<OAuthProfile> verifyAndGetProfile(String accessToken) {
+        return fetchProfile(accessToken);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Mono<OAuthProfile> fetchProfile(String accessToken) {
         return webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/me")
-                        .queryParam("fields", "id,email")
+                        .queryParam("fields", "id,email,name")
                         .queryParam("access_token", accessToken)
                         .build())
                 .retrieve()
                 .onStatus(status -> !status.is2xxSuccessful(),
-                        response -> Mono.error(new AuthException("Token de Facebook inválido")))
+                        response -> Mono.error(new AuthException("Token de Facebook invalido")))
                 .bodyToMono(Map.class)
                 .flatMap(map -> {
                     String email = (String) map.get("email");
@@ -36,7 +46,8 @@ public class FacebookTokenVerifierAdapter implements FacebookTokenVerifierPort {
                         return Mono.error(new AuthException(
                                 "No se pudo obtener el email de Facebook; verifica que hayas concedido el permiso de email"));
                     }
-                    return Mono.just(email);
+                    String nombre = (String) map.get("name");
+                    return Mono.just(new OAuthProfile(email, nombre));
                 });
     }
 }

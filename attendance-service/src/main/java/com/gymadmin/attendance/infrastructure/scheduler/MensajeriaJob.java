@@ -8,6 +8,9 @@ import com.gymadmin.attendance.infrastructure.adapter.out.core.CoreServiceClient
 import com.gymadmin.attendance.infrastructure.adapter.out.platform.PlatformServiceClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
@@ -56,6 +59,9 @@ public class MensajeriaJob {
     private final PlatformServiceClient platformServiceClient;
     private final MensajeLogService mensajeLogService;
 
+    @Value("${jobs.run-on-startup:true}")
+    private boolean runOnStartup;
+
     /** Fallback del bucket previo del socio si platform-service no responde (Fase 6). */
     private static final int BUCKET_PREVIO_DEFAULT = 3;
     private static final int BUCKET_DIA_0 = 0;
@@ -81,6 +87,16 @@ public class MensajeriaJob {
                 .doOnComplete(() -> log.info("[MensajeriaJob] Fin ejecución"))
                 .doOnError(e -> log.error("[MensajeriaJob] Error: {}", e.getMessage()))
                 .subscribe();
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void ejecutarAlIniciar() {
+        if (!runOnStartup) {
+            log.info("[MensajeriaJob] Skip startup run (jobs.run-on-startup=false)");
+            return;
+        }
+        log.info("[MensajeriaJob] Ejecutando al arrancar (recuperación de ventana perdida)");
+        ejecutar();
     }
 
     /**

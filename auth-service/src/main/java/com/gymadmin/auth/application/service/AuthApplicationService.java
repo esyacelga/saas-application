@@ -4,6 +4,7 @@ import com.gymadmin.auth.domain.exception.AuthException;
 import com.gymadmin.auth.domain.exception.ConflictException;
 import com.gymadmin.auth.domain.exception.ForbiddenException;
 import org.springframework.dao.DataIntegrityViolationException;
+import com.gymadmin.auth.domain.model.OAuthProfile;
 import com.gymadmin.auth.domain.model.Persona;
 import com.gymadmin.auth.domain.model.RefreshToken;
 import com.gymadmin.auth.domain.model.UsuarioApp;
@@ -261,42 +262,93 @@ public class AuthApplicationService implements AuthUseCase {
 
     @Override
     @Transactional
-    public Mono<LoginAppResponse> loginWithGoogle(OAuthGoogleRequest req) {
-        return googleTokenVerifier.verifyAndGetEmail(req.idToken())
-                .flatMap(email -> {
-                    String key = "app-oauth:" + req.idCompania() + ":" + email;
-                    return rateLimiter.checkAndRecord(key)
-                            .then(appPort.findByLoginAndIdCompania(email, req.idCompania()))
-                            .switchIfEmpty(Mono.error(new AuthException("Usuario no registrado en esta compañía")))
-                            .flatMap(u -> {
-                                if (!Boolean.TRUE.equals(u.getActivo()))
-                                    return Mono.error(new ForbiddenException("Usuario inactivo"));
-                                u.setUltimoAcceso(OffsetDateTime.now());
-                                u.setModificaUsuario("oauth:google:" + u.getId());
-                                return rateLimiter.reset(key).then(appPort.save(u));
-                            })
-                            .flatMap(this::buildAppLoginResponse);
-                });
+    public Mono<OAuthLoginResponse> loginWithGoogle(OAuthGoogleRequest req) {
+        return googleTokenVerifier.verifyAndGetProfile(req.idToken())
+                .flatMap(profile -> loginWithOAuthProfile(req.idCompania(), profile, "google"));
     }
 
     @Override
     @Transactional
-    public Mono<LoginAppResponse> loginWithFacebook(OAuthFacebookRequest req) {
-        return facebookTokenVerifier.verifyAndGetEmail(req.accessToken())
-                .flatMap(email -> {
-                    String key = "app-oauth:" + req.idCompania() + ":" + email;
-                    return rateLimiter.checkAndRecord(key)
-                            .then(appPort.findByLoginAndIdCompania(email, req.idCompania()))
-                            .switchIfEmpty(Mono.error(new AuthException("Usuario no registrado en esta compañía")))
-                            .flatMap(u -> {
-                                if (!Boolean.TRUE.equals(u.getActivo()))
-                                    return Mono.error(new ForbiddenException("Usuario inactivo"));
-                                u.setUltimoAcceso(OffsetDateTime.now());
-                                u.setModificaUsuario("oauth:facebook:" + u.getId());
-                                return rateLimiter.reset(key).then(appPort.save(u));
-                            })
-                            .flatMap(this::buildAppLoginResponse);
-                });
+    public Mono<OAuthLoginResponse> loginWithFacebook(OAuthFacebookRequest req) {
+        return facebookTokenVerifier.verifyAndGetProfile(req.accessToken())
+                .flatMap(profile -> loginWithOAuthProfile(req.idCompania(), profile, "facebook"));
+    }
+
+    private Mono<OAuthLoginResponse> loginWithOAuthProfile(
+            Integer idCompania, OAuthProfile profile, String provider) {
+        String key = "app-oauth:" + idCompania + ":" + profile.email();
+        return rateLimiter.checkAndRecord(key)
+                .then(appPort.findByLoginAndIdCompania(profile.email(), idCompania))
+                .flatMap(u -> {
+                    if (!Boolean.TRUE.equals(u.getActivo()))
+                        return Mono.<OAuthLoginResponse>error(new ForbiddenException("Usuario inactivo"));
+                    u.setUltimoAcceso(OffsetDateTime.now());
+                    u.setModificaUsuario("oauth:" + provider + ":" + u.getId());
+                    return rateLimiter.reset(key)
+                            .then(appPort.save(u))
+                            .flatMap(this::buildAppLoginResponse)
+                            .map(OAuthLoginResponse::loggedIn);
+                })
+                .switchIfEmpty(Mono.defer(() -> rateLimiter.reset(key)
+                        .thenReturn(OAuthLoginResponse.registroPendiente(profile.email(), profile.nombre()))));
+    }
+
+    @Override
+    @Transactional
+    public Mono<LoginAppResponse> completarRegistroOauth(CompletarRegistroOauthRequest req) {
+        Mono<OAuthProfile> profileMono = switch (req.provider()) {
+            case "google"   -> googleTokenVerifier.verifyAndGetProfile(req.token());
+            case "facebook" -> facebookTokenVerifier.verifyAndGetProfile(req.token());
+            default -> Mono.error(new AuthException("Proveedor OAuth no soportado: " + req.provider()));
+        };
+
+        return profileMono.flatMap(profile -> {
+            String email = profile.email();
+            String key = "oauth-completar:" + req.idCompania() + ":" + email;
+            return rateLimiter.checkAndRecord(key)
+                    .then(appPort.findByLoginAndIdCompania(email, req.idCompania()))
+                    .flatMap(existing -> Mono.<LoginAppResponse>error(
+                            new ConflictException("Ya existe una cuenta con ese correo en este gimnasio")))
+                    .switchIfEmpty(Mono.defer(() -> personaPort.findByCorreo(email)
+                            .switchIfEmpty(Mono.defer(() -> personaPort.save(Persona.builder()
+                                    .ci(req.ci())
+                                    .nombre(req.nombre())
+                                    .correo(email)
+                                    .telefono(req.telefono())
+                                    .creacionUsuario("oauth:" + req.provider())
+                                    .build())
+                                    .onErrorMap(DataIntegrityViolationException.class, e -> {
+                                        String msg = e.getMostSpecificCause() != null
+                                                ? e.getMostSpecificCause().getMessage() : e.getMessage();
+                                        if (msg != null && (msg.toLowerCase().contains("unique")
+                                                || msg.toLowerCase().contains("duplicate"))) {
+                                            return new ConflictException(
+                                                    "Ya existe una persona con esos datos. Detalle: " + msg);
+                                        }
+                                        return new ConflictException(
+                                                "No se pudo crear la persona: " + msg);
+                                    })))
+                            .flatMap(persona -> appPort.existsByIdPersonaAndIdCompania(persona.getId(), req.idCompania())
+                                    .flatMap(exists -> {
+                                        if (Boolean.TRUE.equals(exists))
+                                            return Mono.<UsuarioApp>error(new ConflictException(
+                                                    "La persona ya tiene una cuenta en este gimnasio"));
+                                        // Password inutilizable: usuario OAuth-only, no debe poder loguear con contrasena.
+                                        String randomHash = encoder.encode(UUID.randomUUID().toString());
+                                        return appPort.save(UsuarioApp.builder()
+                                                .idPersona(persona.getId())
+                                                .nombrePersona(persona.getNombre())
+                                                .idCompania(req.idCompania())
+                                                .login(email)
+                                                .passwordHash(randomHash)
+                                                .requiereCambioPwd(false)
+                                                .activo(true)
+                                                .creacionUsuario("oauth:" + req.provider())
+                                                .build());
+                                    }))
+                            .flatMap(saved -> rateLimiter.reset(key).thenReturn(saved))
+                            .flatMap(this::buildAppLoginResponse)));
+        });
     }
 
     @Override

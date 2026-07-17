@@ -112,9 +112,9 @@ public class AuthHandler {
                         .bodyValue(new MessageResponse("Contraseña actualizada correctamente")));
     }
 
-    @Operation(summary = "Login de app móvil con Google OAuth")
+    @Operation(summary = "Login de app móvil con Google OAuth (status=logged_in|registro_pendiente)")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Login exitoso"),
+        @ApiResponse(responseCode = "200", description = "Login exitoso o registro pendiente"),
         @ApiResponse(responseCode = "401", description = "Token de Google inválido")
     })
     public Mono<ServerResponse> oauthGoogle(ServerRequest request) {
@@ -124,9 +124,9 @@ public class AuthHandler {
                 .flatMap(r -> ServerResponse.ok().contentType(MediaType.APPLICATION_JSON).bodyValue(r));
     }
 
-    @Operation(summary = "Login de app móvil con Facebook OAuth")
+    @Operation(summary = "Login de app móvil con Facebook OAuth (status=logged_in|registro_pendiente)")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Login exitoso"),
+        @ApiResponse(responseCode = "200", description = "Login exitoso o registro pendiente"),
         @ApiResponse(responseCode = "401", description = "Token de Facebook inválido")
     })
     public Mono<ServerResponse> oauthFacebook(ServerRequest request) {
@@ -134,6 +134,20 @@ public class AuthHandler {
                 .flatMap(validator::validate)
                 .flatMap(authUseCase::loginWithFacebook)
                 .flatMap(r -> ServerResponse.ok().contentType(MediaType.APPLICATION_JSON).bodyValue(r));
+    }
+
+    @Operation(summary = "Completar registro de un cliente autenticado por OAuth (Google/Facebook)")
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Usuario registrado e iniciado sesión"),
+        @ApiResponse(responseCode = "401", description = "Token OAuth inválido"),
+        @ApiResponse(responseCode = "409", description = "Correo o CI ya registrado en el gimnasio")
+    })
+    public Mono<ServerResponse> completarRegistroOauth(ServerRequest request) {
+        return request.bodyToMono(CompletarRegistroOauthRequest.class)
+                .flatMap(validator::validate)
+                .flatMap(authUseCase::completarRegistroOauth)
+                .flatMap(r -> ServerResponse.status(HttpStatus.CREATED)
+                        .contentType(MediaType.APPLICATION_JSON).bodyValue(r));
     }
 
     @Operation(summary = "Registro de nuevo usuario de la app móvil")

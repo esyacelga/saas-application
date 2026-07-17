@@ -13,6 +13,9 @@ import com.gymadmin.platform.domain.port.out.NotificacionRepository;
 import com.gymadmin.platform.domain.port.out.PlanRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -55,6 +58,9 @@ public class SubscriptionJobService {
     private final ModuloCheckUseCase moduloCheckUseCase;
     private final Clock clock;
 
+    @Value("${jobs.run-on-startup:true}")
+    private boolean runOnStartup;
+
     public SubscriptionJobService(CompaniaPlanRepository companiaPlanRepository,
                                    PlanRepository planRepository,
                                    ConfigNotifRepository configNotifRepository,
@@ -83,6 +89,16 @@ public class SubscriptionJobService {
                         error -> log.error("Subscription job failed", error),
                         () -> log.info("Subscription job completed successfully")
                 );
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void ejecutarAlIniciar() {
+        if (!runOnStartup) {
+            log.info("[SubscriptionJob] Skip startup run (jobs.run-on-startup=false)");
+            return;
+        }
+        log.info("[SubscriptionJob] Ejecutando al arrancar (recuperación de ventana perdida)");
+        runSubscriptionJob();
     }
 
     /** Expuesto para tests con Clock.fixed(...). Ejecuta el orden RN-03 completo. */

@@ -26,6 +26,7 @@ public class ApiRouter {
         @RouterOperation(path = "/api/v1/auth/companias-por-correo", method = RequestMethod.GET, beanClass = AuthHandler.class, beanMethod = "getCompaniesByCorreo"),
         @RouterOperation(path = "/api/v1/auth/app/oauth/google", method = RequestMethod.POST,  beanClass = AuthHandler.class, beanMethod = "oauthGoogle"),
         @RouterOperation(path = "/api/v1/auth/app/oauth/facebook", method = RequestMethod.POST, beanClass = AuthHandler.class, beanMethod = "oauthFacebook"),
+        @RouterOperation(path = "/api/v1/auth/app/oauth/completar-registro", method = RequestMethod.POST, beanClass = AuthHandler.class, beanMethod = "completarRegistroOauth"),
         @RouterOperation(path = "/api/v1/auth/app/registro",     method = RequestMethod.POST,  beanClass = AuthHandler.class, beanMethod = "registro")
     })
     @Bean
@@ -41,6 +42,7 @@ public class ApiRouter {
                 .GET(V1 + "/auth/companias-por-correo", h::getCompaniesByCorreo)
                 .POST(V1 + "/auth/app/oauth/google", h::oauthGoogle)
                 .POST(V1 + "/auth/app/oauth/facebook", h::oauthFacebook)
+                .POST(V1 + "/auth/app/oauth/completar-registro", h::completarRegistroOauth)
                 .POST(V1 + "/auth/app/registro", h::registro)
                 .build();
     }

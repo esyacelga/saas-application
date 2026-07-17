@@ -103,6 +103,19 @@ JWT claims: `tipo` (`staff`/`cliente`/`plataforma`), `rol_plataforma`, `id_compa
 
 The only **public** endpoint (no auth) is `GET /api/v1/membresias/validar-acceso`.
 
+## Scheduled Jobs
+
+**Scheduled job:** `ClienteStatusJobService.ejecutar()` (cron `0 10 0 * * *`, 00:10 UTC diariamente)
+
+Recalcula el estado de todos los clientes activos basándose en sus membresías. Aplica la regla: si membresía vence en ≤3 días → estado `proximo_vencer`; si ya vencida → estado `vencido`.
+
+Idempotente: ✅ Sí — recalcula desde estado actual de membresías.  
+Startup hook: ✅ Sí — se ejecuta también al arrancar el servicio si `jobs.run-on-startup=true` (recuperación de ventana perdida si el pod estuvo caído a la hora del cron).
+
+**Doc centralizado:** Ver [`../../docs/gym-administrator/architecture/scheduled-jobs.md`](../../docs/gym-administrator/architecture/scheduled-jobs.md) para todos los 8 jobs del monorepo.
+
+---
+
 ## State Machines
 
 **Membresia** (membership):

@@ -18,6 +18,9 @@ import com.gymadmin.platform.domain.port.out.PlanRepository;
 import com.gymadmin.platform.domain.validation.PhoneNumberE164Normalizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
@@ -74,6 +77,9 @@ public class NotificacionVencimientoJob {
     private final EnviarNotificacionUseCase enviarUseCase;
     private final Clock clock;
 
+    @Value("${jobs.run-on-startup:true}")
+    private boolean runOnStartup;
+
     public NotificacionVencimientoJob(CompaniaPlanRepository companiaPlanRepository,
                                        PlanRepository planRepository,
                                        NotificacionRepository notificacionRepository,
@@ -102,6 +108,16 @@ public class NotificacionVencimientoJob {
                         err -> log.error("Job de notificaciones falló", err),
                         () -> log.info("Job de notificaciones completado")
                 );
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void ejecutarAlIniciar() {
+        if (!runOnStartup) {
+            log.info("[NotificacionVencimientoJob] Skip startup run (jobs.run-on-startup=false)");
+            return;
+        }
+        log.info("[NotificacionVencimientoJob] Ejecutando al arrancar (recuperación de ventana perdida)");
+        ejecutar();
     }
 
     /** Expuesto package-private para tests con Clock.fixed(...). */

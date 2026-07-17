@@ -14,7 +14,8 @@ public interface AuthUseCase {
     Mono<Void> requestPasswordReset(PasswordResetRequestDto req);
     Mono<Void> applyPasswordReset(PasswordResetApplyRequest req);
     Flux<CompaniaBasicaResponse> getCompaniesByCorreo(String correo);
-    Mono<LoginAppResponse> loginWithGoogle(OAuthGoogleRequest req);
-    Mono<LoginAppResponse> loginWithFacebook(OAuthFacebookRequest req);
+    Mono<OAuthLoginResponse> loginWithGoogle(OAuthGoogleRequest req);
+    Mono<OAuthLoginResponse> loginWithFacebook(OAuthFacebookRequest req);
+    Mono<LoginAppResponse> completarRegistroOauth(CompletarRegistroOauthRequest req);
     Mono<LoginAppResponse> registrar(RegistroAppRequest req);
 }

@@ -19,6 +19,9 @@ services:
 scheduling:
   messaging-job-cron: "-"
 
+jobs:
+  run-on-startup: false
+
 app:
   cors:
     allow-all: true

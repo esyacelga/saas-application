@@ -138,6 +138,16 @@ No centralized `AccessControlService` — controllers validate permissions inlin
 
 Controllers extract claims via `ReactiveSecurityContextHolder` and check `tipo == "staff"` and `id_compania` matches the invoice's company. Platform tokens are rejected for most endpoints.
 
+## Scheduled Jobs
+
+Billing-service tiene 2 scheduled jobs:
+
+1. **`RetrySchedulerService.procesarPendientes()`** (fixed-delay 60s) — Procesa reintentos de envío de comprobantes al SRI. Idempotente: ✅ Sí. Backoff automático: {1, 5, 15, 60, 240} minutos, máx 5 intentos. Detalles: [`../docs/billing-service/flows/sri-submission-retry.md`](../docs/billing-service/flows/sri-submission-retry.md)
+
+2. **`CertificadoAlertaService.verificarVencimientos()`** (cron `0 0 8 * * *`, 08:00 UTC) — Alerta si certificados digitales P12 vencen en ≤30 días. **EXCEPCIÓN:** NO es idempotente (sin `existsEnviadoHoy`), por lo tanto **sin startup hook** (evita spam de emails al reiniciar). Env var: **HARDCODED** (sin override).
+
+Ver doc centralizado de todos los 8 jobs del monorepo: [`../../docs/gym-administrator/architecture/scheduled-jobs.md`](../../docs/gym-administrator/architecture/scheduled-jobs.md).
+
 ## Module gating (billing feature-flag por compañía)
 
 Además de la autenticación JWT y del check de rol/compañía en cada controller, un `WebFilter` global (`ModuloGatingFilter`, registrado en `SecurityConfig` con `addFilterAfter(..., SecurityWebFiltersOrder.AUTHENTICATION)`) consulta a **platform-service** si la compañía tiene el módulo `FACTURACION` incluido en su plan actual.
