@@ -17,6 +17,7 @@ Los campos de request y response usan **camelCase**.
 - [POST /auth/app/login](#post-authapplogin)
 - [POST /auth/app/oauth/google](#post-authappoauthgoogle)
 - [POST /auth/app/oauth/facebook](#post-authappoauthfacebook)
+- [POST /auth/app/oauth/completar-registro](#post-authappoauthcompletar-registro)
 - [POST /auth/app/registro](#post-authappregistro)
 - [POST /auth/refresh](#post-authrefresh)
 - [POST /auth/logout](#post-authlogout)
@@ -216,7 +217,9 @@ Content-Type: application/json
 
 ## POST /auth/app/oauth/google
 
-Login de cliente mediante Google OAuth. Si la persona y la cuenta app no existen, las crea automáticamente.
+Verifica un `id_token` de Google. Si el email ya está registrado como cliente en esa compañía, hace login. Si no existe, devuelve `status = "registro_pendiente"` para que el frontend muestre la pantalla de completar registro (CI + teléfono + nombre editable) y luego llame a `POST /auth/app/oauth/completar-registro`.
+
+**Nunca crea persona ni cuenta automáticamente en este endpoint** — el alta requiere que el usuario complete CI y confirme datos.
 
 ### Request
 
@@ -227,32 +230,70 @@ Content-Type: application/json
 
 ```json
 {
-  "idToken": "eyJhbGc...",
-  "idCompania": 1
+  "id_token": "eyJhbGc...",
+  "id_compania": 1
 }
 ```
 
 | Campo | Tipo | Requerido | Descripción |
 |---|---|---|---|
-| `idToken` | string | Sí | ID Token emitido por Google Sign-In |
-| `idCompania` | number | Sí | ID del gym |
+| `id_token` | string | Sí | ID Token emitido por Google Sign-In |
+| `id_compania` | number | Sí | ID del gym |
 
-### Response 200
+### Response 200 — Login exitoso (usuario ya registrado)
 
-Misma estructura que `POST /auth/app/login`.
+```json
+{
+  "status": "logged_in",
+  "access_token": "eyJhbGci...",
+  "refresh_token": "dGhpcyBp...",
+  "expires_in": 604800,
+  "persona": {
+    "id": 10,
+    "nombre": "María López",
+    "foto_url": "https://res.cloudinary.com/...",
+    "sexo": "F"
+  },
+  "compania": {
+    "id": 1,
+    "nombre": "Gym Elite",
+    "logo_url": "https://res.cloudinary.com/..."
+  },
+  "email": null,
+  "nombre": null
+}
+```
+
+### Response 200 — Registro pendiente (usuario no registrado)
+
+```json
+{
+  "status": "registro_pendiente",
+  "access_token": null,
+  "refresh_token": null,
+  "expires_in": null,
+  "persona": null,
+  "compania": null,
+  "email": "maria@gmail.com",
+  "nombre": "María López"
+}
+```
+
+El frontend debe usar `email` y `nombre` para pre-llenar el formulario de completar registro. El `nombre` puede llegar `null` si el proveedor no lo expone; en ese caso el usuario deberá escribirlo.
 
 ### Errores
 
 | Código | Cuándo |
 |---|---|
 | 401 | Token de Google inválido o expirado |
-| 403 | Cuenta desactivada en este gym |
+| 403 | Cuenta existe pero está desactivada en este gym |
+| 429 | Rate limit superado |
 
 ---
 
 ## POST /auth/app/oauth/facebook
 
-Login de cliente mediante Facebook OAuth.
+Verifica un `access_token` de Facebook. Comportamiento idéntico a `POST /auth/app/oauth/google`: devuelve `status = "logged_in"` o `status = "registro_pendiente"`.
 
 ### Request
 
@@ -263,26 +304,94 @@ Content-Type: application/json
 
 ```json
 {
-  "accessToken": "EAAxxxxx...",
-  "idCompania": 1
+  "access_token": "EAAxxxxx...",
+  "id_compania": 1
 }
 ```
 
 | Campo | Tipo | Requerido | Descripción |
 |---|---|---|---|
-| `accessToken` | string | Sí | Access Token emitido por Facebook Login |
-| `idCompania` | number | Sí | ID del gym |
+| `access_token` | string | Sí | Access Token emitido por Facebook Login (scope `email`) |
+| `id_compania` | number | Sí | ID del gym |
 
 ### Response 200
 
-Misma estructura que `POST /auth/app/login`.
+Misma estructura que `POST /auth/app/oauth/google` (mismos dos casos: `logged_in` o `registro_pendiente`).
 
 ### Errores
 
 | Código | Cuándo |
 |---|---|
-| 401 | Token de Facebook inválido o expirado |
-| 403 | Cuenta desactivada en este gym |
+| 401 | Token de Facebook inválido, expirado o sin permiso `email` |
+| 403 | Cuenta existe pero está desactivada en este gym |
+| 429 | Rate limit superado |
+
+---
+
+## POST /auth/app/oauth/completar-registro
+
+Completa el alta de un cliente que se autenticó con Google/Facebook y no tenía cuenta en la compañía. Re-verifica el token OAuth para evitar suplantación, crea (o reusa) la `Persona` con la CI real que provee el usuario, crea la `UsuarioApp` y devuelve tokens de sesión.
+
+El `password_hash` de la `UsuarioApp` se genera con un valor aleatorio criptográficamente imposible de adivinar — el cliente OAuth-only **nunca** podrá loguear con `POST /auth/app/login` (contraseña), solo con el mismo proveedor OAuth.
+
+### Request
+
+```http
+POST /api/v1/auth/app/oauth/completar-registro
+Content-Type: application/json
+```
+
+```json
+{
+  "provider": "google",
+  "token": "eyJhbGc...",
+  "id_compania": 1,
+  "ci": "1720123456",
+  "nombre": "María López",
+  "telefono": "0991234567"
+}
+```
+
+| Campo | Tipo | Requerido | Descripción |
+|---|---|---|---|
+| `provider` | string | Sí | `"google"` o `"facebook"` |
+| `token` | string | Sí | `id_token` de Google o `access_token` de Facebook (el mismo que se envió al endpoint OAuth) |
+| `id_compania` | number | Sí | ID del gym (entero positivo) |
+| `ci` | string | Sí | Cédula (10 dígitos) o RUC (13 dígitos) — validado por regex |
+| `nombre` | string | Sí | Nombre completo (3–200 caracteres). Puede diferir del que trae el proveedor |
+| `telefono` | string | No | Teléfono de contacto |
+
+### Response 201 — Registro exitoso
+
+Misma estructura que `POST /auth/app/login`:
+
+```json
+{
+  "access_token": "eyJhbGci...",
+  "refresh_token": "dGhpcyBp...",
+  "expires_in": 604800,
+  "persona": {
+    "id": 10,
+    "nombre": "María López",
+    "foto_url": null,
+    "sexo": null
+  },
+  "compania": {
+    "id": 1,
+    "nombre": "Gym Elite",
+    "logo_url": "https://res.cloudinary.com/..."
+  }
+}
+```
+
+### Errores
+
+| Código | Cuándo |
+|---|---|
+| 400 | Validación falló (CI mal formada, provider distinto de `google`/`facebook`, campo faltante) |
+| 401 | Token OAuth inválido o expirado |
+| 409 | Ya existe una cuenta con ese correo en el gimnasio, o la persona (por CI/correo) ya tiene cuenta en este gimnasio |
+| 429 | Rate limit superado |
 
 ---
 

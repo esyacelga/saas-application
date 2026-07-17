@@ -266,6 +266,37 @@
     "button": "Instalar",
     "dismiss": "Cerrar"
   },
+  "completarRegistroOauth": {
+    "greeting": "¡Bienvenido/a, {{nombre}}!",
+    "badgeGoogle": "Verificado con Google",
+    "badgeFacebook": "Verificado con Facebook",
+    "fields": {
+      "correo": "Correo electrónico",
+      "nombre": "Nombre completo",
+      "nombrePlaceholder": "Tu nombre legal",
+      "ci": "Cédula o RUC",
+      "ciRequired": "Requerido",
+      "ciPlaceholder": "0000000000",
+      "ciHint": "Necesitamos tu cédula para emitir tus facturas de membresía. Es un requisito del SRI.",
+      "telefono": "Teléfono",
+      "telefonoOptional": "Opcional",
+      "telefonoPlaceholder": "0999 000 000",
+      "telefonoHint": "Recibirás recordatorios de vencimiento"
+    },
+    "buttons": {
+      "submit": "Completar registro",
+      "submitting": "Registrando…",
+      "cancel": "Cancelar"
+    },
+    "errors": {
+      "nombreMin": "El nombre debe tener al menos 3 caracteres",
+      "ciFormato": "Ingresa 10 dígitos (cédula) o 13 dígitos (RUC)",
+      "ciInvalido": "Cédula o RUC inválido. Verifica los dígitos.",
+      "ciDuplicado": "Esta cédula ya está registrada en otro gimnasio.",
+      "generic": "No se pudo completar el registro. Intenta de nuevo."
+    },
+    "success": "¡Registro completado! Bienvenido/a."
+  },
   "resetPassword": {
     "title": "Nueva contraseña",
     "subtitle": "Ingresa tu nueva contraseña",

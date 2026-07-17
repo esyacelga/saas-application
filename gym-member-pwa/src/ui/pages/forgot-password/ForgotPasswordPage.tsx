@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { authRepository } from '@/infrastructure/http/AuthHttpRepository'
 
 const schema = z.object({
-  id_compania: z.coerce.number().min(1, 'Requerido'),
+  id_compania: z.number().min(1, 'Requerido'),
   email: z.string().email('Correo inválido'),
 })
 type FormData = z.infer<typeof schema>
@@ -19,9 +19,7 @@ export function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
-    resolver: zodResolver(schema),
-  })
+  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) })
 
   const onSubmit = async (data: FormData) => {
     setLoading(true)

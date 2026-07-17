@@ -11,13 +11,14 @@ import {coreRepository} from '@/infrastructure/http/CoreHttpRepository'
 import {useAuthStore} from '@/infrastructure/store/auth.store'
 import {useThemeStore} from '@/infrastructure/store/theme.store'
 import {LangToggle} from '@/ui/components/LangToggle'
+import {CompletarRegistroOAuth} from './CompletarRegistroOAuth'
 
 // ── Schemas ──────────────────────────────────────────────────────────────────
 
 const loginSchema = z.object({
     login: z.string().min(1, 'Requerido'),
     password: z.string().min(1, 'Requerido'),
-    id_compania: z.coerce.number().optional(),
+    id_compania: z.number().optional(),
 })
 type LoginData = z.infer<typeof loginSchema>
 
@@ -35,6 +36,10 @@ const registerSchema = z
 type RegisterData = z.infer<typeof registerSchema>
 
 type Mode = 'login' | 'register'
+
+type AuthStep =
+    | { step: 'form' }
+    | { step: 'completar_oauth'; provider: 'google' | 'facebook'; token: string; email: string; nombre: string }
 
 // ── Inline icon components ───────────────────────────────────────────────────
 
@@ -153,6 +158,7 @@ export function LoginPage() {
 
     const [loading, setLoading] = useState(false)
     const [mode, setMode] = useState<Mode>('login')
+    const [authStep, setAuthStep] = useState<AuthStep>({step: 'form'})
     const [showLoginPwd, setShowLoginPwd] = useState(false)
     const [showRegPwd, setShowRegPwd] = useState(false)
     const [showRegConfirmPwd, setShowRegConfirmPwd] = useState(false)
@@ -287,8 +293,18 @@ export function LoginPage() {
         setLoading(true)
         try {
             const res = await authRepository.loginGoogle({id_token: credential, id_compania})
-            setTokens(res.access_token, res.refresh_token)
-            afterLogin(pendingQrToken)
+            if (res.status === 'registro_pendiente') {
+                setAuthStep({
+                    step: 'completar_oauth',
+                    provider: 'google',
+                    token: credential,
+                    email: res.email!,
+                    nombre: res.nombre ?? '',
+                })
+            } else {
+                setTokens(res.access_token!, res.refresh_token!)
+                afterLogin(pendingQrToken)
+            }
         } catch {
             toast.error(t('login.errors.googleError'))
         } finally {
@@ -309,12 +325,23 @@ export function LoginPage() {
         window.FB.login(
             (response) => {
                 if (!response.authResponse?.accessToken) return
+                const fbToken = response.authResponse.accessToken
                 setLoading(true)
                 authRepository
-                    .loginFacebook({access_token: response.authResponse.accessToken, id_compania})
+                    .loginFacebook({access_token: fbToken, id_compania})
                     .then((res) => {
-                        setTokens(res.access_token, res.refresh_token);
-                        afterLogin(pendingQrToken)
+                        if (res.status === 'registro_pendiente') {
+                            setAuthStep({
+                                step: 'completar_oauth',
+                                provider: 'facebook',
+                                token: fbToken,
+                                email: res.email!,
+                                nombre: res.nombre ?? '',
+                            })
+                        } else {
+                            setTokens(res.access_token!, res.refresh_token!)
+                            afterLogin(pendingQrToken)
+                        }
                     })
                     .catch(() => toast.error(t('login.errors.facebookError')))
                     .finally(() => setLoading(false))
@@ -399,8 +426,27 @@ export function LoginPage() {
                 ))}
             </div>
 
-            {/* ── Card ────────────────────────────────────────────────────────── */}
+            {/* ── Card area ────────────────────────────────────────────────────── */}
             <div className="relative z-10 w-full max-w-sm">
+
+            {/* ── Completar registro OAuth step ──────────────────────────────── */}
+            {authStep.step === 'completar_oauth' && (
+                <CompletarRegistroOAuth
+                    provider={authStep.provider}
+                    token={authStep.token}
+                    email={authStep.email}
+                    nombre={authStep.nombre}
+                    idCompania={resolvedCompanyId()!}
+                    onCancelar={() => setAuthStep({step: 'form'})}
+                    onRegistrado={(accessToken, refreshToken) => {
+                        setTokens(accessToken, refreshToken)
+                        afterLogin(pendingQrToken)
+                    }}
+                />
+            )}
+
+            {/* ── Normal login/register card ─────────────────────────────────── */}
+            {authStep.step === 'form' && (
                 <div
                     className="rounded-2xl bg-slate-900/75 backdrop-blur-xl ring-1 ring-white/8 shadow-2xl shadow-black/60 px-7 py-8 space-y-6">
 
@@ -559,12 +605,11 @@ export function LoginPage() {
                                     {GOOGLE_ENABLED && (
                                         <div className="flex justify-center">
                                             <GoogleLogin
-                                                onSuccess={(cr) => cr.credential && handleGoogleSuccess(cr.credential)}
+                                                onSuccess={(cr) => { if (cr.credential) handleGoogleSuccess(cr.credential) }}
                                                 onError={() => toast.error(t('login.errors.googleError'))}
                                                 theme="filled_black"
                                                 size="large"
                                                 text="continue_with"
-                                                locale="es"
                                                 width={368}
                                             />
                                         </div>
@@ -697,6 +742,8 @@ export function LoginPage() {
                     )}
 
                 </div>
+            )}
+
             </div>
         </div>
     )

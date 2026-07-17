@@ -13,66 +13,15 @@ El núcleo de la aplicación está completo: login manual, CheckIn QR, Historial
 
 ---
 
-## Tarea 1 — OAuth Login UI
+## Tarea 1 — OAuth Login UI ✅ Completada (2026-07-16)
 
-**Prioridad:** Alta  
-**Estimado:** 1–2 h
+Login con Google y Facebook + flujo "completar registro" cuando el usuario no existe en el gimnasio actual.
 
-### Qué falta
+**Contratos actuales:** ver [`../auth-service/api/auth.md`](../auth-service/api/auth.md) (`/auth/app/oauth/google`, `/auth/app/oauth/facebook`, `/auth/app/oauth/completar-registro`).
 
-Solo la UI. El backend y el repositorio HTTP ya están listos:
-
-| Endpoint backend | Método en `AuthHttpRepository.ts` |
-|---|---|
-| `POST /auth/app/oauth/google` | `loginGoogle(req)` |
-| `POST /auth/app/oauth/facebook` | `loginFacebook(req)` |
-
-### Contratos de request/response
-
-```typescript
-// request
-interface OAuthLoginRequest {
-  id_compania: number
-  token: string        // ID token del proveedor (Google: credential; Facebook: accessToken)
-}
-
-// response — igual que loginManual
-interface AuthResponse {
-  access_token: string
-  refresh_token: string
-  token_type: string
-  expires_in: number
-}
-```
-
-### Requisitos de implementación
-
-1. **Google Sign-In**: usar `@react-oauth/google` (`GoogleOAuthProvider` + `GoogleLogin` button) o `google.accounts.id.initialize` / `renderButton` directamente via script tag en `index.html`.
-   - Variable de entorno nueva: `VITE_GOOGLE_CLIENT_ID`
-   - El callback recibe `credential` (JWT ID token) → pasar como `token` al backend.
-
-2. **Facebook Login**: usar el SDK de Facebook JS (`window.FB.init` + `FB.login`).
-   - Variable de entorno nueva: `VITE_FACEBOOK_APP_ID`
-   - El callback retorna `authResponse.accessToken` → pasar como `token` al backend.
-
-3. **Flujo UX en `LoginPage.tsx`**:
-   - Mantener el formulario manual existente arriba.
-   - Agregar separador visual `— o continúa con —`.
-   - Dos botones debajo: `Continuar con Google` y `Continuar con Facebook`.
-   - El campo `id_compania` (ya en el form) debe estar completado ANTES de pulsar OAuth — mostrar error si está vacío.
-   - Al éxito OAuth, llamar `useAuthStore().setTokens(...)` igual que el login manual.
-
-4. **Archivos a modificar**:
-   - `src/ui/pages/login/LoginPage.tsx` — agregar botones y handlers
-   - `src/application/usecase/auth.types.ts` — verificar si `OAuthLoginRequest` ya existe
-   - `.env.example` — agregar `VITE_GOOGLE_CLIENT_ID` y `VITE_FACEBOOK_APP_ID`
-   - `index.html` — agregar script del SDK de Facebook si se usa esa vía
-
-5. **Dependencias nuevas a instalar**:
-   ```bash
-   npm install @react-oauth/google   # para Google
-   # Facebook no requiere paquete npm, usa script tag
-   ```
+- El response de `oauth/google` y `oauth/facebook` ahora es `OAuthLoginResponse` con `status = "logged_in" | "registro_pendiente"`.
+- Cuando `status = "registro_pendiente"`, `LoginPage.tsx` cambia a la sub-vista `CompletarRegistroOAuth.tsx` (co-locada) que solicita cédula/RUC (obligatoria por SRI), nombre editable y teléfono opcional; luego llama `POST /auth/app/oauth/completar-registro`.
+- El id_token/access_token vive solo en memoria del componente (no en router state ni localStorage) por su corta expiración.
 
 ---
 

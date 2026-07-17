@@ -1,6 +1,7 @@
 import type {
   LoginManualRequest, LoginGoogleRequest, LoginFacebookRequest,
-  LoginAppResponse, RefreshResponse,
+  LoginAppResponse, OAuthLoginResponse, CompletarRegistroOauthRequest,
+  RefreshResponse,
   ForgotPasswordRequest, ResetPasswordRequest, GymByQrResponse,
   RegistroAppRequest, PersonaResponse, ActualizarPersonaRequest,
   ConsentimientoWaPersonaResponse,
@@ -8,8 +9,9 @@ import type {
 
 export interface AuthRepository {
   loginManual(req: LoginManualRequest): Promise<LoginAppResponse>
-  loginGoogle(req: LoginGoogleRequest): Promise<LoginAppResponse>
-  loginFacebook(req: LoginFacebookRequest): Promise<LoginAppResponse>
+  loginGoogle(req: LoginGoogleRequest): Promise<OAuthLoginResponse>
+  loginFacebook(req: LoginFacebookRequest): Promise<OAuthLoginResponse>
+  completarRegistroOauth(req: CompletarRegistroOauthRequest): Promise<LoginAppResponse>
   registrar(req: RegistroAppRequest): Promise<LoginAppResponse>
   refresh(refreshToken: string): Promise<RefreshResponse>
   logout(): Promise<void>

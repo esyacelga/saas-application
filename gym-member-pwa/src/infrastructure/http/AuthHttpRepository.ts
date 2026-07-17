@@ -2,7 +2,8 @@ import api from './axios.instance'
 import type { AuthRepository } from '@/domain/port/AuthRepository'
 import type {
   LoginManualRequest, LoginGoogleRequest, LoginFacebookRequest,
-  LoginAppResponse, RefreshResponse,
+  LoginAppResponse, OAuthLoginResponse, CompletarRegistroOauthRequest,
+  RefreshResponse,
   ForgotPasswordRequest, ResetPasswordRequest, GymByQrResponse,
   RegistroAppRequest, PersonaResponse, ActualizarPersonaRequest,
   ConsentimientoWaPersonaResponse,
@@ -14,13 +15,18 @@ class AuthHttpRepository implements AuthRepository {
     return data
   }
 
-  async loginGoogle(req: LoginGoogleRequest): Promise<LoginAppResponse> {
+  async loginGoogle(req: LoginGoogleRequest): Promise<OAuthLoginResponse> {
     const { data } = await api.post('/auth/app/oauth/google', req)
     return data
   }
 
-  async loginFacebook(req: LoginFacebookRequest): Promise<LoginAppResponse> {
+  async loginFacebook(req: LoginFacebookRequest): Promise<OAuthLoginResponse> {
     const { data } = await api.post('/auth/app/oauth/facebook', req)
+    return data
+  }
+
+  async completarRegistroOauth(req: CompletarRegistroOauthRequest): Promise<LoginAppResponse> {
+    const { data } = await api.post('/auth/app/oauth/completar-registro', req)
     return data
   }
 

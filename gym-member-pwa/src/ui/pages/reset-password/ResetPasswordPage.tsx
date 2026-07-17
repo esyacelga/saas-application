@@ -9,7 +9,7 @@ import { authRepository } from '@/infrastructure/http/AuthHttpRepository'
 
 const schema = z
   .object({
-    id_compania: z.coerce.number().min(1, 'Requerido'),
+    id_compania: z.number().min(1, 'Requerido'),
     new_password: z.string().min(6, 'Mínimo 6 caracteres'),
     confirm_password: z.string(),
   })
@@ -27,10 +27,7 @@ export function ResetPasswordPage() {
   const idCompaniaFromUrl = Number(searchParams.get('id_compania')) || 0
   const [loading, setLoading] = useState(false)
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
-    resolver: zodResolver(schema),
-    defaultValues: { id_compania: idCompaniaFromUrl || undefined },
-  })
+  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { id_compania: idCompaniaFromUrl || undefined } })
 
   if (!token) {
     return (
