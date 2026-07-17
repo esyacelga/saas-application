@@ -8,6 +8,7 @@ import org.springframework.data.relational.core.mapping.Table;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 
 @Table("core.membresias")
 @Getter
@@ -58,4 +59,16 @@ public class MembresiaEntity extends BaseAuditEntity {
 
     @Column("asistencias_previas")
     private Integer asistenciasPrevias;
+
+    @Column("estado_pago")
+    private String estadoPago;
+
+    @Column("fecha_eliminacion")
+    private OffsetDateTime fechaEliminacion;
+
+    @Column("eliminado_por")
+    private Integer eliminadoPor;
+
+    @Column("motivo_eliminacion")
+    private String motivoEliminacion;
 }

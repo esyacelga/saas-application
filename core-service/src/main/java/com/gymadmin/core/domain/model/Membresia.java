@@ -8,6 +8,12 @@ public class Membresia {
 
     public enum Estado { activa, vencida, congelada, anulada }
 
+    public enum EstadoPago { PENDIENTE, PAGADO }
+
+    public enum MotivoEliminacion {
+        SOCIO_CAMBIO_OPINION, ERROR_DE_VENTA, DUPLICADA, DATOS_INCORRECTOS, OTRO
+    }
+
     private Long id;
     private Long idCompania;
     private Long idSucursal;
@@ -23,6 +29,11 @@ public class Membresia {
     private Estado estado;
     private Integer asistenciasPrevias;
     private OffsetDateTime createdAt;
+    private EstadoPago estadoPago;
+    private Boolean eliminado;
+    private OffsetDateTime fechaEliminacion;
+    private Integer eliminadoPor;
+    private MotivoEliminacion motivoEliminacion;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -68,4 +79,19 @@ public class Membresia {
 
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
+
+    public EstadoPago getEstadoPago() { return estadoPago; }
+    public void setEstadoPago(EstadoPago estadoPago) { this.estadoPago = estadoPago; }
+
+    public Boolean getEliminado() { return eliminado; }
+    public void setEliminado(Boolean eliminado) { this.eliminado = eliminado; }
+
+    public OffsetDateTime getFechaEliminacion() { return fechaEliminacion; }
+    public void setFechaEliminacion(OffsetDateTime fechaEliminacion) { this.fechaEliminacion = fechaEliminacion; }
+
+    public Integer getEliminadoPor() { return eliminadoPor; }
+    public void setEliminadoPor(Integer eliminadoPor) { this.eliminadoPor = eliminadoPor; }
+
+    public MotivoEliminacion getMotivoEliminacion() { return motivoEliminacion; }
+    public void setMotivoEliminacion(MotivoEliminacion motivoEliminacion) { this.motivoEliminacion = motivoEliminacion; }
 }

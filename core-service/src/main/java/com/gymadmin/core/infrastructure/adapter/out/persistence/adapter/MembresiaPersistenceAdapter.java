@@ -33,6 +33,21 @@ public class MembresiaPersistenceAdapter implements MembresiaRepository {
     }
 
     @Override
+    public Mono<Membresia> findPendienteVivaByIdCliente(Long idCliente, Long idCompania) {
+        return repository.findPendienteVivaByIdCliente(idCliente, idCompania).map(this::toDomain);
+    }
+
+    @Override
+    public Flux<Membresia> findPendientesPorCompania(Long idCompania) {
+        return repository.findPendientesPorCompania(idCompania).map(this::toDomain);
+    }
+
+    @Override
+    public Mono<Membresia> findUltimaRechazadaByIdCliente(Long idCliente, Long idCompania) {
+        return repository.findUltimaRechazadaByIdCliente(idCliente, idCompania).map(this::toDomain);
+    }
+
+    @Override
     public Mono<Long> countAsistenciasByIdMembresia(Long idMembresia) {
         return repository.countAsistenciasByIdMembresia(idMembresia);
     }
@@ -49,12 +64,19 @@ public class MembresiaPersistenceAdapter implements MembresiaRepository {
     }
 
     private MembresiaEntity mergeIntoEntity(MembresiaEntity existing, Membresia m) {
-        if (m.getFechaFin() != null)             existing.setFechaFin(m.getFechaFin());
+        // Campos que pueden mutar tras la creación
+        existing.setFechaInicio(m.getFechaInicio());
+        existing.setFechaFin(m.getFechaFin());
         if (m.getDiasAccesoTotal() != null)      existing.setDiasAccesoTotal(m.getDiasAccesoTotal());
         if (m.getPrecioPagado() != null)         existing.setPrecioPagado(m.getPrecioPagado());
         if (m.getDescuentoAplicado() != null)    existing.setDescuentoAplicado(m.getDescuentoAplicado());
         if (m.getEstado() != null)               existing.setEstado(m.getEstado().name());
         if (m.getAsistenciasPrevias() != null)   existing.setAsistenciasPrevias(m.getAsistenciasPrevias());
+        if (m.getEstadoPago() != null)           existing.setEstadoPago(m.getEstadoPago().name());
+        if (m.getEliminado() != null)            existing.setEliminado(m.getEliminado());
+        existing.setFechaEliminacion(m.getFechaEliminacion());
+        existing.setEliminadoPor(m.getEliminadoPor());
+        existing.setMotivoEliminacion(m.getMotivoEliminacion() != null ? m.getMotivoEliminacion().name() : null);
         return existing;
     }
 
@@ -80,6 +102,13 @@ public class MembresiaPersistenceAdapter implements MembresiaRepository {
         m.setEstado(e.getEstado() != null ? Membresia.Estado.valueOf(e.getEstado()) : null);
         m.setAsistenciasPrevias(e.getAsistenciasPrevias() != null ? e.getAsistenciasPrevias() : 0);
         m.setCreatedAt(e.getCreacionFecha());
+        m.setEstadoPago(e.getEstadoPago() != null ? Membresia.EstadoPago.valueOf(e.getEstadoPago()) : null);
+        m.setEliminado(e.getEliminado() != null ? e.getEliminado() : Boolean.FALSE);
+        m.setFechaEliminacion(e.getFechaEliminacion());
+        m.setEliminadoPor(e.getEliminadoPor());
+        m.setMotivoEliminacion(e.getMotivoEliminacion() != null
+                ? Membresia.MotivoEliminacion.valueOf(e.getMotivoEliminacion())
+                : null);
         return m;
     }
 
@@ -99,6 +128,11 @@ public class MembresiaPersistenceAdapter implements MembresiaRepository {
                 .descuentoAplicado(m.getDescuentoAplicado())
                 .estado(m.getEstado() != null ? m.getEstado().name() : null)
                 .asistenciasPrevias(m.getAsistenciasPrevias())
+                .estadoPago(m.getEstadoPago() != null ? m.getEstadoPago().name() : null)
+                .fechaEliminacion(m.getFechaEliminacion())
+                .eliminadoPor(m.getEliminadoPor())
+                .motivoEliminacion(m.getMotivoEliminacion() != null ? m.getMotivoEliminacion().name() : null)
+                .eliminado(m.getEliminado() != null ? m.getEliminado() : Boolean.FALSE)
                 .creacionFecha(m.getCreatedAt())
                 .build();
     }

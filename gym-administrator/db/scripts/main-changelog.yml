@@ -5,3 +5,6 @@ databaseChangeLog:
   - include:
       file: 202607_GYM-002-fix-ci-validada-comment/partial-changelog.yml
       relativeToChangelogFile: true
+  - include:
+      file: 202607_GYM-003-estado-pago-membresias/partial-changelog.yml
+      relativeToChangelogFile: true

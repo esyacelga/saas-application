@@ -1,0 +1,65 @@
+databaseChangeLog:
+
+  # ── GYM-003 — Estado de pago en ventas de membresía ─────────────────────────
+  # Separa "momento de la venta" del "momento del pago" en core.membresias
+  # (columna estado_pago PENDIENTE/PAGADO), permite rechazar pendientes con
+  # auditoría (soft-delete sobre la columna `eliminado` que ya existe en el
+  # baseline) y crea el permiso 'membresias:confirmar_pago' por cada compañía
+  # existente. Sin cambios en rol_permisos — el dueño asigna manualmente.
+  #
+  # Doc fuente: docs/gym-administrator/requirements/estado-pago-membresias.md
+
+  - changeSet:
+      id: GYM-003-1
+      author: gesyacelga
+      context: dev, test, prod
+      comment: 'GYM-003 — Añade columnas estado_pago, fecha_eliminacion, eliminado_por, motivo_eliminacion a core.membresias (backfill via DEFAULT PAGADO).'
+      changes:
+        - sqlFile:
+            path: ddl/01_alter_core_membresias_add_estado_pago_columns.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-003-2
+      author: gesyacelga
+      context: dev, test, prod
+      comment: 'GYM-003 — Afloja NOT NULL de core.membresias.fecha_inicio y fecha_fin (PENDIENTEs viven sin fechas hasta confirmar pago).'
+      changes:
+        - sqlFile:
+            path: ddl/02_alter_core_membresias_drop_not_null_fechas.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-003-3
+      author: gesyacelga
+      context: dev, test, prod
+      comment: 'GYM-003 — Agrega CHECKs ck_membresias_fechas_por_estado_pago y ck_membresias_motivo_si_eliminado.'
+      changes:
+        - sqlFile:
+            path: ddl/03_alter_core_membresias_add_checks.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-003-4
+      author: gesyacelga
+      context: dev, test, prod
+      comment: 'GYM-003 — Crea índice parcial idx_membresias_pendientes_por_compania para el dashboard de ventas pendientes.'
+      changes:
+        - sqlFile:
+            path: ddl/04_create_index_membresias_pendientes.sql
+            relativeToChangelogFile: true
+            splitStatements: false
+
+  - changeSet:
+      id: GYM-003-5
+      author: gesyacelga
+      context: dev, test, prod
+      comment: 'GYM-003 — Seed multi-tenant del permiso membresias:confirmar_pago en seguridad.permisos por cada compañía existente (no toca rol_permisos).'
+      changes:
+        - sqlFile:
+            path: ddl/05_seed_seguridad_permisos_confirmar_pago.sql
+            relativeToChangelogFile: true
+            splitStatements: false

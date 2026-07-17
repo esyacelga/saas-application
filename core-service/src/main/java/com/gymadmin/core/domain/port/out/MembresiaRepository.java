@@ -12,6 +12,12 @@ public interface MembresiaRepository {
 
     Mono<Membresia> findActivaByIdClienteAndIdCompania(Long idCliente, Long idCompania);
 
+    Mono<Membresia> findPendienteVivaByIdCliente(Long idCliente, Long idCompania);
+
+    Flux<Membresia> findPendientesPorCompania(Long idCompania);
+
+    Mono<Membresia> findUltimaRechazadaByIdCliente(Long idCliente, Long idCompania);
+
     Mono<Long> countAsistenciasByIdMembresia(Long idMembresia);
 
     Mono<Membresia> save(Membresia membresia);

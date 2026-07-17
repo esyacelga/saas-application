@@ -4,9 +4,12 @@ import com.gymadmin.core.application.service.AccessControlService;
 import com.gymadmin.core.domain.port.in.MembresiaUseCase;
 import com.gymadmin.core.infrastructure.adapter.in.web.dto.ActualizarAsistenciasPreviasRequest;
 import com.gymadmin.core.infrastructure.adapter.in.web.dto.AnularRequest;
+import com.gymadmin.core.infrastructure.adapter.in.web.dto.MembresiaPendienteResponse;
 import com.gymadmin.core.infrastructure.adapter.in.web.dto.MembresiaResponse;
+import com.gymadmin.core.infrastructure.adapter.in.web.dto.RechazarMembresiaRequest;
 import com.gymadmin.core.infrastructure.adapter.in.web.dto.VenderMembresiaRequest;
 import com.gymadmin.core.infrastructure.config.JwtPrincipal;
+import com.gymadmin.core.infrastructure.exception.ForbiddenException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -66,7 +69,8 @@ public class MembresiaController {
                                 Long.parseLong(principal.getUserId()),
                                 new MembresiaUseCase.VenderCommand(
                                         request.idTipoMembresia(), request.fechaInicio(),
-                                        request.idMetodoPago(), request.descuentoAplicado()
+                                        request.idMetodoPago(), request.descuentoAplicado(),
+                                        request.estadoPago()
                                 )
                         ))
                 )
@@ -137,6 +141,61 @@ public class MembresiaController {
                 .thenReturn(ResponseEntity.<Void>ok().build());
     }
 
+    @Operation(summary = "Confirmar pago de membresía pendiente", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "404"),
+            @ApiResponse(responseCode = "409"),
+            @ApiResponse(responseCode = "403")
+    })
+    @PostMapping("/membresias/{id}/confirmar-pago")
+    public Mono<ResponseEntity<MembresiaResponse>> confirmarPago(@PathVariable Long id) {
+        return extractPrincipal()
+                .flatMap(principal -> accessControl.requireRecepcionOrAbove(principal, principal.getIdCompania())
+                        .then(requireConfirmarPagoPermiso(principal))
+                        .then(membresiaUseCase.confirmarPago(
+                                id, principal.getIdCompania(), Long.parseLong(principal.getUserId())))
+                )
+                .map(m -> ResponseEntity.ok(MembresiaResponse.from(m)));
+    }
+
+    @Operation(summary = "Rechazar membresía pendiente (soft-delete)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "404"),
+            @ApiResponse(responseCode = "409"),
+            @ApiResponse(responseCode = "403"),
+            @ApiResponse(responseCode = "400")
+    })
+    @PostMapping("/membresias/{id}/rechazar")
+    public Mono<ResponseEntity<MembresiaResponse>> rechazar(@PathVariable Long id,
+                                                            @Valid @RequestBody RechazarMembresiaRequest request) {
+        return extractPrincipal()
+                .flatMap(principal -> accessControl.requireRecepcionOrAbove(principal, principal.getIdCompania())
+                        .then(requireConfirmarPagoPermiso(principal))
+                        .then(membresiaUseCase.rechazar(
+                                id, principal.getIdCompania(),
+                                Long.parseLong(principal.getUserId()),
+                                request.motivoEliminacion()))
+                )
+                .map(m -> ResponseEntity.ok(MembresiaResponse.from(m)));
+    }
+
+    @Operation(summary = "Listar membresías pendientes de pago de la compañía (dashboard)",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "403")
+    })
+    @GetMapping("/companias/{idCompania}/membresias/pendientes")
+    public Flux<MembresiaPendienteResponse> listarPendientes(@PathVariable Long idCompania) {
+        return extractPrincipal()
+                .flatMapMany(principal -> accessControl.requireRecepcionOrAbove(principal, idCompania)
+                        .then(requireConfirmarPagoPermiso(principal))
+                        .thenMany(membresiaUseCase.listarPendientesPorCompania(idCompania))
+                        .map(MembresiaPendienteResponse::from));
+    }
+
     @Operation(summary = "Validar acceso del cliente (público)")
     @ApiResponses({
             @ApiResponse(responseCode = "200"),
@@ -176,5 +235,25 @@ public class MembresiaController {
         return ReactiveSecurityContextHolder.getContext()
                 .map(ctx -> ctx.getAuthentication().getPrincipal())
                 .cast(JwtPrincipal.class);
+    }
+
+    /**
+     * Enforce del permiso granular {@code membresias:confirmar_pago}. Los tokens de plataforma
+     * ({@code super_admin}) y los tokens legacy sin lista de permisos (tests, admin_compania,
+     * Dueño, Recepción) mantienen el comportamiento anterior — el gate real vive en
+     * {@link com.gymadmin.core.application.service.AccessControlService}. Si el token trae la
+     * lista {@code permisos} explícita, exigimos que contenga la clave.
+     */
+    private Mono<Void> requireConfirmarPagoPermiso(JwtPrincipal principal) {
+        if (principal == null) {
+            return Mono.error(new ForbiddenException("Authentication required"));
+        }
+        if (principal.isSuperAdmin() || principal.getPermisos().isEmpty()) {
+            return Mono.empty();
+        }
+        if (principal.hasPermiso("membresias:confirmar_pago")) {
+            return Mono.empty();
+        }
+        return Mono.error(new ForbiddenException("Missing permission: membresias:confirmar_pago"));
     }
 }

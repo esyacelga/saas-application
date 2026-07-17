@@ -21,11 +21,19 @@ public interface MembresiaUseCase {
 
     Mono<Membresia> actualizarAsistenciasPrevias(Long id, Long idCompania, Integer cantidad);
 
+    Mono<Membresia> confirmarPago(Long idMembresia, Long idCompania, Long idUsuarioActuante);
+
+    Mono<Membresia> rechazar(Long idMembresia, Long idCompania, Long idUsuarioActuante,
+                             Membresia.MotivoEliminacion motivoEliminacion);
+
+    Flux<MembresiaPendienteResult> listarPendientesPorCompania(Long idCompania);
+
     record VenderCommand(
         Long idTipoMembresia,
         LocalDate fechaInicio,
         Long idMetodoPago,
-        BigDecimal descuentoAplicado
+        BigDecimal descuentoAplicado,
+        Membresia.EstadoPago estadoPago
     ) {}
 
     record MembresiaDetalleResult(
@@ -47,5 +55,11 @@ public interface MembresiaUseCase {
         String razon,
         Integer accesosUsados,
         Integer accesosTotal
+    ) {}
+
+    record MembresiaPendienteResult(
+        Membresia membresia,
+        String tipoNombre,
+        String modoControl
     ) {}
 }

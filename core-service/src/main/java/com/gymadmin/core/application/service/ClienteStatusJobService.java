@@ -59,6 +59,8 @@ public class ClienteStatusJobService {
         if (Cliente.Estado.congelado.equals(cliente.getEstado())) {
             return Mono.empty();
         }
+        // findActivaByIdClienteAndIdCompania filtra por estado_pago='PAGADO' y eliminado=false
+        // (GYM-003 §5.2): una PENDIENTE sin fechas no debe marcar al cliente como vencido.
         return membresiaRepository.findActivaByIdClienteAndIdCompania(cliente.getId(), cliente.getIdCompania())
                 .flatMap(mem -> tipoMembresiaRepository.findById(mem.getIdTipoMembresia())
                         .flatMap(tipo -> evaluarEstado(cliente, mem, tipo))
