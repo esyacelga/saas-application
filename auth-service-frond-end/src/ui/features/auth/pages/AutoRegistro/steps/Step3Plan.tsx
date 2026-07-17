@@ -4,11 +4,13 @@ import { Check, AlertCircle, RefreshCw } from 'lucide-react'
 import { PulsingDots } from '@/ui/components/PulsingDots'
 import platformPublicApi from '@/infrastructure/http/platform/axios-platform-public.instance'
 import type { Plan } from '@/domain/platform/entities/Plan.entity'
+import type { z } from 'zod'
 import type { WizardStep3Form } from '@/ui/features/platform/schemas/registrar-gym-wizard.schema'
+import { wizardStep3Schema } from '@/ui/features/platform/schemas/registrar-gym-wizard.schema'
 
 interface Props {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  form: UseFormReturn<WizardStep3Form, any, any>
+  form: UseFormReturn<z.input<typeof wizardStep3Schema>, any, WizardStep3Form>
   onLoadingChange: (loading: boolean) => void
   onPlanChange?: (codigo: string | null) => void
 }

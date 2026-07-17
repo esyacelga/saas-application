@@ -26,7 +26,7 @@ interface Props {
 
 export function EditarTipoMembresiaModal({ tipo, onClose, onActualizado }: Props) {
   const { t } = useTranslation()
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<z.input<typeof schema>, unknown, FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { nombre: tipo.nombre, precio: tipo.precio, duracion_valor: tipo.duracion_valor },
   })

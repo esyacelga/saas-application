@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Navigate, Link } from 'react-router-dom'
@@ -56,17 +57,17 @@ export function AutoRegistroPage() {
   const [step1Data, setStep1Data] = useState<AutoRegistroStep1Form | null>(null)
   const [planData, setPlanData] = useState<WizardStep3Form | null>(null)
 
-  const form1 = useForm<AutoRegistroStep1Form>({
+  const form1 = useForm<z.input<typeof autoRegistroStep1Schema>, unknown, AutoRegistroStep1Form>({
     resolver: zodResolver(autoRegistroStep1Schema),
     defaultValues: step1Data ?? { nombre: '', correo: '', direccion: '' },
   })
 
-  const formPlan = useForm<WizardStep3Form>({
+  const formPlan = useForm<z.input<typeof wizardStep3Schema>, unknown, WizardStep3Form>({
     resolver: zodResolver(wizardStep3Schema),
     defaultValues: planData ?? {},
   })
 
-  const formDatos = useForm<AutoRegistroStep4Form>({
+  const formDatos = useForm<z.input<typeof autoRegistroStep4Schema>, unknown, AutoRegistroStep4Form>({
     resolver: zodResolver(autoRegistroStep4Schema),
     defaultValues: { ci: '', nombre: '', correo: '', password: '', confirmarPassword: '' },
   })

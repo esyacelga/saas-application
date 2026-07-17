@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
@@ -101,8 +102,8 @@ export function CrearOperadorModal({ open, onClose, onCreado }: Props) {
   const operadorSchema = useMemo(() => createOperadorSchema(t).omit({ id_persona: true }), [t])
   const personaSchema  = useMemo(() => createPersonaSchema(t), [t])
 
-  const operadorForm = useForm<Omit<CrearOperadorFormData, 'id_persona'>>({ resolver: zodResolver(operadorSchema) })
-  const personaForm  = useForm<CrearPersonaFormData>({ resolver: zodResolver(personaSchema) })
+  const operadorForm = useForm<z.input<typeof operadorSchema>, unknown, Omit<CrearOperadorFormData, 'id_persona'>>({ resolver: zodResolver(operadorSchema) })
+  const personaForm  = useForm<z.input<typeof personaSchema>, unknown, CrearPersonaFormData>({ resolver: zodResolver(personaSchema) })
 
   const ROLES_OPCIONES = [
     { value: 'super_admin', label: 'Super Admin', desc: t('operators.roleSuperAdminDesc') },
@@ -140,7 +141,7 @@ export function CrearOperadorModal({ open, onClose, onCreado }: Props) {
     try {
       const persona = await authRepository.buscarPersonaPorCI(ci)
       setPersonaSeleccionada(persona)
-      if (persona.sexo) setSexoElegido(persona.sexo)
+      if (persona.sexo === 'M' || persona.sexo === 'F') setSexoElegido(persona.sexo)
       if (persona.correo) operadorForm.setValue('correo', persona.correo)
     } catch (err) {
       if (isAxiosError(err) && err.response?.status === 404) {

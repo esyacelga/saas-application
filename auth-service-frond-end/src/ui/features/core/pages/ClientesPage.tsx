@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, type ReactElement } from 'react'
 import { toast } from 'sonner'
 import { isAxiosError } from 'axios'
 import { Users, Search, User, CreditCard, Snowflake, History, RefreshCw, Activity, CalendarCheck, Flame, TrendingUp, Smartphone, Eye, EyeOff, Loader2, Pencil } from 'lucide-react'
@@ -1030,7 +1030,7 @@ export function ClientesPage() {
           <div className="flex items-end gap-1 px-4 pt-2 flex-shrink-0"
             style={{ borderBottom: '1px solid var(--page-border)' }}>
             {(['perfil', 'datos_personales', 'membresia', 'historial_mem', 'congelamientos', 'asistencias', 'usuario_app'] as DetTab[]).map(tab => {
-              const icons: Record<DetTab, JSX.Element> = {
+              const icons: Record<DetTab, ReactElement> = {
                 perfil: <User size={11} />,
                 datos_personales: <User size={11} />,
                 membresia: <CreditCard size={11} />,

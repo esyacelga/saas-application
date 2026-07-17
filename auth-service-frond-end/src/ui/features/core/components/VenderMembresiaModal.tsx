@@ -35,7 +35,7 @@ export function VenderMembresiaModal({ idCliente, nombreCliente, open, onClose, 
   const [todosLosTipos, setTodosLosTipos] = useState<TipoMembresia[]>([])
   const [tipoSeleccionado, setTipoSeleccionado] = useState<TipoMembresia | null>(null)
 
-  const { register, handleSubmit, watch, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
+  const { register, handleSubmit, watch, reset, formState: { errors, isSubmitting } } = useForm<z.input<typeof schema>, unknown, FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { fecha_inicio: new Date().toISOString().split('T')[0], descuento_aplicado: 0 },
   })

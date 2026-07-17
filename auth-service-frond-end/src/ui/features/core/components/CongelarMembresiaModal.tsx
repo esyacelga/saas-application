@@ -27,7 +27,7 @@ interface Props {
 
 export function CongelarMembresiaModal({ idMembresia, open, onClose, onCongelada }: Props) {
   const { t } = useTranslation()
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<z.input<typeof schema>, unknown, FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       fecha_inicio: new Date().toISOString().split('T')[0],

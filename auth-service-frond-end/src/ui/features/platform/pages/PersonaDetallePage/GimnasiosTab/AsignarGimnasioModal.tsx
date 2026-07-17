@@ -34,7 +34,7 @@ export function AsignarGimnasioModal({ idPersona, companias, open, onClose, onAs
   const [sucursales, setSucursales] = useState<SucursalBasica[]>([])
   const [loadingSuc, setLoadingSuc] = useState(false)
 
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, watch, formState: { errors } } = useForm<z.input<typeof schema>, unknown, FormData>({
     resolver: zodResolver(schema),
   })
 

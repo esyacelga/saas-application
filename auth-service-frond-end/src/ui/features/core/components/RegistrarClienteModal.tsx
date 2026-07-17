@@ -49,7 +49,7 @@ export function RegistrarClienteModal({ open, idSucursal, onClose, onRegistrado 
   const [ciResult, setCiResult] = useState<BuscarPorCiResponse | null>(null)
   const [step, setStep] = useState<'search' | 'form'>('search')
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
+  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<z.input<typeof schema>, unknown, FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { id_sucursal: idSucursal },
   })

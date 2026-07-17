@@ -309,45 +309,51 @@ public class AuthApplicationService implements AuthUseCase {
                     .then(appPort.findByLoginAndIdCompania(email, req.idCompania()))
                     .flatMap(existing -> Mono.<LoginAppResponse>error(
                             new ConflictException("Ya existe una cuenta con ese correo en este gimnasio")))
-                    .switchIfEmpty(Mono.defer(() -> personaPort.findByCorreo(email)
-                            .switchIfEmpty(Mono.defer(() -> personaPort.save(Persona.builder()
-                                    .ci(req.ci())
-                                    .nombre(req.nombre())
-                                    .correo(email)
-                                    .telefono(req.telefono())
-                                    .creacionUsuario("oauth:" + req.provider())
-                                    .build())
-                                    .onErrorMap(DataIntegrityViolationException.class, e -> {
-                                        String msg = e.getMostSpecificCause() != null
-                                                ? e.getMostSpecificCause().getMessage() : e.getMessage();
-                                        if (msg != null && (msg.toLowerCase().contains("unique")
-                                                || msg.toLowerCase().contains("duplicate"))) {
-                                            return new ConflictException(
-                                                    "Ya existe una persona con esos datos. Detalle: " + msg);
-                                        }
-                                        return new ConflictException(
-                                                "No se pudo crear la persona: " + msg);
-                                    })))
-                            .flatMap(persona -> appPort.existsByIdPersonaAndIdCompania(persona.getId(), req.idCompania())
-                                    .flatMap(exists -> {
-                                        if (Boolean.TRUE.equals(exists))
-                                            return Mono.<UsuarioApp>error(new ConflictException(
-                                                    "La persona ya tiene una cuenta en este gimnasio"));
-                                        // Password inutilizable: usuario OAuth-only, no debe poder loguear con contrasena.
-                                        String randomHash = encoder.encode(UUID.randomUUID().toString());
-                                        return appPort.save(UsuarioApp.builder()
-                                                .idPersona(persona.getId())
-                                                .nombrePersona(persona.getNombre())
-                                                .idCompania(req.idCompania())
-                                                .login(email)
-                                                .passwordHash(randomHash)
-                                                .requiereCambioPwd(false)
-                                                .activo(true)
-                                                .creacionUsuario("oauth:" + req.provider())
-                                                .build());
-                                    }))
-                            .flatMap(saved -> rateLimiter.reset(key).thenReturn(saved))
-                            .flatMap(this::buildAppLoginResponse)));
+                    .switchIfEmpty(Mono.defer(() -> appPort.findByPersonaCiAndIdCompania(req.ci(), req.idCompania())
+                            .flatMap(cuentaExistente -> Mono.<LoginAppResponse>error(new ConflictException(
+                                    "Ya tienes una cuenta en este gimnasio registrada con el correo "
+                                            + maskEmail(cuentaExistente.getLogin())
+                                            + ". Ingresa con ese método (Google, Facebook o correo/contraseña).")))
+                            .switchIfEmpty(Mono.defer(() -> personaPort.findByCi(req.ci())
+                                    .switchIfEmpty(Mono.defer(() -> personaPort.findByCorreo(email)))
+                                    .switchIfEmpty(Mono.defer(() -> personaPort.save(Persona.builder()
+                                            .ci(req.ci())
+                                            .nombre(req.nombre())
+                                            .correo(email)
+                                            .telefono(req.telefono())
+                                            .creacionUsuario("oauth:" + req.provider())
+                                            .build())
+                                            .onErrorMap(DataIntegrityViolationException.class, e -> {
+                                                String msg = e.getMostSpecificCause() != null
+                                                        ? e.getMostSpecificCause().getMessage() : e.getMessage();
+                                                if (msg != null && (msg.toLowerCase().contains("unique")
+                                                        || msg.toLowerCase().contains("duplicate"))) {
+                                                    return new ConflictException(
+                                                            "Ya existe una persona con esos datos. Detalle: " + msg);
+                                                }
+                                                return new ConflictException(
+                                                        "No se pudo crear la persona: " + msg);
+                                            })))
+                                    .flatMap(persona -> appPort.existsByIdPersonaAndIdCompania(persona.getId(), req.idCompania())
+                                            .flatMap(exists -> {
+                                                if (Boolean.TRUE.equals(exists))
+                                                    return Mono.<UsuarioApp>error(new ConflictException(
+                                                            "La persona ya tiene una cuenta en este gimnasio"));
+                                                // Password inutilizable: usuario OAuth-only, no debe poder loguear con contrasena.
+                                                String randomHash = encoder.encode(UUID.randomUUID().toString());
+                                                return appPort.save(UsuarioApp.builder()
+                                                        .idPersona(persona.getId())
+                                                        .nombrePersona(persona.getNombre())
+                                                        .idCompania(req.idCompania())
+                                                        .login(email)
+                                                        .passwordHash(randomHash)
+                                                        .requiereCambioPwd(false)
+                                                        .activo(true)
+                                                        .creacionUsuario("oauth:" + req.provider())
+                                                        .build());
+                                            }))
+                                    .flatMap(saved -> rateLimiter.reset(key).thenReturn(saved))
+                                    .flatMap(this::buildAppLoginResponse)))));
         });
     }
 
@@ -417,5 +423,12 @@ public class AuthApplicationService implements AuthUseCase {
         return refreshTokenPort.deleteByIdUsuarioAndTipoUsuario(idUsuario, tipo)
                 .then(refreshTokenPort.save(rt))
                 .thenReturn(token);
+    }
+
+    private static String maskEmail(String email) {
+        if (email == null) return "";
+        int at = email.indexOf('@');
+        if (at <= 1) return email;
+        return email.charAt(0) + "***" + email.substring(at);
     }
 }

@@ -60,7 +60,6 @@ let planPremiumId:    number | null = null  // expensive plan — used for upgra
 let caracCodigo:      string | null = null  // module code assigned to planBasico
 let companiaId:       number | null = null
 let sucursalId:       number | null = null
-let suscripcionId:    number | null = null  // current compania_plan id
 let personaId:        number | null = null  // created via auth-service for wizard test
 let upgradeSucceeded: boolean       = false // guard for downgrade tests
 
@@ -127,7 +126,6 @@ beforeAll(async () => {
     if (rGym?.status === 201) {
       companiaId    = rGym.data.idCompania   as number
       sucursalId    = rGym.data.idSucursal   as number
-      suscripcionId = rGym.data.idCompaniaPlan as number
     }
   }
 

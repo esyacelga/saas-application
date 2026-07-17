@@ -41,7 +41,7 @@ export function GimnasiosTab({ idPersona, readonly }: Props) {
   const [asignarOpen, setAsignarOpen] = useState(false)
   const [editarTarget, setEditarTarget] = useState<ClientePorPersona | null>(null)
   const [eliminarTarget, setEliminarTarget] = useState<ClientePorPersona | null>(null)
-  const [deleting, setDeleting] = useState(false)
+  const [, setDeleting] = useState(false)
 
   const load = () => {
     setLoading(true)

@@ -31,9 +31,6 @@ type FormData = z.infer<typeof schema>
 const inputClass =
   'w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-orange-400 transition bg-[var(--input-bg)] border-[var(--page-border)] text-[var(--page-text)] placeholder:text-[var(--page-muted)]'
 
-const readonlyClass =
-  'w-full rounded-lg px-3 py-2 text-sm border border-[var(--page-border)] bg-[var(--page-surface)] text-[var(--page-muted)]'
-
 interface Props {
   persona: Persona
   readonly: boolean

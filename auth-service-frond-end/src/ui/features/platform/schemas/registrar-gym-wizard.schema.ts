@@ -26,7 +26,7 @@ const usuarioBaseFields = z.object({
   confirmarPassword: z.string().min(8, passwordMin),
 })
 
-const refinePasswords = { message: 'Las contraseñas no coinciden', path: ['confirmarPassword'] } as const
+const refinePasswords = { message: 'Las contraseñas no coinciden', path: ['confirmarPassword'] }
 const passwordsMatch = (d: { password: string; confirmarPassword: string }) =>
   d.password === d.confirmarPassword
 

@@ -43,7 +43,7 @@ interface Props {
 export function EditarClienteModal({ cliente, companias, open, readonly, onClose, onActualizado }: Props) {
   const [saving, setSaving] = useState(false)
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, formState: { errors } } = useForm<z.input<typeof schema>, unknown, FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       idCompania: cliente.id_compania,

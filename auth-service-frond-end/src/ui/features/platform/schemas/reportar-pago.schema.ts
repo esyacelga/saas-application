@@ -5,7 +5,7 @@ const today = () => new Date().toISOString().slice(0, 10)
 export const reportarPagoSchema = z.object({
   idPlanDestino: z.coerce.number().int().positive('Selecciona un plan de destino'),
   monto: z.coerce
-    .number({ invalid_type_error: 'El monto debe ser un número' })
+    .number({ error: 'El monto debe ser un número' })
     .positive('El monto debe ser mayor a 0')
     .refine(v => Number(v.toFixed(2)) === v || String(v).replace(/^\d+\.?/, '').length <= 2, {
       message: 'El monto no puede tener más de 2 decimales',

@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowLeft } from 'lucide-react'
@@ -12,7 +13,6 @@ const AVATAR_MUJER  = import.meta.env.VITE_AVATAR_MUJER_URL as string
 const SEXO_OPTIONS = [
   { value: 'M' as const, avatar: AVATAR_HOMBRE, labelKey: 'clientes.sexoM', fotoUrl: AVATAR_HOMBRE },
   { value: 'F' as const, avatar: AVATAR_MUJER,  labelKey: 'clientes.sexoF', fotoUrl: AVATAR_MUJER  },
-  { value: 'O' as const, avatar: null,           labelKey: 'clientes.sexoO', fotoUrl: null          },
 ]
 
 interface Props {
@@ -34,7 +34,7 @@ export function CrearPersonaStep({ ci, onDatosPersona, onVolver }: Props) {
     setValue,
     watch,
     formState: { errors },
-  } = useForm<CrearPersonaFormData>({
+  } = useForm<z.input<typeof schema>, unknown, CrearPersonaFormData>({
     resolver: zodResolver(schema),
     defaultValues: { ci },
   })

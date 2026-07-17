@@ -64,8 +64,8 @@ export function PersonasPage() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [nombre, ci, correo, sexo, load])
 
-  const onPageChange = (e: { page: number }) => {
-    const p = e.page
+  const onPageChange = (e: { page?: number }) => {
+    const p = e.page ?? 0
     setCurrentPage(p)
     load({
       nombre: nombre || undefined,

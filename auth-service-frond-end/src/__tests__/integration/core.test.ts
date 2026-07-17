@@ -21,12 +21,6 @@ const RECEP  = coreRecepcionToken(99992, 1)
 // Helpers
 // ──────────────────────────────────────────────────────────────────────────────
 
-/** Returns a future ISO date string offset by `days` from today. */
-function futureDate(days: number): string {
-  const d = new Date()
-  d.setDate(d.getDate() + days)
-  return d.toISOString().split('T')[0]
-}
 
 /** Returns today's ISO date string. */
 function today(): string {

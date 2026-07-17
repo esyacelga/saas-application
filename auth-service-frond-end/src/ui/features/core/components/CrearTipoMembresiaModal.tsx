@@ -46,7 +46,7 @@ export function CrearTipoMembresiaModal({ open, onClose, onCreado, initialStep, 
   const {
     register, handleSubmit, watch, reset, setValue,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({
+  } = useForm<z.input<typeof schema>, unknown, FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { modo_control: 'calendario', duracion_tipo: 'meses', duracion_valor: 1, precio: 0 },
   })

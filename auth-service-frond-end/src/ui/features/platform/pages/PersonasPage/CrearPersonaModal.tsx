@@ -16,13 +16,12 @@ const AVATAR_MUJER  = import.meta.env.VITE_AVATAR_MUJER_URL as string
 const SEXO_OPTIONS = [
   { value: 'M' as const, avatar: AVATAR_HOMBRE, label: 'Masculino', fotoUrl: AVATAR_HOMBRE },
   { value: 'F' as const, avatar: AVATAR_MUJER,  label: 'Femenina',  fotoUrl: AVATAR_MUJER  },
-  { value: 'O' as const, avatar: null,           label: 'Otro',      fotoUrl: null          },
 ]
 
 const schema = z.object({
   ci:               z.string().min(5, 'CI requerida'),
   nombre:           z.string().min(2, 'Nombre requerido'),
-  sexo:             z.enum(['M', 'F', 'O']).optional(),
+  sexo:             z.enum(['M', 'F']).optional(),
   telefono:         z.string().optional(),
   correo:           z.string().email('Correo inválido').optional().or(z.literal('')),
   fecha_nacimiento: z.string().optional(),
