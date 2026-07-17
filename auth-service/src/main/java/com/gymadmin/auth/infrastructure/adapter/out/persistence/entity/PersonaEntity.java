@@ -26,6 +26,9 @@ public class PersonaEntity extends BaseAuditEntity {
     @Column("ci")
     private String ci;
 
+    @Column("ci_validada")
+    private Boolean ciValidada;
+
     @Column("nombre")
     private String nombre;
 

@@ -62,6 +62,7 @@ Authorization: Bearer {accessToken}
       "fotoUrl": "https://res.cloudinary.com/...",
       "sexo": "F",
       "fechaNacimiento": "1990-05-15",
+      "ciValidada": true,
       "createdAt": "2026-05-18T10:00:00Z"
     }
   ],
@@ -99,6 +100,7 @@ Authorization: Bearer {accessToken}
   "fotoUrl": null,
   "sexo": "F",
   "fechaNacimiento": "1990-05-15",
+  "ciValidada": true,
   "createdAt": "2026-05-18T10:00:00Z"
 }
 ```
@@ -162,7 +164,7 @@ Misma estructura que `GET /personas/{id}`.
 
 ## POST /personas
 
-Crea un nuevo registro de persona.
+Crea un nuevo registro de persona. Al crear, el servidor calcula automáticamente el flag `ciValidada` aplicando el algoritmo de dígito verificador ecuatoriano (módulo 10).
 
 **Seguridad:** público. Se usa en el flujo de onboarding de nuevos clientes o empleados.
 
@@ -187,7 +189,7 @@ Content-Type: application/json
 
 | Campo | Tipo | Requerido | Descripción |
 |---|---|---|---|
-| `ci` | string | Sí | Cédula de identidad o pasaporte. Único y global. Inmutable tras creación |
+| `ci` | string | Sí | Cédula de identidad, pasaporte o documento numérico. Único y global. Inmutable tras creación |
 | `nombre` | string | Sí | Nombre completo |
 | `telefono` | string | No | Teléfono de contacto |
 | `correo` | string | No | Correo personal (puede diferir del correo corporativo de las cuentas de usuario) |
@@ -207,9 +209,14 @@ Content-Type: application/json
   "fotoUrl": null,
   "sexo": "F",
   "fechaNacimiento": "1990-05-15",
+  "ciValidada": true,
   "createdAt": "2026-06-19T10:00:00Z"
 }
 ```
+
+| Campo | Descripción |
+|---|---|
+| `ciValidada` | `true` si el `ci` es una cédula ecuatoriana válida (10 dígitos, provincia 01–24 o 30, tercer dígito < 6, dígito verificador correcto). `false` para pasaportes, RUCs, documentos extranjeros o cédulas inválidas. El servidor **nunca rechaza** el registro por este campo — es informativo |
 
 ### Errores
 
@@ -224,7 +231,7 @@ Content-Type: application/json
 
 Actualiza los datos de una persona. Todos los campos son opcionales; solo se actualizan los que se envían.
 
-La `ci` puede enviarse — si es diferente a la actual, se valida unicidad. Según las reglas de negocio configuradas en el servicio, la CI puede ser inmutable (el handler la rechaza si se intenta cambiar).
+La `ci` puede enviarse — si es diferente a la actual, se valida unicidad. El campo `ciValidada` se preserva en la actualización (el recálculo al editar `ci` está pendiente de implementación).
 
 **Seguridad:** público (o token autenticado, según configuración de SecurityConfig).
 
@@ -249,7 +256,7 @@ Todos los campos son opcionales. No enviar un campo equivale a no actualizarlo.
 
 ### Response 200
 
-Objeto `PersonaResponse` con los datos actualizados.
+Objeto `PersonaResponse` con los datos actualizados. El campo `ciValidada` se retorna sin cambios.
 
 ### Errores
 

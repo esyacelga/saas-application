@@ -274,10 +274,10 @@
       "correo": "Correo electrónico",
       "nombre": "Nombre completo",
       "nombrePlaceholder": "Tu nombre legal",
-      "ci": "Cédula o RUC",
+      "ci": "Documento de identidad",
       "ciRequired": "Requerido",
-      "ciPlaceholder": "0000000000",
-      "ciHint": "Necesitamos tu cédula para emitir tus facturas de membresía. Es un requisito del SRI.",
+      "ciPlaceholder": "Cédula, RUC o pasaporte",
+      "ciHint": "Necesitamos tu documento para emitir tus facturas de membresía.",
       "telefono": "Teléfono",
       "telefonoOptional": "Opcional",
       "telefonoPlaceholder": "0999 000 000",
@@ -290,7 +290,7 @@
     },
     "errors": {
       "nombreMin": "El nombre debe tener al menos 3 caracteres",
-      "ciFormato": "Ingresa 10 dígitos (cédula) o 13 dígitos (RUC)",
+      "ciFormato": "Ingresa solo números (cédula, RUC o documento)",
       "ciInvalido": "Cédula o RUC inválido. Verifica los dígitos.",
       "ciDuplicado": "Esta cédula ya está registrada en otro gimnasio.",
       "generic": "No se pudo completar el registro. Intenta de nuevo."

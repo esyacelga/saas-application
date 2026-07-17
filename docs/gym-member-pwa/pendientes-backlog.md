@@ -20,8 +20,11 @@ Login con Google y Facebook + flujo "completar registro" cuando el usuario no ex
 **Contratos actuales:** ver [`../auth-service/api/auth.md`](../auth-service/api/auth.md) (`/auth/app/oauth/google`, `/auth/app/oauth/facebook`, `/auth/app/oauth/completar-registro`).
 
 - El response de `oauth/google` y `oauth/facebook` ahora es `OAuthLoginResponse` con `status = "logged_in" | "registro_pendiente"`.
-- Cuando `status = "registro_pendiente"`, `LoginPage.tsx` cambia a la sub-vista `CompletarRegistroOAuth.tsx` (co-locada) que solicita cédula/RUC (obligatoria por SRI), nombre editable y teléfono opcional; luego llama `POST /auth/app/oauth/completar-registro`.
+- Cuando `status = "registro_pendiente"`, `LoginPage.tsx` cambia a la sub-vista `CompletarRegistroOAuth.tsx` (co-locada) que solicita documento de identidad (cédula, pasaporte, RUC o cualquier documento numérico — mínimo 3 caracteres), nombre editable y teléfono opcional; luego llama `POST /auth/app/oauth/completar-registro`.
+- El servidor calcula automáticamente `ciValidada` (bandera de validez según algoritmo ecuatoriano) en la `Persona` creada — `true` solo si es cédula EC válida, `false` para documentos extranjeros o inválidos. El registro nunca se rechaza por este valor.
 - El id_token/access_token vive solo en memoria del componente (no en router state ni localStorage) por su corta expiración.
+
+**Cambios en 2026-07-17:** El campo de documento (antes limitado a 10/13 dígitos para "Cédula o RUC") ahora acepta cualquier documento numérico de cualquier longitud para soportar documentos de socios extranjeros. La validación del dígito verificador y la población de `ciValidada` ocurren en el servidor.
 
 ---
 
@@ -250,7 +253,7 @@ Todos los strings están hardcodeados en español en los componentes. No hay nin
 
 | # | Tarea | Estado | Bloquea |
 |---|---|---|---|
-| 1 | OAuth Login UI | Pendiente | — |
+| 1 | OAuth Login UI | ✅ Completada (2026-07-16) | — |
 | 2 | Íconos PWA | Pendiente | Instalación en dispositivo |
 | 3 | Flujo password reset | Pendiente | — |
 | 4 | QR deep-link | Pendiente | — |

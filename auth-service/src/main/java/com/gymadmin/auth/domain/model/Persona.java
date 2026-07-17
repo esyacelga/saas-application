@@ -8,6 +8,9 @@ import java.time.OffsetDateTime;
 public class Persona {
     private Integer id;
     private String ci;
+    // TRUE cuando `ci` pasó el algoritmo del dígito verificador ecuatoriano (módulo 10).
+    // Se calcula en el servidor al crear la persona (ver PersonaMapper); nunca se confía en el cliente.
+    private Boolean ciValidada;
     private String nombre;
     private String telefono;
     private String correo;

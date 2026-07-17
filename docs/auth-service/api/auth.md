@@ -330,7 +330,9 @@ Misma estructura que `POST /auth/app/oauth/google` (mismos dos casos: `logged_in
 
 ## POST /auth/app/oauth/completar-registro
 
-Completa el alta de un cliente que se autenticó con Google/Facebook y no tenía cuenta en la compañía. Re-verifica el token OAuth para evitar suplantación, crea (o reusa) la `Persona` con la CI real que provee el usuario, crea la `UsuarioApp` y devuelve tokens de sesión.
+Completa el alta de un cliente que se autenticó con Google/Facebook y no tenía cuenta en la compañía. Re-verifica el token OAuth para evitar suplantación, crea (o reusa) la `Persona` con el documento que provee el usuario, crea la `UsuarioApp` y devuelve tokens de sesión.
+
+El servidor calcula automáticamente el flag `ciValidada` en la `Persona` usando el algoritmo de dígito verificador ecuatoriano (módulo 10): `true` solo si el documento es una cédula ecuatoriana válida; `false` para pasaportes, RUCs, documentos extranjeros o cédulas inválidas. El registro **nunca se bloquea** por este valor — es informativo.
 
 El `password_hash` de la `UsuarioApp` se genera con un valor aleatorio criptográficamente imposible de adivinar — el cliente OAuth-only **nunca** podrá loguear con `POST /auth/app/login` (contraseña), solo con el mismo proveedor OAuth.
 
@@ -357,7 +359,7 @@ Content-Type: application/json
 | `provider` | string | Sí | `"google"` o `"facebook"` |
 | `token` | string | Sí | `id_token` de Google o `access_token` de Facebook (el mismo que se envió al endpoint OAuth) |
 | `id_compania` | number | Sí | ID del gym (entero positivo) |
-| `ci` | string | Sí | Cédula (10 dígitos) o RUC (13 dígitos) — validado por regex |
+| `ci` | string | Sí | Documento numérico de identidad (cédula, pasaporte, RUC, etc.). Mínimo 3 caracteres. Cualquier documento numérico se acepta; el servidor valida si es una cédula ecuatoriana válida y puebla `ciValidada` en consecuencia |
 | `nombre` | string | Sí | Nombre completo (3–200 caracteres). Puede diferir del que trae el proveedor |
 | `telefono` | string | No | Teléfono de contacto |
 
@@ -384,11 +386,13 @@ Misma estructura que `POST /auth/app/login`:
 }
 ```
 
+**Nota:** La `Persona` creada incluye el campo `ciValidada` (no retornado en este endpoint, pero sí en `GET /personas/{id}`): `true` si el documento es una cédula ecuatoriana válida, `false` en caso contrario.
+
 ### Errores
 
 | Código | Cuándo |
 |---|---|
-| 400 | Validación falló (CI mal formada, provider distinto de `google`/`facebook`, campo faltante) |
+| 400 | Validación falló (documento vacío, provider distinto de `google`/`facebook`, campo faltante) |
 | 401 | Token OAuth inválido o expirado |
 | 409 | Ya existe una cuenta con ese correo en el gimnasio, o la persona (por CI/correo) ya tiene cuenta en este gimnasio |
 | 429 | Rate limit superado |
@@ -397,7 +401,7 @@ Misma estructura que `POST /auth/app/login`:
 
 ## POST /auth/app/registro
 
-Registra un nuevo cliente en un gym. Crea la `Persona` y la cuenta app en un solo paso.
+Registra un nuevo cliente en un gym. Crea la `Persona` y la cuenta app en un solo paso. Como este endpoint no requiere CI de entrada, se genera una CI temporal (patrón interno) y `ciValidada` siempre será `false` (la CI temporal no pasa la validación ecuatoriana). El usuario puede editar su documento real más adelante vía el perfil.
 
 ### Request
 
@@ -427,6 +431,8 @@ Content-Type: application/json
 ### Response 201 — Registro exitoso
 
 Misma estructura que `POST /auth/app/login`. El cliente queda autenticado inmediatamente.
+
+**Nota sobre `ciValidada`:** la `Persona` creada tendrá `ciValidada = false` porque la CI se genera automáticamente (CI temporal de patrón interno, no una cédula real).
 
 ### Errores
 

@@ -1,10 +1,12 @@
 # Pendiente — Validación de cédula de `identidad.personas` (`ci_validada`)
 
-> **Estado:** 🟡 **Parcial** — escritura al crear persona **ya implementada** en ruta específica
-> (platform-service auto-register wizard); falta el **backfill** de personas existentes,
-> recálculo al editar `ci`, exposición REST, e implementación en otras rutas de creación.
-> **Fecha:** 2026-07-14 (creado) · 2026-07-14 (escritura implementada) · 2026-07-16 (verificado scope).
-> **Área:** identidad / core (personas) — la escritura vive en **platform-service**.
+> **Estado:** 🟡 **Parcial** — escritura al crear persona **ya implementada** en platform-service
+> (auto-register wizard) **y en auth-service** (registro OAuth PWA + `POST /personas`, vía
+> `PersonaMapper`); falta el **backfill** de personas existentes, recálculo al editar `ci`, y
+> exposición REST.
+> **Fecha:** 2026-07-14 (creado) · 2026-07-14 (escritura platform) · 2026-07-16 (verificado scope)
+> · 2026-07-17 (escritura auth-service — registro OAuth PWA).
+> **Área:** identidad / core (personas) — la escritura vive en **platform-service** y **auth-service**.
 
 ## Requerimiento
 
@@ -46,10 +48,28 @@ El **2026-07-14** se implementó la población del campo al **crear** la persona
   (auth-service `POST /personas`, admin-created via core-service, importación desde otros
   servicios) **no** cálculan el flag hoy — quedan con el default de BD (`FALSE`).
 
+## Lo que YA está hecho (escritura al crear persona — auth-service) ✅
+
+El **2026-07-17** se extendió el cálculo a **auth-service**, que ahora lo puebla al **crear
+cualquier** persona (registro OAuth de la PWA vía `completarRegistroOauth`, auto-registro por
+correo, `POST /personas`):
+
+- **Algoritmo replicado:** `auth-service/.../domain/validation/CedulaEcuatoriana.java` — tercera
+  copia idéntica (front `validarCedula.ts` + platform + auth). Las tres deben permanecer iguales.
+- **Se puebla en el mapper (punto central de escritura):** `PersonaMapper.toEntity(...)` hace
+  `ciValidada = CedulaEcuatoriana.esValida(ci)` **solo cuando `id == null`** (INSERT). En UPDATE
+  preserva el valor de dominio. → `TRUE` solo si `ci` pasa el módulo 10; `FALSE` para documentos
+  no-EC (pasaporte, RUC, extranjero) o cédulas inválidas. Nunca rechaza el registro.
+- **Mapeo R2DBC:** `PersonaEntity.ciValidada` ↔ columna `ci_validada`; campo añadido también al
+  modelo de dominio `Persona`.
+- **Frontend PWA:** `CompletarRegistroOAuth.tsx` ya **no** limita a 10/13 dígitos — acepta
+  cualquier documento numérico (`\d+`, mín. 3) para soportar socios extranjeros. La validación del
+  dígito verificador es del lado servidor; el flag refleja si el documento es una cédula EC válida.
+
 ## Lo que falta (implementación) 📋
 
-1. **Extensión a otras rutas de creación de persona** (auth-service `POST /personas`,
-   admin-created vía core-service, etc.). Hoy solo platform-service calcula el flag.
+1. **Extensión a rutas restantes** (admin-created vía core-service, importación desde otros
+   servicios). platform-service y auth-service ya calculan el flag.
 
 2. **UPDATE path — recálculo al editar `ci`.** Si se permite **editar** el `ci` de una
    persona existente (no hay endpoint hoy), hay que recalcular `ci_validada` en esa ruta.
@@ -66,9 +86,9 @@ El **2026-07-14** se implementó la población del campo al **crear** la persona
 
 ### Notas de implementación
 
-- El algoritmo canónico vive ahora en **dos** lugares que deben permanecer idénticos:
-  frontend `src/lib/sri/validarCedula.ts` y backend `domain/validation/CedulaEcuatoriana.java`.
-  Cualquier cambio debe aplicarse a ambos.
+- El algoritmo canónico vive ahora en **tres** lugares que deben permanecer idénticos:
+  frontend `src/lib/sri/validarCedula.ts`, `platform-service/.../domain/validation/CedulaEcuatoriana.java`
+  y `auth-service/.../domain/validation/CedulaEcuatoriana.java`. Cualquier cambio debe aplicarse a los tres.
 - El flag se calcula **en el servidor**; no se confía en el cliente.
 
 ## Relacionado

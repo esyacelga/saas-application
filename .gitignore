@@ -67,3 +67,6 @@ Desktop.ini
 screenshot-*.png
 *.tmp
 *.bak
+
+# Local HTTPS certs (mkcert) — never commit private keys
+gym-member-pwa/certs/

@@ -20,6 +20,11 @@ interface FBInitOptions {
 interface Facebook {
   init(options: FBInitOptions): void
   login(callback: (response: FBLoginResponse) => void, options?: { scope: string }): void
+  api(
+    path: string,
+    params: { fields: string },
+    callback: (response: unknown) => void,
+  ): void
 }
 
 declare global {

@@ -274,10 +274,10 @@
       "correo": "Email address",
       "nombre": "Full name",
       "nombrePlaceholder": "Your legal name",
-      "ci": "ID or Tax Number",
+      "ci": "Identity document",
       "ciRequired": "Required",
-      "ciPlaceholder": "0000000000",
-      "ciHint": "We need your ID to issue your membership invoices. This is required by Ecuador's tax authority (SRI).",
+      "ciPlaceholder": "ID, Tax Number or passport",
+      "ciHint": "We need your document to issue your membership invoices.",
       "telefono": "Phone",
       "telefonoOptional": "Optional",
       "telefonoPlaceholder": "0999 000 000",
@@ -290,7 +290,7 @@
     },
     "errors": {
       "nombreMin": "Name must be at least 3 characters",
-      "ciFormato": "Enter 10 digits (ID) or 13 digits (Tax Number)",
+      "ciFormato": "Enter digits only (ID, Tax Number or document)",
       "ciInvalido": "Invalid ID or Tax Number. Please check the digits.",
       "ciDuplicado": "This ID is already registered at another gym.",
       "generic": "Could not complete registration. Please try again."

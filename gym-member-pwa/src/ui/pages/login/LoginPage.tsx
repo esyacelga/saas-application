@@ -324,8 +324,23 @@ export function LoginPage() {
         }
         window.FB.login(
             (response) => {
-                if (!response.authResponse?.accessToken) return
+                // eslint-disable-next-line no-console
+                console.log('[FB.login] respuesta completa:', response)
+                // eslint-disable-next-line no-console
+                console.log('[FB.login] status:', response.status, '| authResponse:', response.authResponse)
+                if (!response.authResponse?.accessToken) {
+                    // eslint-disable-next-line no-console
+                    console.warn('[FB.login] SIN accessToken. status =', response.status,
+                        '— si es "unknown" en http://, Facebook bloqueó el login por no ser HTTPS.')
+                    toast.error(t('login.errors.facebookError'))
+                    return
+                }
                 const fbToken = response.authResponse.accessToken
+                // Imprime la info del perfil de Facebook para depurar
+                window.FB.api('/me', {fields: 'id,name,email,picture'}, (me: unknown) => {
+                    // eslint-disable-next-line no-console
+                    console.log('[FB.api /me] perfil de Facebook:', me)
+                })
                 setLoading(true)
                 authRepository
                     .loginFacebook({access_token: fbToken, id_compania})

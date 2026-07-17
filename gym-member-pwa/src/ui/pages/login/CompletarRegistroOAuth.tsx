@@ -102,7 +102,10 @@ export function CompletarRegistroOAuth({
 
   const schema = z.object({
     nombre: z.string().min(3, t('completarRegistroOauth.errors.nombreMin')),
-    ci: z.string().regex(/^\d{10}$|^\d{13}$/, t('completarRegistroOauth.errors.ciFormato')),
+    ci: z
+      .string()
+      .min(3, t('completarRegistroOauth.errors.ciFormato'))
+      .regex(/^\d+$/, t('completarRegistroOauth.errors.ciFormato')),
     telefono: z.string().optional(),
   })
   type FormData = z.infer<typeof schema>
