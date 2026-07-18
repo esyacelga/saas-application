@@ -53,6 +53,7 @@ BEGIN
     -- core
     (v_id_compania, v_id_sucursal, 'clientes:leer',                   'Consultar listado y detalle de clientes',           'core'),
     (v_id_compania, v_id_sucursal, 'membresias:leer',                 'Consultar listado y detalle de membresías',         'core'),
+    (v_id_compania, v_id_sucursal, 'membresias:confirmar_pago',       'Confirmar o rechazar el pago de una membresía',     'core'),
     -- asistencia
     (v_id_compania, v_id_sucursal, 'asistencia:registrar',            'Registrar entradas y salidas de clientes',          'asistencia'),
     -- finanzas
