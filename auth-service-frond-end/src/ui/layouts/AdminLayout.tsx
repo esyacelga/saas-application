@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { CreditCard, Dumbbell, LayoutDashboard, LogOut, Menu, Palette, Printer, ScrollText, Settings, Shield, Smartphone, Sparkles, Tag, Users, X } from 'lucide-react'
+import { Clock, CreditCard, Dumbbell, LayoutDashboard, LogOut, Menu, Palette, Printer, ScrollText, Settings, Shield, Smartphone, Sparkles, Tag, Users, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { LanguageSwitcher } from '@/ui/components/LanguageSwitcher'
@@ -25,6 +25,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { to: '/admin/dashboard',        labelKey: 'nav.dashboard',        icon: <LayoutDashboard size={20} /> },
   { to: '/admin/clientes',         labelKey: 'nav.clientes',         icon: <Users size={20} />,        permiso: 'clientes:leer', end: true },
   { to: '/admin/tipos-membresia',  labelKey: 'nav.tiposMembresia',   icon: <Tag size={20} />,          permiso: 'membresias:leer' },
+  { to: '/admin/ventas-pendientes', labelKey: 'nav.ventasPendientes', icon: <Clock size={20} />,        permiso: 'membresias:confirmar_pago' },
   { to: '/admin/usuarios',         labelKey: 'nav.users',            icon: <CreditCard size={20} />,   permiso: 'usuarios:leer' },
   { to: '/admin/roles',            labelKey: 'nav.rolesPermissions', icon: <Shield size={20} />,       permiso: 'roles:leer' },
   { to: '/admin/clientes/app',     labelKey: 'nav.appAccounts',      icon: <Smartphone size={20} /> },

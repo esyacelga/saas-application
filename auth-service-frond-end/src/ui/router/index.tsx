@@ -29,6 +29,7 @@ import { PagosPendientesPage } from '@/ui/features/platform/pages/PagosPendiente
 import { NotifBucketsPage } from '@/ui/features/platform/pages/NotifBucketsPage'
 import { ClientesPage } from '@/ui/features/core/pages/ClientesPage'
 import { TiposMembresiaPage } from '@/ui/features/core/pages/TiposMembresiaPage'
+import { VentasPendientesPage } from '@/ui/features/core/pages/VentasPendientesPage'
 import { ConfiguracionPage } from '@/ui/features/admin/pages/ConfiguracionPage'
 import { DashboardPage } from '@/ui/features/admin/pages/DashboardPage'
 import { MiSuscripcionPage } from '@/ui/features/admin/pages/MiSuscripcionPage'
@@ -66,6 +67,7 @@ export const router = createBrowserRouter([
           { path: '/admin/roles', element: <RolesPage /> },
           { path: '/admin/clientes', element: <ClientesPage /> },
           { path: '/admin/tipos-membresia', element: <TiposMembresiaPage /> },
+          { path: '/admin/ventas-pendientes', element: <VentasPendientesPage /> },
           { path: '/admin/configuracion', element: <ConfiguracionPage /> },
           { path: '/admin/mi-suscripcion', element: <MiSuscripcionPage /> },
         ],

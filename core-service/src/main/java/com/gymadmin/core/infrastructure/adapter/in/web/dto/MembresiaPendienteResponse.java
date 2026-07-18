@@ -13,6 +13,7 @@ import java.time.OffsetDateTime;
 public record MembresiaPendienteResponse(
         Long id,
         Long idCliente,
+        String nombreCliente,
         Long idTipoMembresia,
         String tipoNombre,
         String modoControl,
@@ -24,6 +25,7 @@ public record MembresiaPendienteResponse(
         return new MembresiaPendienteResponse(
                 r.membresia().getId(),
                 r.membresia().getIdCliente(),
+                r.nombreCliente(),
                 r.membresia().getIdTipoMembresia(),
                 r.tipoNombre(),
                 r.modoControl(),

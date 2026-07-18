@@ -60,6 +60,7 @@ public interface MembresiaUseCase {
     record MembresiaPendienteResult(
         Membresia membresia,
         String tipoNombre,
-        String modoControl
+        String modoControl,
+        String nombreCliente
     ) {}
 }

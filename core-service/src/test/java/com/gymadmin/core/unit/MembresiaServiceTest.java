@@ -7,6 +7,7 @@ import com.gymadmin.core.domain.model.TipoMembresia;
 import com.gymadmin.core.domain.port.in.MembresiaUseCase;
 import com.gymadmin.core.domain.port.out.ClienteRepository;
 import com.gymadmin.core.domain.port.out.MembresiaRepository;
+import com.gymadmin.core.domain.port.out.PersonaRepository;
 import com.gymadmin.core.domain.port.out.TipoMembresiaRepository;
 import com.gymadmin.core.infrastructure.exception.BusinessException;
 import com.gymadmin.core.infrastructure.exception.ConflictException;
@@ -48,6 +49,9 @@ class MembresiaServiceTest {
 
     @Mock
     private ClienteRepository clienteRepository;
+
+    @Mock
+    private PersonaRepository personaRepository;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -869,7 +873,7 @@ class MembresiaServiceTest {
     class ListarPendientes {
 
         @Test
-        @DisplayName("enriquece cada pendiente con nombre y modo del tipo")
+        @DisplayName("enriquece cada pendiente con nombre y modo del tipo y nombre del cliente")
         void enriqueceConTipo() {
             Membresia p1 = buildMembresia(1L, 10L, 1L, 2L, Membresia.Estado.activa, null, null);
             p1.setEstadoPago(Membresia.EstadoPago.PENDIENTE);
@@ -881,17 +885,26 @@ class MembresiaServiceTest {
             TipoMembresia tipoAcc = buildTipo(3L, TipoMembresia.ModoControl.accesos,
                     TipoMembresia.DuracionTipo.meses, 1, 10, BigDecimal.valueOf(60));
 
+            Cliente c1 = new Cliente(); c1.setId(10L); c1.setIdPersona(100L);
+            Cliente c2 = new Cliente(); c2.setId(11L); c2.setIdPersona(101L);
+
             when(membresiaRepository.findPendientesPorCompania(1L)).thenReturn(Flux.just(p1, p2));
             when(tipoMembresiaRepository.findById(2L)).thenReturn(Mono.just(tipoCal));
             when(tipoMembresiaRepository.findById(3L)).thenReturn(Mono.just(tipoAcc));
+            when(clienteRepository.findById(10L)).thenReturn(Mono.just(c1));
+            when(clienteRepository.findById(11L)).thenReturn(Mono.just(c2));
+            when(personaRepository.findNombreById(100L)).thenReturn(Mono.just("Ana Pérez"));
+            when(personaRepository.findNombreById(101L)).thenReturn(Mono.just("Bruno Díaz"));
 
             StepVerifier.create(membresiaService.listarPendientesPorCompania(1L))
                     .expectNextMatches(r -> r.membresia().getId().equals(1L)
                             && "Tipo 2".equals(r.tipoNombre())
-                            && "calendario".equals(r.modoControl()))
+                            && "calendario".equals(r.modoControl())
+                            && "Ana Pérez".equals(r.nombreCliente()))
                     .expectNextMatches(r -> r.membresia().getId().equals(2L)
                             && "Tipo 3".equals(r.tipoNombre())
-                            && "accesos".equals(r.modoControl()))
+                            && "accesos".equals(r.modoControl())
+                            && "Bruno Díaz".equals(r.nombreCliente()))
                     .verifyComplete();
         }
     }

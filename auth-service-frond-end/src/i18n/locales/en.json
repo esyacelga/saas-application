@@ -191,7 +191,8 @@
     "configuracion": "Settings",
     "pagosPendientes": "Pending payments",
     "miSuscripcion": "My subscription",
-    "notifBuckets": "WhatsApp Alerts"
+    "notifBuckets": "WhatsApp Alerts",
+    "ventasPendientes": "Pending Sales"
   },
   "dashboard": {
     "welcome": "Welcome",
@@ -1221,6 +1222,43 @@
       "motivoRechazo": "Rejection reason",
       "fechaAprobacion": "Approval date",
       "verComprobante": "View attached receipt"
+    }
+  },
+  "ventasPendientes": {
+    "title": "Pending Sales",
+    "description": "Queue of sold memberships awaiting payment",
+    "colCliente": "Client",
+    "colTipo": "Membership type",
+    "colPrecio": "Price",
+    "colDescuento": "Discount",
+    "colPendienteDesde": "Pending since",
+    "colAcciones": "Actions",
+    "accionConfirmar": "Confirm",
+    "accionRechazar": "Reject",
+    "tooltipConfirmar": "Mark as paid",
+    "tooltipRechazar": "Reject this sale",
+    "haceN_one": "{{count}} day ago",
+    "haceN_other": "{{count}} days ago",
+    "emptyTitle": "No pending sales",
+    "emptySubtitle": "All sales have been processed.",
+    "emptyFiltered": "No results for \"{{q}}\"",
+    "loadError": "Failed to load the list.",
+    "confirmadaSuccess": "Payment confirmed. Membership activated.",
+    "rechazadaSuccess": "Sale rejected.",
+    "confirmarError409": "This membership was already rejected. Reload the list.",
+    "accionError": "An error occurred. Try again.",
+    "rechazarTitle": "Reject sale for {{nombre}}",
+    "rechazarAviso": "The membership will be cancelled. This action cannot be undone.",
+    "rechazarMotivoLabel": "Rejection reason",
+    "rechazarMotivoPlaceholder": "Select reason...",
+    "rechazarSubmit": "Reject sale",
+    "rechazarError409": "Cannot reject: membership already paid or already rejected.",
+    "motivo": {
+      "socioCambioOpinion": "Member changed their mind",
+      "errorDeVenta": "Sale entry error",
+      "duplicada": "Duplicate sale",
+      "datosIncorrectos": "Incorrect data",
+      "otro": "Other"
     }
   }
 }

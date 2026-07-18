@@ -16,6 +16,7 @@ import javax.crypto.SecretKey;
 import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -60,6 +61,16 @@ public abstract class BaseIntegrationTest {
 
     protected String jwtSuperAdmin() {
         return buildJwt("1", "plataforma", "super_admin", null);
+    }
+
+    /**
+     * Token staff con lista de {@code permisos} explícita. Sirve para probar el gate
+     * granular de {@code membresias:confirmar_pago}: si el token trae permisos
+     * pero no incluye la clave, el controller responde 403 (ver
+     * {@link com.gymadmin.core.infrastructure.adapter.in.web.MembresiaController#requireConfirmarPagoPermiso}).
+     */
+    protected String jwtRecepcionConPermisos(long idCompania, List<String> permisos) {
+        return buildJwt("3", "staff", "Recepción", idCompania, permisos);
     }
 
     protected String bearer(String jwt) {
@@ -140,6 +151,46 @@ public abstract class BaseIntegrationTest {
                 .block();
     }
 
+    /**
+     * Inserta una membresía en estado PENDIENTE (sin fechas, respetando
+     * {@code ck_membresias_fechas_por_estado_pago}) y la retorna vía id.
+     */
+    protected Long seedMembresiaPendiente(Long idCliente, Long idTipo) {
+        return databaseClient.sql(
+                "INSERT INTO core.membresias(id_compania, id_sucursal, id_cliente, id_tipo_membresia, " +
+                "precio_pagado, descuento_aplicado, estado, estado_pago, creacion_usuario) " +
+                "VALUES (:comp, :suc, :cli, :tipo, 35.00, 0, 'activa', 'PENDIENTE', 'test') RETURNING id")
+                .bind("comp", TEST_COMPANIA)
+                .bind("suc", TEST_SUCURSAL)
+                .bind("cli", idCliente)
+                .bind("tipo", idTipo)
+                .map(row -> row.get("id", Long.class))
+                .one()
+                .block();
+    }
+
+    /**
+     * Inserta una membresía PENDIENTE marcada como rechazada (eliminado=true,
+     * con motivo/fecha/actor obligatorios por {@code ck_membresias_motivo_si_eliminado}).
+     */
+    protected Long seedMembresiaRechazada(Long idCliente, Long idTipo, String motivo) {
+        return databaseClient.sql(
+                "INSERT INTO core.membresias(id_compania, id_sucursal, id_cliente, id_tipo_membresia, " +
+                "precio_pagado, descuento_aplicado, estado, estado_pago, eliminado, fecha_eliminacion, " +
+                "eliminado_por, motivo_eliminacion, creacion_usuario) " +
+                "VALUES (:comp, :suc, :cli, :tipo, 35.00, 0, 'activa', 'PENDIENTE', true, NOW(), " +
+                ":usr, :motivo, 'test') RETURNING id")
+                .bind("comp", TEST_COMPANIA)
+                .bind("suc", TEST_SUCURSAL)
+                .bind("cli", idCliente)
+                .bind("tipo", idTipo)
+                .bind("usr", (int) TEST_USUARIO)
+                .bind("motivo", motivo)
+                .map(row -> row.get("id", Long.class))
+                .one()
+                .block();
+    }
+
     /** Inserta una membresía accesos activa y devuelve su id. */
     protected Long seedMembresiaAccesos(Long idCliente, Long idTipo, int diasTotal) {
         return databaseClient.sql(
@@ -192,10 +243,15 @@ public abstract class BaseIntegrationTest {
     }
 
     private String buildJwt(String subject, String tipo, String rol, Long idCompania) {
+        return buildJwt(subject, tipo, rol, idCompania, null);
+    }
+
+    private String buildJwt(String subject, String tipo, String rol, Long idCompania, List<String> permisos) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("tipo", tipo);
         if (rol != null)        claims.put("rol_plataforma", rol);
         if (idCompania != null) claims.put("id_compania", idCompania);
+        if (permisos != null)   claims.put("permisos", permisos);
         return Jwts.builder()
                 .subject(subject)
                 .claims(claims)

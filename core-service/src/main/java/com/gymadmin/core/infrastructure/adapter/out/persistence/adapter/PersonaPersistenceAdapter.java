@@ -32,6 +32,14 @@ public class PersonaPersistenceAdapter implements PersonaRepository {
     }
 
     @Override
+    public Mono<String> findNombreById(Long id) {
+        return databaseClient.sql("SELECT nombre FROM identidad.personas WHERE id = :id AND eliminado = false")
+                .bind("id", id)
+                .map((row, meta) -> row.get("nombre", String.class))
+                .one();
+    }
+
+    @Override
     public Mono<PersonaResult> create(CreatePersonaCommand command) {
         var spec = databaseClient.sql("""
                 INSERT INTO identidad.personas (ci, nombre, telefono, correo, fecha_nacimiento, foto_url)

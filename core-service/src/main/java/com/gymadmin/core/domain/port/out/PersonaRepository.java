@@ -6,6 +6,8 @@ public interface PersonaRepository {
 
     Mono<PersonaResult> findByCi(String ci);
 
+    Mono<String> findNombreById(Long id);
+
     Mono<PersonaResult> create(CreatePersonaCommand command);
 
     record PersonaResult(Long id, String ci, String nombre, String telefono, String correo, String fotoUrl) {}

@@ -191,7 +191,8 @@
     "configuracion": "Configuración",
     "pagosPendientes": "Pagos pendientes",
     "miSuscripcion": "Mi suscripción",
-    "notifBuckets": "Avisos WhatsApp"
+    "notifBuckets": "Avisos WhatsApp",
+    "ventasPendientes": "Ventas pendientes"
   },
   "dashboard": {
     "welcome": "Bienvenido",
@@ -1221,6 +1222,43 @@
       "motivoRechazo": "Motivo rechazo",
       "fechaAprobacion": "Fecha aprobación",
       "verComprobante": "Ver comprobante adjunto"
+    }
+  },
+  "ventasPendientes": {
+    "title": "Ventas pendientes",
+    "description": "Cola de membresías vendidas pendientes de cobro",
+    "colCliente": "Cliente",
+    "colTipo": "Tipo de membresía",
+    "colPrecio": "Precio",
+    "colDescuento": "Descuento",
+    "colPendienteDesde": "Pendiente desde",
+    "colAcciones": "Acciones",
+    "accionConfirmar": "Confirmar",
+    "accionRechazar": "Rechazar",
+    "tooltipConfirmar": "Marcar como pagada",
+    "tooltipRechazar": "Rechazar esta venta",
+    "haceN_one": "hace {{count}} día",
+    "haceN_other": "hace {{count}} días",
+    "emptyTitle": "No hay ventas pendientes de cobro",
+    "emptySubtitle": "Todas las ventas han sido procesadas.",
+    "emptyFiltered": "Sin resultados para \"{{q}}\"",
+    "loadError": "No se pudo cargar la lista.",
+    "confirmadaSuccess": "Pago confirmado. Membresía activada.",
+    "rechazadaSuccess": "Venta rechazada correctamente.",
+    "confirmarError409": "Esta membresía fue rechazada. Recarga la lista.",
+    "accionError": "Ocurrió un error. Intenta de nuevo.",
+    "rechazarTitle": "Rechazar venta de {{nombre}}",
+    "rechazarAviso": "La membresía quedará anulada. Esta acción no se puede deshacer.",
+    "rechazarMotivoLabel": "Motivo de rechazo",
+    "rechazarMotivoPlaceholder": "Seleccionar motivo...",
+    "rechazarSubmit": "Rechazar venta",
+    "rechazarError409": "No se puede rechazar: membresía ya pagada o ya rechazada.",
+    "motivo": {
+      "socioCambioOpinion": "El socio cambió de opinión",
+      "errorDeVenta": "Error en la venta",
+      "duplicada": "Venta duplicada",
+      "datosIncorrectos": "Datos incorrectos",
+      "otro": "Otro"
     }
   }
 }

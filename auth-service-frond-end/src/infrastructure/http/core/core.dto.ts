@@ -231,3 +231,48 @@ export interface CongelamientoHistorial {
   motivo: MotivoCongelamiento
   retroactivo: boolean
 }
+
+// ── Ventas pendientes ─────────────────────────────────────────────────────────
+
+export interface VentaPendienteRaw {
+  id: number
+  id_cliente: number
+  nombre_cliente: string | null
+  id_tipo_membresia: number
+  tipo_nombre: string
+  modo_control: 'calendario' | 'accesos'
+  precio_pagado: string
+  descuento_aplicado: string
+  creacion_fecha: string
+}
+
+export interface VentaPendiente {
+  id: number
+  idCliente: number
+  nombreCliente: string | null
+  idTipoMembresia: number
+  tipoNombre: string
+  modoControl: 'calendario' | 'accesos'
+  precioPagado: string
+  descuentoAplicado: string
+  creacionFecha: string
+}
+
+export interface MembresiaResponse {
+  id: number
+  id_cliente: number
+  id_tipo_membresia: number
+  fecha_inicio: string | null
+  fecha_fin: string | null
+  dias_acceso_total: number | null
+  precio_pagado: string
+  descuento_aplicado: string
+  estado: string
+  estado_pago: string
+  eliminado: boolean
+  motivo_eliminacion: string | null
+}
+
+export interface RechazarMembresiaDto {
+  motivo_eliminacion: string
+}

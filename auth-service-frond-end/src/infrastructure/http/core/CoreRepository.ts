@@ -5,6 +5,7 @@ import type {
   ActualizarClienteDto, BuscarPorCiResponse, ClientePorPersona, ActualizarClientePlataformaDto,
   MembresiaHistorial, MembresiaDetalle, VenderMembresiaDto, AnularMembresiaDto,
   CongelarMembresiaDto, CongelarResponse, ReactivarResponse, CongelamientoHistorial,
+  VentaPendienteRaw, VentaPendiente, MembresiaResponse, RechazarMembresiaDto,
 } from './core.dto'
 
 // ── Tipos de membresía ───────────────────────────────────────────────────────
@@ -118,6 +119,34 @@ async function getCongelamientos(idMembresia: number): Promise<CongelamientoHist
   return data
 }
 
+// ── Ventas pendientes ─────────────────────────────────────────────────────────
+
+async function getPendientes(idCompania: number): Promise<VentaPendiente[]> {
+  const { data } = await coreApi.get<VentaPendienteRaw[]>(`/companias/${idCompania}/membresias/pendientes`)
+  return data.map(r => ({
+    id: r.id,
+    idCliente: r.id_cliente,
+    nombreCliente: r.nombre_cliente,
+    idTipoMembresia: r.id_tipo_membresia,
+    tipoNombre: r.tipo_nombre,
+    modoControl: r.modo_control,
+    precioPagado: r.precio_pagado,
+    descuentoAplicado: r.descuento_aplicado,
+    creacionFecha: r.creacion_fecha,
+  }))
+}
+
+async function confirmarPago(idMembresia: number): Promise<MembresiaResponse> {
+  const { data } = await coreApi.post<MembresiaResponse>(`/membresias/${idMembresia}/confirmar-pago`)
+  return data
+}
+
+async function rechazarMembresia(idMembresia: number, motivo: string): Promise<MembresiaResponse> {
+  const body: RechazarMembresiaDto = { motivo_eliminacion: motivo }
+  const { data } = await coreApi.post<MembresiaResponse>(`/membresias/${idMembresia}/rechazar`, body)
+  return data
+}
+
 export const coreRepository = {
   getTiposMembresia,
   crearTipoMembresia,
@@ -140,4 +169,7 @@ export const coreRepository = {
   congelarMembresia,
   reactivarCongelamiento,
   getCongelamientos,
+  getPendientes,
+  confirmarPago,
+  rechazarMembresia,
 }

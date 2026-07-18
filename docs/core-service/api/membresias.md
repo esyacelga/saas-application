@@ -57,7 +57,7 @@ Service: core-service (port 8083)
 ### POST /api/v1/clientes/{id}/membresias
 **Auth:** Bearer JWT (`tipo: staff`)  
 **Permission:** `requireRecepcionOrAbove()`  
-**Description:** Vender (crear) una membresía a un cliente. Calcula `fecha_fin` según el tipo.
+**Description:** Vender (crear) una membresía a un cliente. Calcula `fecha_fin` según el tipo. Soporta ventas cobradas al momento (`estado_pago = PAGADO`) y ventas pendientes de pago (`estado_pago = PENDIENTE`, reservado para el flujo de compra desde la PWA — HU-B).
 
 **Path param:**
 - `id` — ID del cliente
@@ -68,15 +68,21 @@ Service: core-service (port 8083)
   "id_tipo_membresia": 3,
   "fecha_inicio": "2026-01-15",
   "id_metodo_pago": 1,
-  "descuento_aplicado": "10.00"
+  "descuento_aplicado": "10.00",
+  "estado_pago": "PAGADO"
 }
 ```
 
 **Body fields:**
 - `id_tipo_membresia` (required, integer) — Membership type ID from `tipos-membresia`
-- `fecha_inicio` (required, date `YYYY-MM-DD`) — Start date
+- `fecha_inicio` (required, date `YYYY-MM-DD`) — Start date (ignorado cuando `estado_pago = PENDIENTE`)
 - `id_metodo_pago` (optional, integer) — Payment method ID
 - `descuento_aplicado` (optional, decimal >= 0) — Discount amount
+- `estado_pago` (optional, enum: `PAGADO` \| `PENDIENTE`, default `PAGADO`) — Estado de cobro de la venta. Con `PENDIENTE`, `fecha_inicio`/`fecha_fin` se persisten como `null` (respetando el CHECK `ck_membresias_fechas_por_estado_pago`) y no se dispara efecto sobre el estado del cliente ni evento hacia billing.
+
+**Validaciones de negocio:**
+- Si `estado_pago = PAGADO` y el cliente ya tiene otra `PAGADA` activa → `409 Conflict`.
+- Si `estado_pago = PENDIENTE` y el cliente ya tiene otra `PENDIENTE` viva (`estado_pago = PENDIENTE` y `eliminado = false`) → `409 Conflict`. Se permite coexistencia `PAGADA activa + PENDIENTE nueva` (renovación anticipada).
 
 **Response 201:**
 ```json
@@ -89,16 +95,21 @@ Service: core-service (port 8083)
   "dias_acceso_total": 90,
   "precio_pagado": "150.00",
   "descuento_aplicado": "10.00",
-  "estado": "ACTIVA"
+  "estado": "activa",
+  "estado_pago": "PAGADO",
+  "eliminado": false,
+  "motivo_eliminacion": null
 }
 ```
 
 **Errors:**
-- `400` — invalid request (missing required fields, invalid dates)
+- `400` — invalid request (missing required fields, invalid dates, valor de `estado_pago` fuera del catálogo)
 - `401` — missing or invalid JWT
 - `403` — insufficient permissions
 - `404` — client or membership type not found
-- `409` — business rule conflict (e.g., active membership already exists)
+- `409` — business rule conflict (`El cliente ya tiene una membresía activa` o `El cliente ya tiene una membresía pendiente de pago`)
+
+> Revisar contra código: `MembresiaController#vender` + `MembresiaService#vender` (§4.4 de `docs/gym-administrator/requirements/estado-pago-membresias.md`).
 
 ---
 
@@ -211,7 +222,7 @@ Service: core-service (port 8083)
 
 ### GET /api/v1/membresias/validar-acceso
 **Auth:** None (PUBLIC endpoint)  
-**Description:** Validar si una persona puede acceder al gym. Usada por sistemas de acceso (turnstiles, QR readers). Devuelve estado de la membresía y accesos restantes.
+**Description:** Validar si una persona puede acceder al gym. Usada por sistemas de acceso (turnstiles, QR readers) y consumida vía HTTP por `attendance-service` (`CoreServiceClient.validarAcceso`), que propaga el `razon` como `ForbiddenException` sin traducirlo. El texto amigable vive en el i18n de la PWA/kiosko.
 
 **Query parameters:**
 - `id_persona` (required, integer) — Person ID from `identidad.personas`
@@ -235,7 +246,7 @@ Service: core-service (port 8083)
 ```json
 {
   "permitido": false,
-  "razon": "Sin membresía activa",
+  "razon": "sin_membresia",
   "tipo_membresia": "Plan Mensual",
   "ultima_membresia_fin": "2026-04-15",
   "accesos_usados": 5,
@@ -255,20 +266,168 @@ Service: core-service (port 8083)
 
 **Response fields (acceso denegado):**
 - `permitido` — Always `false` for 403
-- `razon` — Reason why access is denied
+- `razon` — Código corto (snake_case) explicando el bloqueo. Ver catálogo abajo.
 - `tipo_membresia` — (Optional) Last membership type
 - `ultima_membresia_fin` — (Optional) Last membership end date
 - `accesos_usados` — (Optional) If the last membership was access-based
 - `accesos_total` — (Optional) Total accesses of last membership
 
-**Possible reasons (razon):**
-- `Sin membresía activa` — No active membership
-- `Membresía vencida` — Membership expired
-- `Sin accesos disponibles` — Access-based membership has no remaining visits
+**Catálogo de `razon` (códigos cortos, snake_case):**
+
+| Código | Situación | Origen |
+|--------|-----------|--------|
+| `pago_pendiente` | Existe una membresía con `estado_pago = PENDIENTE` viva | §4.5 GYM-003 |
+| `membresia_rechazada` | La membresía fue soft-deleted (`eliminado = true`) | §4.5 GYM-003 |
+| `sin_membresia` | No existe membresía activa ni cliente registrado | histórico |
+| `membresia_congelada` | Estado `congelada` en curso | histórico |
+| `membresia_vencida` | Estado `vencida` o `fecha_fin < hoy` | histórico |
+| `accesos_agotados` | Membresía por accesos con `usados >= total` | histórico |
+
+**Orden de evaluación (importante):** las razones `pago_pendiente` y `membresia_rechazada` se evalúan **antes** que `sin_membresia`, `membresia_congelada`, `membresia_vencida` y `accesos_agotados`. Consecuencia: un cliente cuya única "activa" es una PENDIENTE + tiene una PAGADA vencida reporta `pago_pendiente` (no `membresia_vencida`).
 
 **Errors:**
 - `400` — missing or invalid query parameters
-- `403` — access denied (see response body for razon)
+- `403` — access denied (see response body for `razon`)
+
+> Revisar contra código: `MembresiaController#validarAcceso` + `MembresiaService#resolverAcceso/evaluarMembresia`.
+
+---
+
+### POST /api/v1/membresias/{id}/confirmar-pago
+**Auth:** Bearer JWT (`tipo: staff`)  
+**Permission:** `requireRecepcionOrAbove()` + permiso granular `membresias:confirmar_pago` (se exige solo si el token trae la lista `permisos` explícita; los tokens legacy sin `permisos` y `super_admin` la bypass-ean — el gate real vive en `MembresiaController#requireConfirmarPagoPermiso`).  
+**Description:** Marca una membresía `PENDIENTE` como `PAGADO`. Calcula `fecha_inicio = hoy` y `fecha_fin = hoy + duración`. Publica `MembresiaPagadaEvent` en el bus interno (Spring `ApplicationEventPublisher`) solo en la transición real. Idempotente sobre membresías ya `PAGADO`.
+
+**Path param:**
+- `id` — Membership ID
+
+**Request body:** ninguno.
+
+**Response 200:**
+```json
+{
+  "id": 1,
+  "id_cliente": 10,
+  "id_tipo_membresia": 3,
+  "fecha_inicio": "2026-07-17",
+  "fecha_fin": "2026-08-17",
+  "dias_acceso_total": null,
+  "precio_pagado": "35.00",
+  "descuento_aplicado": "0.00",
+  "estado": "activa",
+  "estado_pago": "PAGADO",
+  "eliminado": false,
+  "motivo_eliminacion": null
+}
+```
+
+**Reglas:**
+- Idempotente: si la membresía ya está `PAGADO`, devuelve `200 OK` con el recurso actual (no recalcula fechas, no re-emite evento).
+- Si `eliminado = true` → `409 Conflict` con mensaje `"La membresía fue rechazada y no puede confirmarse"`.
+- Efecto lateral: cambia el estado del cliente a `activo`.
+
+**Errors:**
+- `401` — missing or invalid JWT
+- `403` — sin permiso `membresias:confirmar_pago`, o compañía distinta
+- `404` — membership o tipo de membresía no encontrados
+- `409` — membresía rechazada (`eliminado = true`)
+
+> Revisar contra código: `MembresiaController#confirmarPago` + `MembresiaService#confirmarPago` (§4.6 de `docs/gym-administrator/requirements/estado-pago-membresias.md`).
+
+---
+
+### POST /api/v1/membresias/{id}/rechazar
+**Auth:** Bearer JWT (`tipo: staff`)  
+**Permission:** `requireRecepcionOrAbove()` + permiso granular `membresias:confirmar_pago` (cubre confirmar y rechazar).  
+**Description:** Soft-delete de una membresía `PENDIENTE`. Marca `eliminado = true`, setea auditoría (`fecha_eliminacion`, `eliminado_por`, `motivo_eliminacion`). La membresía sigue viva en BD para reportería (métrica de conversión, §HU-E). NO aplica a membresías ya `PAGADAS` (esas se anulan con `PUT /membresias/{id}/anular`).
+
+**Path param:**
+- `id` — Membership ID
+
+**Request body:**
+```json
+{
+  "motivo_eliminacion": "SOCIO_CAMBIO_OPINION"
+}
+```
+
+**Body fields:**
+- `motivo_eliminacion` (required, enum) — Catálogo cerrado: `SOCIO_CAMBIO_OPINION` \| `ERROR_DE_VENTA` \| `DUPLICADA` \| `DATOS_INCORRECTOS` \| `OTRO`.
+
+**Response 200:**
+```json
+{
+  "id": 1,
+  "id_cliente": 10,
+  "id_tipo_membresia": 3,
+  "fecha_inicio": null,
+  "fecha_fin": null,
+  "dias_acceso_total": null,
+  "precio_pagado": "35.00",
+  "descuento_aplicado": "0.00",
+  "estado": "activa",
+  "estado_pago": "PENDIENTE",
+  "eliminado": true,
+  "motivo_eliminacion": "SOCIO_CAMBIO_OPINION"
+}
+```
+
+**Reglas:**
+- Si `estado_pago = PAGADO` → `409 Conflict` con mensaje `"No se puede rechazar una membresía pagada; usar anulación"`.
+- Si `eliminado = true` (ya rechazada) → `409 Conflict` con mensaje `"La membresía ya fue rechazada"`.
+
+**Errors:**
+- `400` — body ausente, `motivo_eliminacion` null o fuera del catálogo
+- `401` — missing or invalid JWT
+- `403` — sin permiso `membresias:confirmar_pago`, o compañía distinta
+- `404` — membership no encontrada
+- `409` — membresía ya pagada o ya rechazada
+
+> Revisar contra código: `MembresiaController#rechazar` + `MembresiaService#rechazar` (§4.7 de `docs/gym-administrator/requirements/estado-pago-membresias.md`).
+
+---
+
+### GET /api/v1/companias/{idCompania}/membresias/pendientes
+**Auth:** Bearer JWT (`tipo: staff`)  
+**Permission:** `requireRecepcionOrAbove()` + permiso granular `membresias:confirmar_pago`.  
+**Description:** Dashboard "Ventas pendientes" (§4.8). Lista membresías con `estado_pago = PENDIENTE` y `eliminado = false` de la compañía indicada, ordenadas por `creacion_fecha` DESC (última primero). El frontend calcula el "hace X días" a partir de `creacion_fecha`.
+
+**Path param:**
+- `idCompania` — Company ID (debe coincidir con la compañía del JWT).
+
+**Response 200:**
+```json
+[
+  {
+    "id": 42,
+    "id_cliente": 10,
+    "nombre_cliente": "Ana Pérez",
+    "id_tipo_membresia": 3,
+    "tipo_nombre": "Plan Mensual",
+    "modo_control": "calendario",
+    "precio_pagado": "35.00",
+    "descuento_aplicado": "0.00",
+    "creacion_fecha": "2026-07-15T09:12:33Z"
+  }
+]
+```
+
+**Response fields por fila:**
+- `id` — Membership ID
+- `id_cliente` — Client ID
+- `nombre_cliente` — Nombre completo del cliente (join a `identidad.personas.nombre`). `null` si la persona fue borrada.
+- `id_tipo_membresia` — Membership type ID
+- `tipo_nombre` — Nombre del tipo (join a `core.tipos_membresia`)
+- `modo_control` — `calendario` o `accesos`
+- `precio_pagado` — Amount to be paid
+- `descuento_aplicado` — Discount applied
+- `creacion_fecha` — Timestamp de creación (ISO-8601 con TZ)
+
+**Errors:**
+- `401` — missing or invalid JWT
+- `403` — cross-tenant (`idCompania` no es la del JWT) o sin permiso granular
+
+> Revisar contra código: `MembresiaController#listarPendientes` + `MembresiaService#listarPendientesPorCompania` (§4.8 de `docs/gym-administrator/requirements/estado-pago-membresias.md`).
 
 ---
 
@@ -281,6 +440,9 @@ Service: core-service (port 8083)
 | `/membresias/{id}` | GET | `requireGymStaff()` \| `requireCliente()` |
 | `/membresias/{id}/asistencias-previas` | PATCH | `requireRecepcionOrAbove()` |
 | `/membresias/{id}/anular` | PUT | `requireAdminOrDueno()` |
+| `/membresias/{id}/confirmar-pago` | POST | `requireRecepcionOrAbove()` + `membresias:confirmar_pago` |
+| `/membresias/{id}/rechazar` | POST | `requireRecepcionOrAbove()` + `membresias:confirmar_pago` |
+| `/companias/{idCompania}/membresias/pendientes` | GET | `requireRecepcionOrAbove()` + `membresias:confirmar_pago` |
 | `/membresias/validar-acceso` | GET | PUBLIC (sin auth) |
 
 ---

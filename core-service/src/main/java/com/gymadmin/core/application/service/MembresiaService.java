@@ -7,6 +7,7 @@ import com.gymadmin.core.domain.model.TipoMembresia;
 import com.gymadmin.core.domain.port.in.MembresiaUseCase;
 import com.gymadmin.core.domain.port.out.ClienteRepository;
 import com.gymadmin.core.domain.port.out.MembresiaRepository;
+import com.gymadmin.core.domain.port.out.PersonaRepository;
 import com.gymadmin.core.domain.port.out.TipoMembresiaRepository;
 import com.gymadmin.core.infrastructure.exception.BusinessException;
 import com.gymadmin.core.infrastructure.exception.ConflictException;
@@ -27,15 +28,18 @@ public class MembresiaService implements MembresiaUseCase {
     private final MembresiaRepository membresiaRepository;
     private final TipoMembresiaRepository tipoMembresiaRepository;
     private final ClienteRepository clienteRepository;
+    private final PersonaRepository personaRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     public MembresiaService(MembresiaRepository membresiaRepository,
                             TipoMembresiaRepository tipoMembresiaRepository,
                             ClienteRepository clienteRepository,
+                            PersonaRepository personaRepository,
                             ApplicationEventPublisher eventPublisher) {
         this.membresiaRepository = membresiaRepository;
         this.tipoMembresiaRepository = tipoMembresiaRepository;
         this.clienteRepository = clienteRepository;
+        this.personaRepository = personaRepository;
         this.eventPublisher = eventPublisher;
     }
 
@@ -318,10 +322,25 @@ public class MembresiaService implements MembresiaUseCase {
     @Override
     public Flux<MembresiaPendienteResult> listarPendientesPorCompania(Long idCompania) {
         return membresiaRepository.findPendientesPorCompania(idCompania)
-                .flatMap(mem -> tipoMembresiaRepository.findById(mem.getIdTipoMembresia())
-                        .map(tipo -> new MembresiaPendienteResult(mem, tipo.getNombre(),
-                                tipo.getModoControl() != null ? tipo.getModoControl().name() : null))
-                        .defaultIfEmpty(new MembresiaPendienteResult(mem, null, null)));
+                .flatMap(mem -> {
+                    Mono<java.util.Optional<TipoMembresia>> tipoMono = tipoMembresiaRepository
+                            .findById(mem.getIdTipoMembresia())
+                            .map(java.util.Optional::of)
+                            .defaultIfEmpty(java.util.Optional.empty());
+                    Mono<java.util.Optional<String>> nombreMono = clienteRepository.findById(mem.getIdCliente())
+                            .flatMap(cliente -> personaRepository.findNombreById(cliente.getIdPersona()))
+                            .map(java.util.Optional::of)
+                            .defaultIfEmpty(java.util.Optional.empty());
+                    return Mono.zip(tipoMono, nombreMono).map(tuple -> {
+                        String tipoNombre = tuple.getT1().map(TipoMembresia::getNombre).orElse(null);
+                        String modoControl = tuple.getT1()
+                                .map(TipoMembresia::getModoControl)
+                                .map(Enum::name)
+                                .orElse(null);
+                        String nombreCliente = tuple.getT2().orElse(null);
+                        return new MembresiaPendienteResult(mem, tipoNombre, modoControl, nombreCliente);
+                    });
+                });
     }
 
     private LocalDate calcularFechaFin(LocalDate fechaInicio, TipoMembresia tipo) {
