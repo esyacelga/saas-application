@@ -11,6 +11,33 @@ export interface MembresiaInfo {
   dias_acceso_restantes: number | null
 }
 
+export interface MembresiaHistorialItem {
+  id: number
+  id_cliente: number
+  id_tipo_membresia: number
+  tipo_nombre: string
+  modo_control: 'calendario' | 'accesos'
+  fecha_inicio: string
+  fecha_fin: string
+  dias_acceso_total: number | null
+  dias_acceso_usados: number | null
+  dias_acceso_restantes: number | null
+  precio_pagado: number
+  descuento_aplicado: number
+  monto_pagado: number
+  saldo_pendiente: number
+  estado: 'activa' | 'vencida' | 'congelada' | 'anulada'
+  estado_pago: 'PAGADO' | 'PENDIENTE'
+  eliminado: boolean
+  motivo_eliminacion:
+    | 'SOCIO_CAMBIO_OPINION'
+    | 'ERROR_DE_VENTA'
+    | 'DUPLICADA'
+    | 'DATOS_INCORRECTOS'
+    | 'OTRO'
+    | null
+}
+
 export interface CongelamientoInfo {
   id: number
   fecha_inicio: string
@@ -44,6 +71,11 @@ class CoreHttpRepository {
     const { data } = await coreApi.put<ReactivarResponse>(
       `/mis-congelamientos/${idCongelamiento}/reactivar`,
     )
+    return data
+  }
+
+  async misMembresias(): Promise<MembresiaHistorialItem[]> {
+    const { data } = await coreApi.get<MembresiaHistorialItem[]>('/clientes/me/membresias')
     return data
   }
 }

@@ -112,27 +112,141 @@ class MembresiaServiceTest {
     class HistorialPorCliente {
 
         @Test
-        @DisplayName("retorna el historial de membresías del cliente")
-        void retornaHistorial() {
+        @DisplayName("retorna el historial enriquecido con tipoNombre, modoControl y monto/saldo")
+        void retornaHistorialEnriquecido() {
             Membresia m1 = buildMembresia(1L, 10L, 1L, 2L, Membresia.Estado.activa,
                     LocalDate.now().minusMonths(1), LocalDate.now().plusMonths(1));
+            m1.setEstadoPago(Membresia.EstadoPago.PAGADO);
             Membresia m2 = buildMembresia(2L, 10L, 1L, 2L, Membresia.Estado.vencida,
                     LocalDate.now().minusMonths(3), LocalDate.now().minusMonths(2));
-            when(membresiaRepository.findByIdCliente(10L)).thenReturn(Flux.just(m1, m2));
+            m2.setEstadoPago(Membresia.EstadoPago.PAGADO);
+
+            TipoMembresia tipoCal = buildTipo(2L, TipoMembresia.ModoControl.calendario,
+                    TipoMembresia.DuracionTipo.meses, 1, null, BigDecimal.valueOf(50));
+
+            when(membresiaRepository.findAllByIdClienteAndIdCompania(10L, 1L)).thenReturn(Flux.just(m1, m2));
+            when(tipoMembresiaRepository.findById(2L)).thenReturn(Mono.just(tipoCal));
 
             StepVerifier.create(membresiaService.historialPorCliente(10L, 1L))
-                    .expectNext(m1)
-                    .expectNext(m2)
+                    .expectNextMatches(r -> r.membresia().getId().equals(1L)
+                            && "Tipo 2".equals(r.tipoNombre())
+                            && "calendario".equals(r.modoControl())
+                            && r.montoPagado().compareTo(BigDecimal.valueOf(50)) == 0
+                            && r.saldoPendiente().compareTo(BigDecimal.ZERO) == 0
+                            && r.diasAccesoUsados() == null
+                            && r.diasAccesoRestantes() == null)
+                    .expectNextMatches(r -> r.membresia().getId().equals(2L)
+                            && "Tipo 2".equals(r.tipoNombre())
+                            && r.montoPagado().compareTo(BigDecimal.valueOf(50)) == 0
+                            && r.saldoPendiente().compareTo(BigDecimal.ZERO) == 0)
+                    .verifyComplete();
+        }
+
+        @Test
+        @DisplayName("montoPagado=0 y saldoPendiente=precio cuando estadoPago=PENDIENTE")
+        void pendienteReflejaSaldo() {
+            Membresia pendiente = buildMembresia(1L, 10L, 1L, 2L, Membresia.Estado.activa, null, null);
+            pendiente.setEstadoPago(Membresia.EstadoPago.PENDIENTE);
+            pendiente.setPrecioPagado(BigDecimal.valueOf(35));
+
+            TipoMembresia tipoCal = buildTipo(2L, TipoMembresia.ModoControl.calendario,
+                    TipoMembresia.DuracionTipo.meses, 1, null, BigDecimal.valueOf(35));
+
+            when(membresiaRepository.findAllByIdClienteAndIdCompania(10L, 1L))
+                    .thenReturn(Flux.just(pendiente));
+            when(tipoMembresiaRepository.findById(2L)).thenReturn(Mono.just(tipoCal));
+
+            StepVerifier.create(membresiaService.historialPorCliente(10L, 1L))
+                    .expectNextMatches(r -> r.montoPagado().compareTo(BigDecimal.ZERO) == 0
+                            && r.saldoPendiente().compareTo(BigDecimal.valueOf(35)) == 0)
+                    .verifyComplete();
+        }
+
+        @Test
+        @DisplayName("computa dias usados/restantes para tipo accesos")
+        void enriqueceAccesos() {
+            Membresia mem = buildMembresia(1L, 10L, 1L, 3L, Membresia.Estado.activa,
+                    LocalDate.now(), LocalDate.now().plusMonths(1));
+            mem.setEstadoPago(Membresia.EstadoPago.PAGADO);
+            mem.setDiasAccesoTotal(20);
+
+            TipoMembresia tipoAcc = buildTipo(3L, TipoMembresia.ModoControl.accesos,
+                    TipoMembresia.DuracionTipo.meses, 1, 20, BigDecimal.valueOf(60));
+
+            when(membresiaRepository.findAllByIdClienteAndIdCompania(10L, 1L)).thenReturn(Flux.just(mem));
+            when(tipoMembresiaRepository.findById(3L)).thenReturn(Mono.just(tipoAcc));
+            when(membresiaRepository.countAsistenciasByIdMembresia(1L)).thenReturn(Mono.just(8L));
+
+            StepVerifier.create(membresiaService.historialPorCliente(10L, 1L))
+                    .expectNextMatches(r -> "accesos".equals(r.modoControl())
+                            && r.diasAccesoUsados() == 8
+                            && r.diasAccesoRestantes() == 12)
+                    .verifyComplete();
+        }
+
+        @Test
+        @DisplayName("incluye membresías eliminadas (rechazadas) con eliminado=true y motivoEliminacion")
+        void incluyeEliminadas() {
+            Membresia rechazada = buildMembresia(1L, 10L, 1L, 2L, Membresia.Estado.activa, null, null);
+            rechazada.setEstadoPago(Membresia.EstadoPago.PENDIENTE);
+            rechazada.setEliminado(true);
+            rechazada.setMotivoEliminacion(Membresia.MotivoEliminacion.SOCIO_CAMBIO_OPINION);
+
+            TipoMembresia tipoCal = buildTipo(2L, TipoMembresia.ModoControl.calendario,
+                    TipoMembresia.DuracionTipo.meses, 1, null, BigDecimal.valueOf(35));
+
+            when(membresiaRepository.findAllByIdClienteAndIdCompania(10L, 1L))
+                    .thenReturn(Flux.just(rechazada));
+            when(tipoMembresiaRepository.findById(2L)).thenReturn(Mono.just(tipoCal));
+
+            StepVerifier.create(membresiaService.historialPorCliente(10L, 1L))
+                    .expectNextMatches(r -> Boolean.TRUE.equals(r.membresia().getEliminado())
+                            && r.membresia().getMotivoEliminacion() == Membresia.MotivoEliminacion.SOCIO_CAMBIO_OPINION)
                     .verifyComplete();
         }
 
         @Test
         @DisplayName("retorna Flux vacío cuando el cliente no tiene membresías")
         void retornaVacioCuandoSinMembresias() {
-            when(membresiaRepository.findByIdCliente(10L)).thenReturn(Flux.empty());
+            when(membresiaRepository.findAllByIdClienteAndIdCompania(10L, 1L)).thenReturn(Flux.empty());
 
             StepVerifier.create(membresiaService.historialPorCliente(10L, 1L))
                     .verifyComplete();
+        }
+    }
+
+    @Nested
+    @DisplayName("historialPorPersona (endpoint /me)")
+    class HistorialPorPersona {
+
+        @Test
+        @DisplayName("resuelve id_cliente desde id_persona + id_compania y delega en historialPorCliente")
+        void resuelveIdClienteDesdePersona() {
+            Cliente cliente = buildCliente(77L, 500L, 1L, Cliente.Estado.activo);
+            Membresia mem = buildMembresia(9L, 77L, 1L, 2L, Membresia.Estado.activa,
+                    LocalDate.now().minusMonths(1), LocalDate.now().plusMonths(1));
+            mem.setEstadoPago(Membresia.EstadoPago.PAGADO);
+            TipoMembresia tipoCal = buildTipo(2L, TipoMembresia.ModoControl.calendario,
+                    TipoMembresia.DuracionTipo.meses, 1, null, BigDecimal.valueOf(50));
+
+            when(clienteRepository.findByIdPersonaAndIdCompania(500L, 1L)).thenReturn(Mono.just(cliente));
+            when(membresiaRepository.findAllByIdClienteAndIdCompania(77L, 1L)).thenReturn(Flux.just(mem));
+            when(tipoMembresiaRepository.findById(2L)).thenReturn(Mono.just(tipoCal));
+
+            StepVerifier.create(membresiaService.historialPorPersona(500L, 1L))
+                    .expectNextMatches(r -> r.membresia().getId().equals(9L)
+                            && r.membresia().getIdCliente().equals(77L))
+                    .verifyComplete();
+        }
+
+        @Test
+        @DisplayName("lanza NotFoundException si la persona no tiene cliente en esta compañía")
+        void notFoundSiPersonaNoRegistrada() {
+            when(clienteRepository.findByIdPersonaAndIdCompania(500L, 1L)).thenReturn(Mono.empty());
+
+            StepVerifier.create(membresiaService.historialPorPersona(500L, 1L))
+                    .expectErrorSatisfies(err -> assertThat(err).isInstanceOf(NotFoundException.class))
+                    .verify();
         }
     }
 

@@ -153,12 +153,60 @@
       "retry": "Reintentar"
     },
     "update": "Actualizar",
+    "verHistorialPagos": "Ver historial de pagos",
     "errors": {
       "load": "Error al cargar tu membresía",
       "reactivate": "No se pudo reactivar la membresía"
     },
     "success": {
       "reactivated": "Membresía reactivada correctamente"
+    }
+  },
+  "pagoHistorial": {
+    "title": "Historial de pagos",
+    "back": "Volver",
+    "card": {
+      "expand": "Ver detalle",
+      "collapse": "Ocultar detalle",
+      "labels": {
+        "precioPagado": "Precio pagado",
+        "montoPagado": "Monto pagado",
+        "saldoPendiente": "Saldo pendiente",
+        "descuento": "Descuento aplicado",
+        "diasAcceso": "Días de acceso",
+        "motivo": "Motivo"
+      }
+    },
+    "estadoPago": {
+      "PAGADO": "Pagada",
+      "PENDIENTE": "Pendiente"
+    },
+    "estadoMembresia": {
+      "activa": "Activa",
+      "vencida": "Vencida",
+      "congelada": "Congelada",
+      "anulada": "Anulada"
+    },
+    "motivoEliminacion": {
+      "SOCIO_CAMBIO_OPINION": "El socio cambió de opinión",
+      "ERROR_DE_VENTA": "Error de venta",
+      "DUPLICADA": "Venta duplicada",
+      "DATOS_INCORRECTOS": "Datos incorrectos",
+      "OTRO": "Otro"
+    },
+    "badge": {
+      "ariaLabel": "Estado de pago: {{estado}}"
+    },
+    "empty": {
+      "title": "Sin historial de pagos",
+      "description": "Cuando adquieras una membresía, tus compras aparecerán aquí."
+    },
+    "error": {
+      "title": "No se pudo cargar el historial",
+      "retry": "Reintentar"
+    },
+    "loading": {
+      "aria": "Cargando historial de pagos"
     }
   },
   "historial": {

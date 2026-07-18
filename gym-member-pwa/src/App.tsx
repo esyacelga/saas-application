@@ -14,6 +14,7 @@ import { HomePage } from '@/ui/pages/home/HomePage'
 import { CheckInPage } from '@/ui/pages/attendance/CheckInPage'
 import { ProfilePage } from '@/ui/pages/profile/ProfilePage'
 import { MembresiaPage } from '@/ui/pages/membresia/MembresiaPage'
+import { HistorialPagosMembresiaPage } from '@/ui/pages/membresia/HistorialPagosMembresiaPage'
 import { HistorialPage } from '@/ui/pages/historial/HistorialPage'
 
 export default function App() {
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="/home" element={<HomePage />} />
           <Route path="/check-in" element={<CheckInPage />} />
           <Route path="/membresia" element={<MembresiaPage />} />
+          <Route path="/membresia/historial" element={<HistorialPagosMembresiaPage />} />
           <Route path="/historial" element={<HistorialPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>

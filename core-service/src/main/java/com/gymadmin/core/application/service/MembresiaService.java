@@ -12,6 +12,8 @@ import com.gymadmin.core.domain.port.out.TipoMembresiaRepository;
 import com.gymadmin.core.infrastructure.exception.BusinessException;
 import com.gymadmin.core.infrastructure.exception.ConflictException;
 import com.gymadmin.core.infrastructure.exception.NotFoundException;
+
+import java.math.BigDecimal;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -44,8 +46,56 @@ public class MembresiaService implements MembresiaUseCase {
     }
 
     @Override
-    public Flux<Membresia> historialPorCliente(Long idCliente, Long idCompania) {
-        return membresiaRepository.findByIdCliente(idCliente);
+    public Flux<MembresiaHistorialItem> historialPorCliente(Long idCliente, Long idCompania) {
+        return membresiaRepository.findAllByIdClienteAndIdCompania(idCliente, idCompania)
+                .concatMap(this::enriquecerHistorial);
+    }
+
+    @Override
+    public Flux<MembresiaHistorialItem> historialPorPersona(Long idPersona, Long idCompania) {
+        return clienteRepository.findByIdPersonaAndIdCompania(idPersona, idCompania)
+                .switchIfEmpty(Mono.error(new NotFoundException("Cliente en esta compañía", idPersona)))
+                .flatMapMany(cliente -> historialPorCliente(cliente.getId(), idCompania));
+    }
+
+    /**
+     * Enriquece una membresía del historial con:
+     * <ul>
+     *   <li>{@code tipoNombre}, {@code modoControl} — lookup en {@code core.tipos_membresia}.</li>
+     *   <li>{@code montoPagado} / {@code saldoPendiente} — derivados de {@code estado_pago}: cuando
+     *       {@code PAGADO} el monto pagado es {@code precio_pagado} y el saldo es 0; cuando
+     *       {@code PENDIENTE} el monto pagado es 0 y el saldo es {@code precio_pagado}. Consistente
+     *       con la única fuente de verdad de cobro que hay hoy (HU {@code estado-pago-membresias}
+     *       §4.2). Cuando se cree {@code core.pagos} (HU-C) esta lógica se re-derivará.</li>
+     *   <li>{@code diasAccesoUsados}/{@code diasAccesoRestantes} — solo para {@code modo_control = accesos};
+     *       null para {@code calendario}.</li>
+     * </ul>
+     */
+    private Mono<MembresiaHistorialItem> enriquecerHistorial(Membresia mem) {
+        BigDecimal precio = mem.getPrecioPagado() != null ? mem.getPrecioPagado() : BigDecimal.ZERO;
+        boolean pagado = Membresia.EstadoPago.PAGADO.equals(mem.getEstadoPago());
+        BigDecimal montoPagado = pagado ? precio : BigDecimal.ZERO;
+        BigDecimal saldoPendiente = pagado ? BigDecimal.ZERO : precio;
+
+        return tipoMembresiaRepository.findById(mem.getIdTipoMembresia())
+                .flatMap(tipo -> {
+                    if (TipoMembresia.ModoControl.accesos.equals(tipo.getModoControl())
+                            && mem.getDiasAccesoTotal() != null) {
+                        return membresiaRepository.countAsistenciasByIdMembresia(mem.getId())
+                                .map(usados -> new MembresiaHistorialItem(
+                                        mem, tipo.getNombre(), tipo.getModoControl().name(),
+                                        montoPagado, saldoPendiente,
+                                        usados.intValue(), mem.getDiasAccesoTotal() - usados.intValue()
+                                ));
+                    }
+                    return Mono.just(new MembresiaHistorialItem(
+                            mem, tipo.getNombre(), tipo.getModoControl().name(),
+                            montoPagado, saldoPendiente, null, null
+                    ));
+                })
+                .switchIfEmpty(Mono.just(new MembresiaHistorialItem(
+                        mem, null, null, montoPagado, saldoPendiente, null, null
+                )));
     }
 
     @Override

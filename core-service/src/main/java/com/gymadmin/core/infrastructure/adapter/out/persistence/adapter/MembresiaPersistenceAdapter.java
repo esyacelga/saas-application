@@ -18,8 +18,8 @@ public class MembresiaPersistenceAdapter implements MembresiaRepository {
     }
 
     @Override
-    public Flux<Membresia> findByIdCliente(Long idCliente) {
-        return repository.findByIdCliente(idCliente).map(this::toDomain);
+    public Flux<Membresia> findAllByIdClienteAndIdCompania(Long idCliente, Long idCompania) {
+        return repository.findAllByIdClienteAndIdCompania(idCliente, idCompania).map(this::toDomain);
     }
 
     @Override

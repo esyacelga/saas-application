@@ -15,11 +15,8 @@ export function PulseBackground() {
               animation: `heartPulseRing 2.4s cubic-bezier(0.2, 0.8, 0.4, 1) ${delay}s infinite`,
             }}
           >
-            <svg width="200" height="220" viewBox="0 0 100 110" className="text-accent-500">
-              <path
-                d="M52,10 C65,3 84,10 87,28 C90,44 85,58 75,70 C67,78 59,85 51,93 C47,97 43,95 38,89 C28,79 15,66 10,52 C5,38 7,22 17,14 C26,7 40,5 52,10 Z"
-                fill="currentColor"
-              />
+            <svg width="220" height="220" viewBox="0 0 100 100" className="text-accent-500">
+              <circle cx="50" cy="50" r="46" fill="currentColor" />
             </svg>
           </div>
         ))}

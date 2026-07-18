@@ -14,7 +14,7 @@ Service: core-service (port 8083)
 ### GET /api/v1/clientes/{id}/membresias
 **Auth:** Bearer JWT (`tipo: staff | cliente`)  
 **Permission:** `requireGymStaff()` OR `requireCliente()`  
-**Description:** Historial de membresías de un cliente (paginado).
+**Description:** Historial completo de membresías del cliente, enriquecido con nombre y modo del tipo, monto pagado / saldo pendiente y (para tipos de accesos) accesos usados/restantes. Filtrado por `id_compania` del JWT. **Incluye membresías con `eliminado = true`** (rechazadas) — la UI las muestra con badge y motivo. Ordenado por `creacion_fecha DESC`.
 
 **Path param:**
 - `id` — ID del cliente en `core.clientes`
@@ -26,12 +26,21 @@ Service: core-service (port 8083)
     "id": 1,
     "id_cliente": 10,
     "id_tipo_membresia": 3,
+    "tipo_nombre": "Plan Mensual",
+    "modo_control": "calendario",
     "fecha_inicio": "2026-01-15",
     "fecha_fin": "2026-04-15",
-    "dias_acceso_total": 90,
+    "dias_acceso_total": null,
+    "dias_acceso_usados": null,
+    "dias_acceso_restantes": null,
     "precio_pagado": "150.00",
     "descuento_aplicado": "10.00",
-    "estado": "ACTIVA"
+    "monto_pagado": "150.00",
+    "saldo_pendiente": "0.00",
+    "estado": "activa",
+    "estado_pago": "PAGADO",
+    "eliminado": false,
+    "motivo_eliminacion": null
   }
 ]
 ```
@@ -40,17 +49,40 @@ Service: core-service (port 8083)
 - `id` — Membership ID
 - `id_cliente` — Client ID
 - `id_tipo_membresia` — Membership type ID
-- `fecha_inicio` — Start date (ISO format)
-- `fecha_fin` — End date (ISO format)
-- `dias_acceso_total` — Total days for calendar-based memberships
-- `precio_pagado` — Amount paid
-- `descuento_aplicado` — Applied discount (if any)
-- `estado` — State: `ACTIVA`, `VENCIDA`, `ANULADA`, `CONGELADA`
+- `tipo_nombre` — Nombre del plan (join a `core.tipos_membresia.nombre`)
+- `modo_control` — `calendario` o `accesos` (del tipo)
+- `fecha_inicio` — Start date (null cuando `estado_pago = PENDIENTE`)
+- `fecha_fin` — End date (null cuando `estado_pago = PENDIENTE`)
+- `dias_acceso_total` — Total de accesos para tipos `accesos`; null para `calendario`
+- `dias_acceso_usados` — Accesos consumidos (count sobre `asistencia.asistencias`); null cuando `modo_control = calendario`
+- `dias_acceso_restantes` — `dias_acceso_total - dias_acceso_usados`; null cuando `modo_control = calendario`
+- `precio_pagado` — Precio final después de descuento
+- `descuento_aplicado` — Descuento aplicado
+- `monto_pagado` — Monto efectivamente cobrado (derivado: igual a `precio_pagado` si `estado_pago = PAGADO`, `0` si `PENDIENTE`). Fuente de verdad: `estado_pago` (mientras no exista `core.pagos` — HU-C).
+- `saldo_pendiente` — Saldo por cobrar (`precio_pagado - monto_pagado`)
+- `estado` — `activa`, `vencida`, `anulada`, `congelada`
+- `estado_pago` — `PAGADO` | `PENDIENTE`
+- `eliminado` — `true` cuando la membresía fue rechazada (soft-delete)
+- `motivo_eliminacion` — Cuando `eliminado = true`: `SOCIO_CAMBIO_OPINION` | `ERROR_DE_VENTA` | `DUPLICADA` | `DATOS_INCORRECTOS` | `OTRO`
 
 **Errors:**
 - `401` — missing or invalid JWT
 - `403` — insufficient permissions or wrong company
 - `404` — client not found
+
+---
+
+### GET /api/v1/clientes/me/membresias
+**Auth:** Bearer JWT (`tipo: cliente`)  
+**Permission:** `requireCliente()` (resuelve el `id_cliente` desde `id_persona` + `id_compania` del JWT)  
+**Description:** Alias del endpoint anterior pensado para la **PWA de socios** (GYM-003). Resuelve automáticamente el `id_cliente` del usuario autenticado consultando `core.clientes` por `id_persona` + `id_compania`. El shape del response es idéntico a `GET /clientes/{id}/membresias`. No hay path param — el ID del cliente se toma del token.
+
+**Response 200:** Idéntico al endpoint `GET /clientes/{id}/membresias` (mismo array de objetos enriquecidos, incluye membresías `eliminado = true`).
+
+**Errors:**
+- `401` — missing or invalid JWT
+- `403` — el JWT no es de tipo `cliente` o pertenece a otra compañía
+- `404` — la persona del JWT no está registrada como cliente en la compañía
 
 ---
 
@@ -436,6 +468,7 @@ Service: core-service (port 8083)
 | Endpoint | Método | Rol/Permiso |
 |----------|--------|-------------|
 | `/clientes/{id}/membresias` | GET | `requireGymStaff()` \| `requireCliente()` |
+| `/clientes/me/membresias` | GET | `requireCliente()` (resuelve id_cliente del JWT) |
 | `/clientes/{id}/membresias` | POST | `requireRecepcionOrAbove()` |
 | `/membresias/{id}` | GET | `requireGymStaff()` \| `requireCliente()` |
 | `/membresias/{id}/asistencias-previas` | PATCH | `requireRecepcionOrAbove()` |

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { CalendarDays, Zap, Snowflake, AlertTriangle, RefreshCw, CheckCircle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { CalendarDays, Zap, Snowflake, AlertTriangle, RefreshCw, CheckCircle, Receipt } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { coreRepository, type MiPerfilResponse } from '@/infrastructure/http/CoreHttpRepository'
@@ -17,6 +18,7 @@ const STATUS_CLS: Record<string, string> = {
 
 export function MembresiaPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const { data: cachedData, fetchedAt, setData: setCached, invalidate } = usePerfilStore()
   const [data, setData] = useState<MiPerfilResponse | null>(cachedData)
   const [loading, setLoading] = useState(!cachedData)
@@ -102,6 +104,14 @@ export function MembresiaPage() {
           >
             <RefreshCw size={13} />
             {t('membresia.update')}
+          </button>
+
+          <button
+            onClick={() => navigate('/membresia/historial')}
+            className="w-full flex items-center justify-center gap-2 rounded-lg border border-slate-700 py-2.5 text-xs text-slate-400 hover:border-slate-500 transition-colors"
+          >
+            <Receipt size={13} />
+            {t('membresia.verHistorialPagos')}
           </button>
         </>
       )}

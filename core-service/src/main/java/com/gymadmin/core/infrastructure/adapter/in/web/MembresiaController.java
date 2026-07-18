@@ -51,6 +51,21 @@ public class MembresiaController {
                         .map(MembresiaResponse::from));
     }
 
+    @Operation(summary = "Listar mis membresías (PWA socio)", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "404"),
+            @ApiResponse(responseCode = "403")
+    })
+    @GetMapping("/clientes/me/membresias")
+    public Flux<MembresiaResponse> misMembresias() {
+        return extractPrincipal()
+                .flatMapMany(principal -> accessControl.requireCliente(principal, principal.getIdCompania())
+                        .thenMany(membresiaUseCase.historialPorPersona(
+                                principal.getIdPersona(), principal.getIdCompania()))
+                        .map(MembresiaResponse::from));
+    }
+
     @Operation(summary = "Crear membresía", security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "201"),

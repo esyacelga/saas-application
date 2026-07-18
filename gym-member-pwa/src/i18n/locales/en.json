@@ -153,12 +153,60 @@
       "retry": "Retry"
     },
     "update": "Update",
+    "verHistorialPagos": "View payment history",
     "errors": {
       "load": "Error loading your membership",
       "reactivate": "Could not reactivate membership"
     },
     "success": {
       "reactivated": "Membership reactivated successfully"
+    }
+  },
+  "pagoHistorial": {
+    "title": "Payment history",
+    "back": "Go back",
+    "card": {
+      "expand": "View details",
+      "collapse": "Hide details",
+      "labels": {
+        "precioPagado": "Listed price",
+        "montoPagado": "Amount paid",
+        "saldoPendiente": "Outstanding balance",
+        "descuento": "Discount applied",
+        "diasAcceso": "Access days",
+        "motivo": "Reason"
+      }
+    },
+    "estadoPago": {
+      "PAGADO": "Paid",
+      "PENDIENTE": "Pending"
+    },
+    "estadoMembresia": {
+      "activa": "Active",
+      "vencida": "Expired",
+      "congelada": "Frozen",
+      "anulada": "Voided"
+    },
+    "motivoEliminacion": {
+      "SOCIO_CAMBIO_OPINION": "Member changed their mind",
+      "ERROR_DE_VENTA": "Sale error",
+      "DUPLICADA": "Duplicate sale",
+      "DATOS_INCORRECTOS": "Incorrect data",
+      "OTRO": "Other"
+    },
+    "badge": {
+      "ariaLabel": "Payment status: {{estado}}"
+    },
+    "empty": {
+      "title": "No payment history",
+      "description": "When you purchase a membership, your payments will appear here."
+    },
+    "error": {
+      "title": "Could not load payment history",
+      "retry": "Retry"
+    },
+    "loading": {
+      "aria": "Loading payment history"
     }
   },
   "historial": {

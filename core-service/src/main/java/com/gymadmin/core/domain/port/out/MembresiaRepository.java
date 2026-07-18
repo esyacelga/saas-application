@@ -6,7 +6,12 @@ import reactor.core.publisher.Mono;
 
 public interface MembresiaRepository {
 
-    Flux<Membresia> findByIdCliente(Long idCliente);
+    /**
+     * Historial completo de membresías del cliente, filtrado por compañía (multi-tenant safe).
+     * Incluye membresías con {@code eliminado = true} (rechazadas) — la PWA las muestra con
+     * badge opaco + motivo.
+     */
+    Flux<Membresia> findAllByIdClienteAndIdCompania(Long idCliente, Long idCompania);
 
     Mono<Membresia> findById(Long id);
 

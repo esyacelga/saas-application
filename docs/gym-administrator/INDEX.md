@@ -11,6 +11,8 @@ Documentación técnica y de negocio del proyecto base: modelo de datos, migraci
 | [overview.md](architecture/overview.md) | Qué es el proyecto, modelo de negocio SaaS multi-tenant, módulos funcionales por plan, reglas de negocio, flujos end-to-end, pipeline CI/CD |
 | [database-schema.md](architecture/database-schema.md) | Esquema completo de PostgreSQL: 69 tablas en 12 schemas (saas, identidad, tenant, core, asistencia, config, seguridad, finanzas, marketing, inventario, sri, facturacion), diagramas ASCII |
 | [roadmap.md](architecture/roadmap.md) | Orden de construcción de los 7 microservicios y dependencias entre ellos |
+| [scheduled-jobs.md](architecture/scheduled-jobs.md) | Los 8 scheduled jobs del monorepo: cron/delay, idempotencia, startup hooks |
+| [error-contract.md](architecture/error-contract.md) | Contrato de errores estandarizado (RFC 7807 + `codigo`) para los 6 microservicios — requerimiento/diseño |
 
 ## specs/ — Especificaciones por microservicio
 

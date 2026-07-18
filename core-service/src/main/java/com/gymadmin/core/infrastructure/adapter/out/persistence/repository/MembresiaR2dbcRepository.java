@@ -8,13 +8,19 @@ import reactor.core.publisher.Mono;
 
 public interface MembresiaR2dbcRepository extends ReactiveCrudRepository<MembresiaEntity, Long> {
 
+    /**
+     * Historial completo de membresías del cliente (multi-tenant safe).
+     * <b>Incluye</b> membresías con {@code eliminado = true} — GYM-003 requiere mostrarlas
+     * en la PWA con badge de rechazo y motivo. Filtra por {@code id_compania} para
+     * evitar exponer datos cross-tenant.
+     */
     @Query("""
         SELECT * FROM core.membresias
         WHERE id_cliente = :idCliente
-          AND eliminado = false
+          AND id_compania = :idCompania
         ORDER BY creacion_fecha DESC
         """)
-    Flux<MembresiaEntity> findByIdCliente(Long idCliente);
+    Flux<MembresiaEntity> findAllByIdClienteAndIdCompania(Long idCliente, Long idCompania);
 
     @Query("""
         SELECT * FROM core.membresias
