@@ -2,7 +2,15 @@
 
 > **Propósito:** Fuente única de verdad sobre **qué está construido hoy** vs. **qué es solo diseño**. Antes de implementar o de confiar en un documento como referencia, consulta aquí su estado.
 >
-> Última verificación contra el código: **2026-07-10** (general) · **2026-07-14** (billing-service, tras cierre de Fase 3 SRI 2026).
+> Última verificación contra el código: **2026-07-10** (general) · **2026-07-14** (billing-service, tras cierre de Fase 3 SRI 2026) · **2026-07-19** (reestructuración de docs + contrato de errores).
+
+## ✅ Actualización 2026-07-19 (reestructuración de documentación + contrato de errores)
+
+- **Contrato de errores estandarizado (RFC 7807 + `codigo`)**: ✅ implementado en los **6 microservicios** (core, billing, finance, attendance, platform, auth) + frontend transversal. Ver [gym-administrator/architecture/error-contract.md](gym-administrator/architecture/error-contract.md).
+- **Avisos WhatsApp de vencimiento**: ✅ implementados (jobs `NotificacionVencimientoJob`, `WhatsAppQueueProcessorJob`, `MensajeriaJob`, adapter Meta). El doc de diseño se archivó (ver abajo); el estado vigente vive en [scheduled-jobs.md](gym-administrator/architecture/scheduled-jobs.md).
+- **Documentación histórica archivada** en [`_archive/`](_archive/README.md): `impl/`, `backend-prompts/`, `preguntas/` y decisiones del panel admin; `anulacion-sri.md` e `integracion.md` de billing; `restructuracion-onboarding-facturacion.md` y `whatsapp-avisos-vencimiento.md` de gym-administrator. **No** describen el sistema actual.
+- **Renombres a kebab-case**: `platform-service/{deuda-tecnica,plan-pruebas}-subfase-1.6.md`; `docs/auth-service-frond-end/INDEX-api.md` (antes `api-index.md`).
+- **Encabezados corregidos**: las specs de `finance-service` y `billing-service` decían "sin implementar" — ambos servicios ya están implementados (🟡 spec histórica).
 
 ---
 
@@ -139,7 +147,7 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 | anulaciones.md | ✅ Refleja el código actual 2026-07-14 (Fase 2 · G3). 6 endpoints (5 `AnulacionController` + 1 `MotivosAnulacionController`): aprobar, rechazar, confirmar-sri, listar, detalle y catálogo de motivos. |
 | admin.md | ✅ Refleja el código actual (verificado 2026-07-11 contra `AdminController`). 3 endpoints. |
 | reportes.md | ✅ Refleja el código actual (verificado 2026-07-11 contra `ReporteController`). 2 endpoints — el generador ATS fue reescrito 2026-07-13 (Fase 3 · G9) contra el XSD oficial del SRI. |
-| integracion.md | 📋 Propuesto 2026-07-11 — Contrato de integración para que `core-service` consuma `billing-service` al vender membresías. **Nota post-G2 (2026-07-13):** el flujo original describía emisión asíncrona; hoy el `POST /facturas` es síncrono (~15s con timeout) y devuelve el estado final en el response. Actualizar cuando core-service consuma. |
+| integracion.md | 📜 **Archivado** en [`_archive/billing-service/integracion.md`](_archive/billing-service/integracion.md) (2026-07-19) — describía emisión asíncrona pre-G2; hoy `POST /facturas` es síncrono y `core-service` aún no consume la integración. Estado vigente: `api/comprobantes.md`. |
 
 **Total endpoints:** 23 · **Total controllers:** 6.
 
@@ -158,7 +166,7 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 | Documento | Estado |
 |-----------|--------|
 | roadmap-sri-2026.md | 📋 Roadmap 2026-07-11 — **🔴 División en 6 fases con dependencias.** **Fase 0 ✅ Completada 2026-07-12** (G5 secuencial + G6 catálogos). **Fase 1 ✅ Completada 2026-07-13** (G1 XML v2.24 + G2 transmisión inmediata). **Fase 2 ✅ Completada 2026-07-13** (G4 notas de crédito tipo 04 + G3 anulación fiscal con workflow SOLICITADA→APROBADA→EJECUTADA y flujos A/B). **Fase 3 ✅ Completada 2026-07-13** (G10 bancarización USD 500 con flag `sri.formas_pago.bancarizada` + G9 ATS reescrito contra el XSD oficial del SRI). Fase 4 Complementarios opcionales (G7 ND + G8 retención + G13 guías) — **próxima**. Fase 5 Rediseño frontend. Fase 6 Diferibles (G11 QR + G12 sync finanzas). |
-| anulacion-sri.md | ✅ IMPLEMENTADO 2026-07-13 (Fase 2 · G3). Histórico del diseño; el endpoint `POST /comprobantes/{id}/anular` ahora requiere body con motivo, valida ventana día 7 mes siguiente, rechaza consumidor final, registra en `facturacion.anulaciones` con workflow SOLICITADA→APROBADA→EJECUTADA/RECHAZADA. Flujo A (portal manual) y Flujo B (con NC automática) implementados. Ver `docs/billing-service/api/anulaciones.md` y `docs/billing-service/flows/anulacion-nc.md`. |
+| anulacion-sri.md | 📜 **Archivado** en [`_archive/billing-service/anulacion-sri.md`](_archive/billing-service/anulacion-sri.md) (2026-07-19) — diseño de G3 ya IMPLEMENTADO 2026-07-13. Estado vigente: `docs/billing-service/api/anulaciones.md` + `flows/anulacion-nc.md`. |
 | it-end-to-end-sri-pruebas.md | 📋 Pendiente 2026-07-13 — **Test IT contra ambiente de pruebas del SRI** (`celcer.sri.gob.ec`). Documenta checklist de 7 prerrequisitos (certificado P12 real de firma electrónica, RUC válido con dígito verificador, filas en `config_sri` y `certificados_info`, resolver bug de auth Postgres local, receptor válido, conectividad HTTPS) y estructura sugerida del test con `@EnabledIfEnvironmentVariable` para no romper CI. Retomar en próxima sesión cuando estén los prerrequisitos. |
 | gap-analysis-sri-2026.md | 📋 Análisis 2026-07-11 — **🔴 13 GAPs identificados** entre normativa SRI 2025-2026 y el código actual. Bloqueantes de producción: ficha técnica del XML es v2.1.0 (SRI publicó v2.32), transmisión inmediata obligatoria desde 2026-01-01 (hoy el primer intento va por cola con delay), secuencial provisto por el cliente (riesgo de duplicados), notas de crédito sin código (BD sí las tiene). Otros GAPs: catálogos SRI hardcoded, ATS solo cubre tipo 01, sin validación de bancarización sobre USD 500, RIDE sin QR. Documento complementa a anulacion-sri.md y prioriza por sprints. |
 
@@ -180,8 +188,8 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 | Documento | Estado |
 |-----------|--------|
 | auth-service.md, platform-service.md, core-service.md, attendance-service.md | 🟡 Spec de diseño de un servicio ya implementado — el código es la verdad, la spec puede haber divergido |
-| billing-service.md | 🟡 Corregida 2026-07-11 — Sección 9 tenía la tabla de endpoints con 13 rutas (`/api/v1/{comprobantes,admin,reportes}`). **Desactualizada 2026-07-14:** hoy el servicio expone 23 endpoints (6 controllers, incluye `NotaCreditoController`, `AnulacionController`, `MotivosAnulacionController` de Fases 2-3). Revisar y sincronizar cuando se retome la spec. |
-| finance-service.md | 🟡 Spec de diseño **desactualizada** — el servicio ya está implementado (verificado 2026-07-14: 5 controllers, 13 endpoints), pero el encabezado de la spec aún dice "Planeado — sin implementar". El código es la fuente de verdad; ver [docs/finance-service/](../../finance-service/INDEX.md) para API real. |
+| billing-service.md | 🟡 Spec de diseño histórica — servicio implementado (Fases SRI 0-3). Encabezado corregido 2026-07-19. Su §9 lista 13 endpoints; hoy son 23 (6 controllers). Fuente de verdad: [docs/billing-service/](../billing-service/INDEX.md). |
+| finance-service.md | 🟡 Spec de diseño histórica — servicio implementado (5 controllers, 13 endpoints). Encabezado corregido 2026-07-19. Fuente de verdad: [docs/finance-service/](../finance-service/INDEX.md). |
 | marketing-service.md, inventory-service.md | 📋 Planeado — sin implementar |
 
 ### docs/gym-administrator/architecture/
@@ -192,12 +200,17 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 ### docs/auth-service-frond-end/
 | Documento | Estado |
 |-----------|--------|
-| impl/*.md | 📜 Histórico — pasos de implementación ya completados |
-| backend-prompts/*.md | 📜 Histórico — prompts usados para pedir cambios al backend |
-| preguntas/*.md | 📜 Histórico — notas personales de aprendizaje |
-| design-guidelines.md, api-index.md | 🟡 Referencia — verificar contra código si el detalle importa |
+| design-guidelines.md, INDEX-api.md | 🟡 Referencia — verificar contra código si el detalle importa |
+| pendientes-backlog.md, spec-solicitudes-membresia.md, facturacion-diseno.md | 📋 Planeado — sin implementar |
+| impl/, backend-prompts/, preguntas/, member-portal-decisiones, registro-* | 📜 **Archivados** en [`_archive/auth-service-frond-end/`](_archive/README.md) (2026-07-19) |
 
 ### docs/gym-member-pwa/
 | Documento | Estado |
 |-----------|--------|
-| pendientes-backlog.md, pendientes-checkin-qr.md | 📜 Histórico / backlog — tareas pendientes, no estado actual |
+| pendientes-backlog.md, pendientes-checkin-qr.md | 📜 Backlog vivo — tareas pendientes, no estado actual (no archivados) |
+| spec-solicitud-membresia.md | 📋 Sub-doc de la HU `gym-administrator/requirements/solicitudes-membresia.md` |
+
+### docs/_archive/
+| Documento | Estado |
+|-----------|--------|
+| Todo el contenido | 📜 **Histórico** — cómo se construyó o especificaciones superadas. NO usar como estado actual. Ver [`_archive/README.md`](_archive/README.md). |
