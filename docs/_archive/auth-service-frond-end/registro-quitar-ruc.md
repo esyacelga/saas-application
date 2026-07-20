@@ -8,7 +8,7 @@
 > - El **teléfono** sale del registro → queda editable en **"Mi Empresa"** (`EditarCompaniaModal`, que ya lo tiene) para completar cuando quieran.
 > - El **Paso 2 (sucursal)** se **suaviza**: se renombra (deja de decir "sede/sucursal", que asusta a un gym de un solo local) y se **pre-llena** el nombre con el del gym del Paso 1, para que el caso mayoritario —un único local— solo dé "Siguiente". No se elimina el paso: el local físico sí es un dato real.
 > **Principio aplicado:** disclosure progresivo — no pedir un dato hasta que haya una razón concreta para pedirlo.
-> **Parte de:** [restructuración de onboarding y facturación](../gym-administrator/requirements/restructuracion-onboarding-facturacion.md) (documento paraguas). **Es la Pieza 1 — la de menor riesgo.**
+> **Parte de:** [restructuración de onboarding y facturación](../gym-administrator/restructuracion-onboarding-facturacion.md) (documento paraguas). **Es la Pieza 1 — la de menor riesgo.**
 > **Relacionado:** [wizard-configuracion-sri.md](../billing-service/pendientes/wizard-configuracion-sri.md) · [facturacion-diseno.md](facturacion-diseno.md)
 
 ---

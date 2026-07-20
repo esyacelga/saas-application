@@ -3,7 +3,7 @@
 > **ESTADO:** 📋 **Planeado — sin implementar.** Guía de construcción; nada de lo aquí descrito existe hoy.
 > **Fecha:** 2026-07-14
 > **Motivación:** hoy **ningún gimnasio puede activar la facturación electrónica por sí mismo.** Es un bloqueante de onboarding para un SaaS.
-> **Parte de:** [restructuración de onboarding y facturación](../../gym-administrator/requirements/restructuracion-onboarding-facturacion.md) (documento paraguas). **Es la Pieza 2 — construcción desde cero, riesgo alto.**
+> **Parte de:** [restructuración de onboarding y facturación](../../_archive/gym-administrator/restructuracion-onboarding-facturacion.md) (documento paraguas, 📜 archivado). **Es la Pieza 2 — construcción desde cero, riesgo alto.**
 > **Relacionado:** [facturacion-diseno.md](../../auth-service-frond-end/facturacion-diseno.md) (el módulo que este wizard desbloquea) · [roadmap-sri-2026.md](roadmap-sri-2026.md)
 
 ---

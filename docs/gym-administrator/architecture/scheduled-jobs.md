@@ -380,7 +380,7 @@ jobs.run-on-startup: false
 ## Docs Relacionados
 
 - **SRI reintentos:** [`docs/billing-service/flows/sri-submission-retry.md`](../../../docs/billing-service/flows/sri-submission-retry.md) — Detalles del backoff {1,5,15,60,240} min y cadena completa firma→envío→consulta
-- **WhatsApp avisos vencimiento:** [`docs/gym-administrator/pendientes/whatsapp-avisos-vencimiento.md`](../../../docs/gym-administrator/pendientes/whatsapp-avisos-vencimiento.md) — Contexto de negocio, buckets {3,0}, decisión 2026-07-15
+- **WhatsApp avisos vencimiento:** [`docs/_archive/gym-administrator/whatsapp-avisos-vencimiento.md`](../../_archive/gym-administrator/whatsapp-avisos-vencimiento.md) — Contexto de negocio, buckets {3,0}, decisión 2026-07-15 (📜 archivado tras implementarse; el estado vigente de los jobs es este mismo documento)
 - **Platform service specs:** [`docs/gym-administrator/specs/platform-service.md`](../../../docs/gym-administrator/specs/platform-service.md) — RN-SAAS-002/003/010, ciclo de vida suscripción
 
 ---

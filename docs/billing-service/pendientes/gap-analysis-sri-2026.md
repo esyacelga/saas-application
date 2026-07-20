@@ -4,7 +4,7 @@
 > **Prioridad:** 🔴 Alta (varios GAPs bloquean cumplimiento tributario 2026)
 > **Fecha del análisis:** 2026-07-11
 > **Alcance:** Cruce de normativa SRI 2025-2026 vs. código actual del `billing-service` y la BD `facturacion`+`sri`.
-> **Complementa** a [anulacion-sri.md](anulacion-sri.md); no la reemplaza.
+> **Complementa** a [anulacion-sri.md](../../_archive/billing-service/anulacion-sri.md); no la reemplaza.
 
 Este documento **no rediseña** la solución. Solo lista los GAPs cruzados contra la normativa vigente, para que se prioricen y planifiquen por separado.
 

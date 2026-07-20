@@ -1,7 +1,7 @@
 # Registro de gimnasios — mejoras implementadas (2026-07-14)
 
 > **ESTADO:** ✅ **Implementado** (código + esquema). El cambio de esquema del RUC se plegó en la baseline `GYM-001` (ver §7.3); se aplica al recrear la Neon desde cero.
-> **Origen:** revisión UX del auto-registro público + Pieza 1 de la [restructuración de onboarding](../gym-administrator/requirements/restructuracion-onboarding-facturacion.md).
+> **Origen:** revisión UX del auto-registro público + Pieza 1 de la [restructuración de onboarding](../gym-administrator/restructuracion-onboarding-facturacion.md).
 > **Alcance:** solo el **auto-registro público** (`AutoRegistroPage`). El registro por operador de plataforma (`RegistrarGymWizard`) **no se tocó** — conserva RUC obligatorio.
 > **Diseño previo:** [registro-quitar-ruc.md](registro-quitar-ruc.md).
 

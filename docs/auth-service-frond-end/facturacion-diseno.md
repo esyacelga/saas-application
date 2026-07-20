@@ -4,7 +4,7 @@
 > **Fecha:** 2026-07-14
 > **Aplicación destino:** `auth-service-frond-end` (panel admin/staff, puerto 5173).
 > **Backend:** `billing-service` (puerto 8086), ya completo (23 endpoints). Contratos en [docs/billing-service/api/](../billing-service/api/).
-> **Parte de:** [restructuración de onboarding y facturación](../gym-administrator/requirements/restructuracion-onboarding-facturacion.md) (documento paraguas). **Es la Pieza 3 — depende de la Pieza 2 (el wizard de configuración).**
+> **Parte de:** [restructuración de onboarding y facturación](../_archive/gym-administrator/restructuracion-onboarding-facturacion.md) (documento paraguas, 📜 archivado). **Es la Pieza 3 — depende de la Pieza 2 (el wizard de configuración).**
 
 ## Punto de partida (verificado en el código, 2026-07-14)
 

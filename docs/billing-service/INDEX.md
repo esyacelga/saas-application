@@ -15,7 +15,8 @@ Facturación electrónica SRI Ecuador. Emisión, firma digital y autorización d
 | [anulaciones.md](api/anulaciones.md) | `/api/v1/anulaciones`, `/api/v1/sri/motivos-anulacion` | G3 · Anulación fiscal SRI: máquina de estados (solicitar → aprobar/rechazar → confirmar-sri o NC AUTORIZADA), autorización por rol, catálogo de motivos |
 | [admin.md](api/admin.md) | `/api/v1/admin` | Diagnóstico: ping SRI, estado de certificados, auditoría de emisión |
 | [reportes.md](api/reportes.md) | `/api/v1/reportes` | ATS mensual (XML SRI), resumen de ventas por período |
-| [integracion.md](api/integracion.md) | — | 📋 **Propuesto** (falta implementarse en `core-service`): Cómo core-service debe consumir billing-service; JWT y multi-tenancy; manejo de errores; checklist. ⚠️ Doc parcialmente desactualizado por G2 — el flujo real hoy es síncrono (POST devuelve el estado final, no `GENERADO`). Ver nota inline. |
+
+> El contrato propuesto de integración `core-service → billing-service` (`integracion.md`) se archivó en [../_archive/billing-service/integracion.md](../_archive/billing-service/integracion.md): describía el flujo asíncrono pre-G2 y `core-service` aún no lo consume. El flujo síncrono vigente está en [api/comprobantes.md](api/comprobantes.md).
 
 ---
 
@@ -36,9 +37,11 @@ Facturación electrónica SRI Ecuador. Emisión, firma digital y autorización d
 |-----------|-----------|-------------|
 | [roadmap-sri-2026.md](pendientes/roadmap-sri-2026.md) | 🔴 Alta | 📋 **División en 6 fases con dependencias.** Fases 0, 1 y 2 ya completadas. Cada fase apunta al detalle del GAP en gap-analysis. |
 | [it-end-to-end-sri-pruebas.md](pendientes/it-end-to-end-sri-pruebas.md) | 🟡 Media | 📋 Test IT que envía factura real al ambiente de pruebas del SRI (`celcer.sri.gob.ec`). Incluye checklist de prerrequisitos: certificado P12 real, RUC válido, BD operacional, receptor válido, red. Para retomar en próxima sesión. |
-| [anulacion-sri.md](pendientes/anulacion-sri.md) | ✅ | ✅ IMPLEMENTADO 2026-07-13 — histórico del diseño de G3. Ver [api/anulaciones.md](api/anulaciones.md) y [flows/anulacion-nc.md](flows/anulacion-nc.md). |
 | [gap-analysis-sri-2026.md](pendientes/gap-analysis-sri-2026.md) | 🔴 Alta | 📋 Cruce completo de brechas entre normativa SRI 2025-2026 y estado actual del código. 13 GAPs identificados; G1–G6 resueltos, resto pendiente. |
+| [wizard-configuracion-sri.md](pendientes/wizard-configuracion-sri.md) | 🔴 Alta | 📋 Wizard de onboarding SRI (bloqueante: hoy activar facturación requiere SQL manual). |
 | [adr/001-version-xml-sri.md](pendientes/adr/001-version-xml-sri.md) | — | ADR de la decisión de subir el XML de factura a v2.24 (mínima que oficializa el código IVA 15%). |
+
+> El diseño de la anulación fiscal G3 (`anulacion-sri.md`) se archivó en [../_archive/billing-service/anulacion-sri.md](../_archive/billing-service/anulacion-sri.md) tras implementarse (2026-07-13). Estado vigente: [api/anulaciones.md](api/anulaciones.md) + [flows/anulacion-nc.md](flows/anulacion-nc.md).
 
 ---
 
