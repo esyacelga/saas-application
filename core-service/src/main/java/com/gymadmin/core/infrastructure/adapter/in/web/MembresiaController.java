@@ -86,7 +86,6 @@ public class MembresiaController {
                         .then(membresiaUseCase.solicitarMembresia(
                                 principal.getIdPersona(),
                                 principal.getIdCompania(),
-                                principal.getIdCompania(),
                                 request.idTipoMembresia()))
                 )
                 .map(m -> ResponseEntity.status(HttpStatus.CREATED).body(MembresiaResponse.from(m)));

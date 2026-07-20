@@ -21,14 +21,6 @@ public interface MembresiaRepository {
 
     Mono<Membresia> findPendienteVivaByIdCliente(Long idCliente, Long idCompania);
 
-    /**
-     * Busca una solicitud viva ({@code estado_pago='PENDIENTE'}, {@code eliminado=false})
-     * originada por el propio cliente ({@code origen='cliente'}). Usada para prevenir que
-     * el cliente PWA envíe dos solicitudes autoservicio simultáneas — no colisiona con
-     * una venta staff pendiente que el cliente pueda tener en paralelo.
-     */
-    Mono<Membresia> findSolicitudClientePendiente(Long idCliente, Long idCompania);
-
     Flux<Membresia> findPendientesPorCompania(Long idCompania);
 
     /**

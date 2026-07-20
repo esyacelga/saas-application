@@ -47,18 +47,6 @@ public interface MembresiaR2dbcRepository extends ReactiveCrudRepository<Membres
 
     @Query("""
         SELECT * FROM core.membresias
-        WHERE id_cliente = :idCliente
-          AND id_compania = :idCompania
-          AND estado_pago = 'PENDIENTE'
-          AND origen = 'cliente'
-          AND eliminado = false
-        ORDER BY creacion_fecha DESC
-        LIMIT 1
-        """)
-    Mono<MembresiaEntity> findSolicitudClientePendiente(Long idCliente, Long idCompania);
-
-    @Query("""
-        SELECT * FROM core.membresias
         WHERE id_compania = :idCompania
           AND estado_pago = 'PENDIENTE'
           AND eliminado = false

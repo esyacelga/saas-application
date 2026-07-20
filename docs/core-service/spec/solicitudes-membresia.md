@@ -2,12 +2,12 @@
 
 > **Sub-documento (backend/core) de la HU canónica** [`../../gym-administrator/requirements/solicitudes-membresia.md`](../../gym-administrator/requirements/solicitudes-membresia.md). Ahí está el requerimiento cross-cutting completo (negocio + decisiones de PO + alcance en los 3 componentes). Este archivo detalla solo la parte de **core-service**. El frontend PWA está en [`../../gym-member-pwa/spec-solicitud-membresia.md`](../../gym-member-pwa/spec-solicitud-membresia.md).
 
-**ESTADO:** 🟡 **Feature aún no implementado** — Especificación de diseño del nuevo flujo de compra autoservicio. El código es la fuente de verdad una vez implementado; esta spec refleja las decisiones cerradas de producto.
+**ESTADO:** ✅ **Implementado** (2026-07-20) — código es la fuente de verdad. Esta spec ahora describe el flujo tal como quedó; las decisiones de PO se preservan como registro histórico. Cambios respecto al diseño original marcados con "**Δ**" en cada sección.
 
 **Servicio:** core-service  
-**Esquemas BD:** `core.membresias` (columna nueva + índice)  
+**Esquemas BD:** `core.membresias` (columna nueva + índice UNIQUE parcial)  
 **Depende de:** auth-service (JWT `tipo=cliente`), platform-service (validación de módulos)  
-**Estado:** Diseño completado, lista para implementar
+**Estado:** Verificado contra el código (`MembresiaController`, `MembresiaService`).
 
 ---
 
@@ -62,27 +62,28 @@ Staff Dashboard (Ventas pendientes)
 
 ## Cambios de Diseño
 
-### 1. Schema — Liquibase (Nuevo Changeset)
+### 1. Schema — Liquibase (Δ consolidado en baseline)
 
-**Cambio 1a: Columna `origen`**
+**Δ Respecto al diseño original:** en vez de un ALTER en release nuevo, la columna se consolidó directamente en el `CREATE TABLE` del baseline `GYM-001` (Opción A acordada con el usuario, coherente con GYM-002/003). Y el índice pasó a ser **UNIQUE parcial** para cerrar la race condition detectada en el code review.
+
+**Cambio 1a: Columna `origen`** — en `db/scripts/202605_GYM-001/ddl/31_create_table_core_membresias.sql`
 ```sql
-ALTER TABLE core.membresias
-  ADD COLUMN origen VARCHAR(10) NOT NULL DEFAULT 'staff'
-  CONSTRAINT chk_membresias_origen CHECK (origen IN ('cliente', 'staff'));
+origen              VARCHAR(10)   NOT NULL DEFAULT 'staff'
+                      CHECK (origen IN ('cliente','staff')),
 ```
+Ubicada entre `estado_pago` y `dias_acceso_total` en el CREATE TABLE. El default `'staff'` asegura que cualquier fila insertada sin especificar origen (path de venta staff) reciba el valor retro-compatible.
 
-Migración idempotente: aplica DEFAULT a membresías existentes. Todas las ventas staff históricas o futuras dirían `origen='staff'`.
-
-**Cambio 1b: Índice parcial**
+**Cambio 1b: Índice UNIQUE parcial** — en `db/scripts/202605_GYM-001/ddl/56_create_indexes_core.sql`
 ```sql
-CREATE INDEX idx_membresias_pendientes_cliente
-  ON core.membresias (id_compania)
-  WHERE estado_pago = 'PENDIENTE'
-    AND origen = 'cliente'
-    AND eliminado = false;
+CREATE UNIQUE INDEX uq_membresias_pendiente_por_cliente_vivo
+  ON core.membresias(id_cliente)
+  WHERE estado_pago = 'PENDIENTE' AND eliminado = FALSE;
 ```
+**Doble propósito:**
+1. Garantiza el invariante "un cliente = una compra viva en trámite" a nivel BD (sin importar el origen). Cierra la race condition de check-then-act en `solicitarMembresia`.
+2. Sirve como índice de lookup para `findPendienteVivaByIdCliente(idCliente, idCompania)`.
 
-Usado por dashboard para filtrar rápido solicitudes cliente que requieren acción del staff.
+Cuando PostgreSQL rechaza el segundo INSERT concurrente, `DataIntegrityMapper` detecta el nombre del constraint y traduce a `codigo=solicitud_ya_existe` (mismo sobre RFC 7807 que la validación check-then-act).
 
 ### 2. DTOs / Responses
 
@@ -171,12 +172,12 @@ Cliente PWA solicita membresía sin intermediario staff.
 **Response fields:** Idénticos a `MembresiaResponse` con `origen=cliente`, `estado_pago=PENDIENTE`, `fecha_inicio=null`, `fecha_fin=null`.
 
 **Reglas de negocio:**
-1. Cliente no debe tener ya una membresía con `estado_pago=PENDIENTE` y `eliminado=false` viva → `409 Conflict` con:
+1. Cliente no debe tener ninguna membresía viva con `estado_pago=PENDIENTE` (sin importar el `origen`) → `409 Conflict`. **Δ** El diseño original filtraba por `origen='cliente'`; el reviewer detectó que eso abría una asimetría (cliente podía abrir una solicitud PWA mientras staff tenía una venta sin cobrar en paralelo, resultando en membresías huérfanas). La regla ahora bloquea cualquier PENDIENTE viva:
    ```json
    {
-     "tipo": "https://core-service/errors/solicitud-ya-existe",
-     "titulo": "Solicitud en espera",
-     "detalle": "Ya tienes una solicitud de membresía en revisión. Espera a que sea confirmada o rechazada.",
+     "type": "https://core-service/errors/solicitud-ya-existe",
+     "title": "Solicitud en espera",
+     "detail": "Ya tienes una compra en trámite. Espera a que el staff la confirme o cancele antes de solicitar una nueva.",
      "codigo": "solicitud_ya_existe",
      "status": 409
    }
@@ -205,14 +206,16 @@ Cliente PWA solicita membresía sin intermediario staff.
    }
    ```
 
-4. Crear la membresía con:
+4. Crear la membresía con (**Δ** placeholders para columnas NOT NULL sin default):
    - `origen='cliente'`
    - `estado_pago='PENDIENTE'`
-   - `precio_pagado=null` (no se cobra nada aún)
-   - `descuento_aplicado=null` o `0.00` (el staff decide después)
+   - `precio_pagado=0` (placeholder — la columna es NOT NULL sin default; se sobrescribe al `confirmar-pago`)
+   - `descuento_aplicado=0` (default de la columna)
+   - `dias_acceso_total=null` (se rellena al confirmar desde `tipos_membresia.dias_acceso` si el tipo es `accesos`; ver "Comportamiento Invariante" para el trade-off B1)
    - `id_metodo_pago=null` (el staff elige)
    - `fecha_inicio=null`, `fecha_fin=null` (CHECK `ck_membresias_fechas_por_estado_pago` lo exige)
-   - `id_cliente` derivado de `id_persona` + `id_compania` del JWT via `ClienteService.obtenerClienteDesdePersona()`
+   - `id_cliente` derivado de `id_persona` + `id_compania` del JWT vía `ClienteRepository.findByIdPersonaAndIdCompania`
+   - `id_sucursal` derivado de `cliente.id_sucursal` (**Δ** el cliente está registrado en una sucursal; la solicitud hereda esa. Antes se usaba `id_compania` como valor incorrecto, corregido en review)
    - `estado='activa'` (invariante: estado describe la membresía lógica, no el estado de pago)
    - `eliminado=false` (nueva, no rechazada)
 
@@ -291,26 +294,30 @@ Hoy **NO acepta body**. Cambio: acepta body **opcional**, con comportamiento con
 ```
 
 **Body fields:**
-- `id_metodo_pago` (required si `origen=cliente` y `precio_pagado=null`, optional si `origen=staff`) — Payment method ID
-- `descuento_aplicado` (required si `origen=cliente`, optional si `origen=staff`, default `0.00`) — Discount amount (DECIMAL)
-- `fecha_inicio` (required si `origen=cliente` y `precio_pagado=null`, optional si `origen=staff`, format `YYYY-MM-DD`) — Start date. **Este es el día real que comienza la membresía.** Típicamente `CURRENT_DATE` (el día que el staff completa la venta), pero staff puede backdatear si necesita.
-- `precio_pagado` (required si `origen=cliente`, optional si `origen=staff`, DECIMAL >= 0) — Amount actually charged
+- `id_metodo_pago` (**required** si `origen=cliente` y `precio_pagado=0`, optional si `origen=staff`) — Payment method ID
+- `descuento_aplicado` (**opcional, default `0.00`** — **Δ** Decision C: el diseño inicial lo marcaba REQUERIDO para origen cliente, pero el default es más ergonómico y coincide con la realidad de que la mayoría de ventas no llevan descuento; si viene ausente, se asume 0) — Discount amount (DECIMAL)
+- `fecha_inicio` (**required** si `origen=cliente` y `precio_pagado=0`, optional si `origen=staff`, format `YYYY-MM-DD`) — Start date. **Este es el día real que comienza la membresía.** Típicamente `CURRENT_DATE` (el día que el staff completa la venta), pero staff puede backdatear si necesita.
+- `precio_pagado` (**required** si `origen=cliente`, optional si `origen=staff`, DECIMAL >= 0) — Amount actually charged
 
-**Lógica de validación:**
+**Lógica de validación (Δ `precio_pagado=0` en vez de `null` — la columna es NOT NULL):**
 
 ```
-Si membresía.precio_pagado = NULL (originada por cliente, origen='cliente'):
+Si membresía.precio_pagado = 0 (originada por cliente, placeholder):
   ├─ id_metodo_pago: REQUERIDO, sino 400 con codigo=datos_venta_incompletos
-  ├─ descuento_aplicado: REQUERIDO (puede ser 0), sino 400 con codigo=datos_venta_incompletos
+  ├─ descuento_aplicado: OPCIONAL (default 0), pasa sin más
   ├─ fecha_inicio: REQUERIDO, validar formato DATE, sino 400 con codigo=datos_venta_incompletos
   └─ precio_pagado: REQUERIDO (>= 0), sino 400 con codigo=datos_venta_incompletos
 
-Si membresía.precio_pagado != NULL (originada por staff, origen='staff'):
+Si membresía.precio_pagado > 0 (originada por staff, ya trae precio):
   └─ Body (si presente) SE IGNORA COMPLETAMENTE
      El endpoint funciona igual que hoy: confirma y usa fecha_inicio=HOY
 
 Si membresía.estado_pago = PAGADO (ya confirmada):
   └─ Idempotente 200 OK, sin recalcular, sin re-emitir evento
+
+Si el tipo de membresía es 'accesos':
+  └─ Antes de guardar, se copia tipos_membresia.dias_acceso → membresia.dias_acceso_total
+     (Δ decisión B1: dias_acceso NO se congela al solicitar; se lee del catálogo actual)
 ```
 
 **Response 200 (originada por cliente, data de venta completada):**
@@ -388,6 +395,11 @@ Estos comportamientos NO cambian con este feature:
 - Al `confirmar-pago`, el staff ingresa el `precio_pagado` que será cobrado (típicamente = `tipos_membresia.precio` hoy, pero staff puede ofrecer descuento).
 - Beneficio: flexibilidad si el catálogo cambia entre solicitud y venta (ej: promo del día).
 
+### Días de Acceso No Se Congelan (Δ Decisión B1 — 2026-07-20)
+- Coherente con "precio no se congela": `dias_acceso_total` para tipos `accesos` **se lee del catálogo al `confirmar-pago`**, no se copia al momento de solicitar.
+- Riesgo aceptado: si el admin edita `tipos_membresia.dias_acceso` entre la solicitud y la confirmación (ej. "Bono 20 accesos" → "Bono 15 accesos"), el cliente recibe la cantidad nueva.
+- **Mitigación**: el PWA muestra un widget persistente en el Home (`MembresiaStatusWidget`) que refleja el tipo solicitado y el precio del catálogo al momento de la solicitud. Si al pagar el cliente nota discrepancia, puede reclamar con evidencia visible. Ver spec en `docs/gym-member-pwa/spec-home-membresia-widget.md` (o equivalente producido por `ui-ux-designer`).
+
 ### Método de Pago
 - Cliente NO elige método de pago (decisión #5 del PO).
 - Staff elige al confirmar vía `id_metodo_pago` en el body de `confirmar-pago`.
@@ -459,7 +471,7 @@ Se documentan aquí para evitar regresiones:
 
 | Riesgo | Probabilidad | Impacto | Mitigación |
 |--------|---|---|---|
-| **Solicitud spam** — Cliente envía 100 solicitudes rápido | Alta | Bajo | RateLimit en endpoint (guardia futura). Hoy: validación "no dos PENDIENTE simultáneas". |
+| **Solicitud spam** — Cliente envía 100 solicitudes rápido | Alta | Bajo | ✅ **Mitigado** con UNIQUE partial index `uq_membresias_pendiente_por_cliente_vivo` (2026-07-20). Un cliente no puede tener más de una PENDIENTE viva en BD, independiente de concurrencia. Rate limit adicional queda como guardia futura si se detecta abuso a nivel de red. |
 | **Precio cambia entre solicitud y confirmación** — Catálogo actualizado | Media | Media | Decisión #1: staff ingresa precio. UI muestra precio actual al confirmar. |
 | **Cliente olvida solicitud, intenta de nuevo** — Confusión UX | Media | Bajo | GET /clientes/me/membresias muestra solicitudes PENDIENTE. UI avisa si ya hay una. |
 | **Congelamiento en estado PENDIENTE** — ¿Permitir congelar solicitud? | Baja | Bajo | No permitir congelar mientras `estado_pago=PENDIENTE`. Validar en `POST /congelar`. |
@@ -472,23 +484,11 @@ Se documentan aquí para evitar regresiones:
 
 Estos archivos de `docs/core-service/api/` deben sincronizarse **después de que el código esté escrito**:
 
-- [ ] `docs/core-service/api/membresias.md` — Actualizar:
-  - Nuevo endpoint: `POST /api/v1/clientes/me/membresias/solicitar`
-  - Nuevo endpoint: `GET /api/v1/companias/{id}/membresias/pendientes/contador`
-  - Modificación: `POST /api/v1/membresias/{id}/confirmar-pago` ahora acepta body opcional con campos condicionales
-  - Modificación: `MembresiaPendienteResponse` agrega campo `origen`
-  - Modificación: `MembresiaResponse` agrega campo `origen`
-  - Errores de negocio: nuevos códigos `solicitud_ya_existe`, `tipo_membresia_no_disponible`, `membresia_activa_vigente`, `datos_venta_incompletos`
-  - State machine actualizado en sección de Reglas
-
-- [ ] `docs/core-service/INDEX.md` — Actualizar sección "Specs pendientes" → "Specs implementadas" con enlace a este documento en archivo final
-
-- [ ] `core-service/CLAUDE.md` — Actualizar:
-  - State machine de Membresía en sección de arquitectura
-  - Variables de entorno requeridas (si aplica)
-  - Descripción de permiso granular `membresias:confirmar_pago` (ya existe, confirmar en código)
-
-- [ ] `core-service/README.md` — Actualizar sección de Docker/variables si hay nuevas requeridas
+- [x] `docs/core-service/api/membresias.md` — actualizado por `backend-developer` en el mismo commit del feature.
+- [x] `docs/core-service/INDEX.md` — spec marcada como implementada.
+- [ ] `core-service/CLAUDE.md` — pendiente: state machine expandido si se considera relevante (el flujo actual ya es coherente con el diagrama de la sección "State Machines").
+- [ ] `core-service/README.md` — sin cambios necesarios (no hay variables de entorno nuevas).
+- [ ] Spec del PWA Home Widget (producida por `ui-ux-designer` en PR3) — commit pendiente.
 
 ---
 

@@ -39,10 +39,20 @@ public final class DataIntegrityMapper {
         }
         if (lower.contains("unique constraint") || lower.contains("duplicate key")) {
             Matcher m = CONSTRAINT.matcher(msg);
-            String detail = m.find()
-                    ? "Registro duplicado (restricción: " + m.group(1) + ")"
-                    : "Registro duplicado: ya existe un elemento con los datos proporcionados";
-            return new Resolved(ErrorCode.DATOS_DUPLICADOS, detail);
+            if (m.find()) {
+                String constraint = m.group(1);
+                // Índice UNIQUE parcial que garantiza "un cliente = una PENDIENTE viva"
+                // (ver 56_create_indexes_core.sql). Mapeo específico para que el 409
+                // llegue al cliente con el codigo de negocio correcto en vez del genérico.
+                if ("uq_membresias_pendiente_por_cliente_vivo".equals(constraint)) {
+                    return new Resolved(ErrorCode.SOLICITUD_YA_EXISTE,
+                            "Ya tienes una compra en trámite. Espera a que el staff la confirme o cancele antes de solicitar una nueva.");
+                }
+                return new Resolved(ErrorCode.DATOS_DUPLICADOS,
+                        "Registro duplicado (restricción: " + constraint + ")");
+            }
+            return new Resolved(ErrorCode.DATOS_DUPLICADOS,
+                    "Registro duplicado: ya existe un elemento con los datos proporcionados");
         }
         if (lower.contains("foreign key constraint")) {
             Matcher m = CONSTRAINT.matcher(msg);

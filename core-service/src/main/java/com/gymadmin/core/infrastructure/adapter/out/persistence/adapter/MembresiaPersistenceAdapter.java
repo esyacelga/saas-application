@@ -41,11 +41,6 @@ public class MembresiaPersistenceAdapter implements MembresiaRepository {
     }
 
     @Override
-    public Mono<Membresia> findSolicitudClientePendiente(Long idCliente, Long idCompania) {
-        return repository.findSolicitudClientePendiente(idCliente, idCompania).map(this::toDomain);
-    }
-
-    @Override
     public Flux<Membresia> findPendientesPorCompania(Long idCompania) {
         return repository.findPendientesPorCompania(idCompania).map(this::toDomain);
     }

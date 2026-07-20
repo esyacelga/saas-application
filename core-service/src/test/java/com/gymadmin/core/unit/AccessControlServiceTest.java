@@ -33,7 +33,6 @@ class AccessControlServiceTest {
         @DisplayName("permite acceso cuando el principal es staff")
         void permiteAccesoCuandoEsStaff() {
             JwtPrincipal principal = mock(JwtPrincipal.class);
-            when(principal.getTipo()).thenReturn("staff");
 
             StepVerifier.create(accessControlService.requireStaff(principal))
                     .verifyComplete();
@@ -43,7 +42,6 @@ class AccessControlServiceTest {
         @DisplayName("permite acceso cuando el principal es plataforma")
         void permiteAccesoCuandoEsPlataforma() {
             JwtPrincipal principal = mock(JwtPrincipal.class);
-            when(principal.getTipo()).thenReturn("plataforma");
 
             StepVerifier.create(accessControlService.requireStaff(principal))
                     .verifyComplete();
@@ -53,7 +51,6 @@ class AccessControlServiceTest {
         @DisplayName("permite acceso cuando el principal es cliente (cualquier tipo no nulo)")
         void permiteAccesoCuandoEsCliente() {
             JwtPrincipal principal = mock(JwtPrincipal.class);
-            when(principal.getTipo()).thenReturn("cliente");
 
             // requireStaff solo verifica que el principal no sea null
             StepVerifier.create(accessControlService.requireStaff(principal))
@@ -126,7 +123,6 @@ class AccessControlServiceTest {
         void lanzaForbiddenCuandoIdCompaniaDelRequestEsNull() {
             JwtPrincipal principal = mock(JwtPrincipal.class);
             when(principal.isSuperAdmin()).thenReturn(false);
-            when(principal.getIdCompania()).thenReturn(5L);
 
             StepVerifier.create(accessControlService.requireGymStaff(principal, null))
                     .expectError(ForbiddenException.class)
@@ -198,7 +194,6 @@ class AccessControlServiceTest {
             when(principal.isSuperAdmin()).thenReturn(false);
             when(principal.isStaff()).thenReturn(false);
             when(principal.getRolPlataforma()).thenReturn("Recepción");
-            when(principal.getIdCompania()).thenReturn(7L);
 
             StepVerifier.create(accessControlService.requireAdminOrDueno(principal, 7L))
                     .expectError(ForbiddenException.class)
@@ -343,7 +338,6 @@ class AccessControlServiceTest {
             when(principal.isSuperAdmin()).thenReturn(false);
             when(principal.isStaff()).thenReturn(false);
             when(principal.getRolPlataforma()).thenReturn("Entrenador");
-            when(principal.getIdCompania()).thenReturn(4L);
 
             StepVerifier.create(accessControlService.requireRecepcionOrAbove(principal, 4L))
                     .expectError(ForbiddenException.class)

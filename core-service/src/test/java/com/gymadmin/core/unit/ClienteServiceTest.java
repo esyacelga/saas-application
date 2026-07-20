@@ -10,13 +10,14 @@ import com.gymadmin.core.domain.port.out.CongelamientoRepository;
 import com.gymadmin.core.domain.port.out.MembresiaRepository;
 import com.gymadmin.core.domain.port.out.PersonaRepository;
 import com.gymadmin.core.domain.port.out.TipoMembresiaRepository;
+import com.gymadmin.core.infrastructure.adapter.out.http.PlatformServiceClient;
 import com.gymadmin.core.infrastructure.exception.ConflictException;
 import com.gymadmin.core.infrastructure.exception.NotFoundException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
@@ -29,6 +30,7 @@ import java.time.LocalDate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -52,8 +54,21 @@ class ClienteServiceTest {
     @Mock
     private TipoMembresiaRepository tipoMembresiaRepository;
 
-    @InjectMocks
+    @Mock
+    private PlatformServiceClient platformServiceClient;
+
     private ClienteService service;
+
+    @BeforeEach
+    void setUp() {
+        // Construimos manualmente para poder inyectar `carnetPrefix` (el @Value no
+        // lo resuelve @InjectMocks). Mantiene la misma configuración que producción.
+        service = new ClienteService(
+                clienteRepository, personaRepository, membresiaRepository,
+                congelamientoRepository, tipoMembresiaRepository, platformServiceClient,
+                "GYM"
+        );
+    }
 
     private Cliente buildCliente(Long id, Long idPersona, Long idCompania, Cliente.Estado estado) {
         Cliente c = new Cliente();
@@ -165,9 +180,9 @@ class ClienteServiceTest {
             PersonaRepository.PersonaResult nuevaPersona = buildPersona(200L, "0987654321", "Ana García");
             Cliente clienteSaved = buildCliente(5L, 200L, 1L, Cliente.Estado.activo);
 
+            when(platformServiceClient.requireLimite(eq(1L), eq("clientes_activos"))).thenReturn(Mono.empty());
             when(personaRepository.findByCi("0987654321")).thenReturn(Mono.empty());
             when(personaRepository.create(any())).thenReturn(Mono.just(nuevaPersona));
-            when(clienteRepository.findByIdPersonaAndIdCompania(anyLong(), anyLong())).thenReturn(Mono.empty());
             when(clienteRepository.save(any())).thenAnswer(inv -> {
                 Cliente c = inv.getArgument(0);
                 c.setId(5L);
@@ -189,8 +204,12 @@ class ClienteServiceTest {
             PersonaRepository.PersonaResult persona = buildPersona(100L, "0987654321", "Ana García");
             Cliente existente = buildCliente(1L, 100L, 1L, Cliente.Estado.activo);
 
+            when(platformServiceClient.requireLimite(eq(1L), eq("clientes_activos"))).thenReturn(Mono.empty());
             when(personaRepository.findByCi("0987654321")).thenReturn(Mono.just(persona));
             when(clienteRepository.findByIdPersonaAndIdCompania(100L, 1L)).thenReturn(Mono.just(existente));
+            // personaRepository.create(...) se evalúa eagerly como argumento a switchIfEmpty aunque
+            // el flujo termine en error antes; sin este stub retornaría null → NPE.
+            when(personaRepository.create(any())).thenReturn(Mono.empty());
 
             StepVerifier.create(service.registrar(1L, buildCmd()))
                     .expectErrorSatisfies(e -> assertThat(e).isInstanceOf(ConflictException.class))

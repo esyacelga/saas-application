@@ -1,6 +1,7 @@
 package com.gymadmin.core.infrastructure.adapter.in.web.dto;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 /**
  * Body de {@code POST /api/v1/clientes/me/membresias/solicitar}. Cliente PWA elige
@@ -8,5 +9,5 @@ import jakarta.validation.constraints.NotNull;
  * método de pago) los completa el staff al confirmar.
  */
 public record SolicitarMembresiaRequest(
-        @NotNull Long idTipoMembresia
+        @NotNull @Positive Long idTipoMembresia
 ) {}

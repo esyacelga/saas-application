@@ -464,7 +464,9 @@ public class MembresiaService implements MembresiaUseCase {
      * Cliente PWA solicita una membresía autoservicio. Valida en orden:
      * <ol>
      *   <li>El {@code id_persona} debe corresponder a un cliente de la compañía (si no → 404).</li>
-     *   <li>El cliente no debe tener otra solicitud viva {@code origen=cliente, estado_pago=PENDIENTE}
+     *   <li>El cliente no debe tener ninguna compra viva ({@code estado_pago=PENDIENTE, eliminado=false})
+     *       — sin importar el {@code origen} (staff o cliente). Cierra la asimetría cliente/staff:
+     *       el cliente no puede abrir una solicitud PWA en paralelo a una venta staff sin cobrar
      *       (si sí → 409 {@code solicitud_ya_existe}).</li>
      *   <li>El cliente no debe tener una membresía activa vigente PAGADA (si sí → 409
      *       {@code membresia_activa_vigente}).</li>
@@ -478,15 +480,15 @@ public class MembresiaService implements MembresiaUseCase {
      * {@code descuento=0}, {@code id_metodo_pago=NULL}.
      */
     @Override
-    public Mono<Membresia> solicitarMembresia(Long idPersona, Long idCompania, Long idSucursal,
+    public Mono<Membresia> solicitarMembresia(Long idPersona, Long idCompania,
                                                Long idTipoMembresia) {
         return clienteRepository.findByIdPersonaAndIdCompania(idPersona, idCompania)
                 .switchIfEmpty(Mono.error(new NotFoundException("Cliente en esta compañía", idPersona)))
                 .flatMap(cliente -> membresiaRepository
-                        .findSolicitudClientePendiente(cliente.getId(), idCompania)
+                        .findPendienteVivaByIdCliente(cliente.getId(), idCompania)
                         .flatMap(existing -> Mono.<Membresia>error(new CodedException(
                                 ErrorCode.SOLICITUD_YA_EXISTE,
-                                "Ya tienes una solicitud de membresía en revisión. Espera a que sea confirmada o rechazada.")))
+                                "Ya tienes una compra en trámite. Espera a que el staff la confirme o cancele antes de solicitar una nueva.")))
                         .switchIfEmpty(Mono.defer(() -> membresiaRepository
                                 .findActivaByIdClienteAndIdCompania(cliente.getId(), idCompania)
                                 .filter(activa -> activa.getFechaFin() != null
@@ -495,7 +497,7 @@ public class MembresiaService implements MembresiaUseCase {
                                         ErrorCode.MEMBRESIA_ACTIVA_VIGENTE,
                                         "No puedes solicitar una nueva membresía mientras tengas una activa. Espera a que venza.")))
                                 .switchIfEmpty(Mono.defer(() -> crearSolicitud(cliente.getId(), idCompania,
-                                        idSucursal, idTipoMembresia))))));
+                                        cliente.getIdSucursal(), idTipoMembresia))))));
     }
 
     private Mono<Membresia> crearSolicitud(Long idCliente, Long idCompania, Long idSucursal,

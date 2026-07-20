@@ -39,6 +39,7 @@ Service: core-service (port 8083)
     "saldo_pendiente": "0.00",
     "estado": "activa",
     "estado_pago": "PAGADO",
+    "origen": "staff",
     "eliminado": false,
     "motivo_eliminacion": null
   }
@@ -62,6 +63,7 @@ Service: core-service (port 8083)
 - `saldo_pendiente` — Saldo por cobrar (`precio_pagado - monto_pagado`)
 - `estado` — `activa`, `vencida`, `anulada`, `congelada`
 - `estado_pago` — `PAGADO` | `PENDIENTE`
+- `origen` — `cliente` (solicitud autoservicio PWA) | `staff` (venta directa mostrador). Default histórico `staff` para migración retroactiva.
 - `eliminado` — `true` cuando la membresía fue rechazada (soft-delete)
 - `motivo_eliminacion` — Cuando `eliminado = true`: `SOCIO_CAMBIO_OPINION` | `ERROR_DE_VENTA` | `DUPLICADA` | `DATOS_INCORRECTOS` | `OTRO`
 
@@ -129,6 +131,7 @@ Service: core-service (port 8083)
   "descuento_aplicado": "10.00",
   "estado": "activa",
   "estado_pago": "PAGADO",
+  "origen": "staff",
   "eliminado": false,
   "motivo_eliminacion": null
 }
@@ -142,6 +145,68 @@ Service: core-service (port 8083)
 - `409` — business rule conflict (`El cliente ya tiene una membresía activa` o `El cliente ya tiene una membresía pendiente de pago`)
 
 > Revisar contra código: `MembresiaController#vender` + `MembresiaService#vender` (§4.4 de `docs/gym-administrator/requirements/estado-pago-membresias.md`).
+
+Nota: toda venta creada por este endpoint queda con `origen='staff'`. Para solicitudes autoservicio desde la PWA usar `POST /clientes/me/membresias/solicitar` (más abajo).
+
+---
+
+### POST /api/v1/clientes/me/membresias/solicitar
+**Auth:** Bearer JWT (`tipo: cliente`)
+**Permission:** `requireCliente()` (resuelve `id_cliente` desde `id_persona` + `id_compania` del JWT).
+**Description:** Cliente PWA envía una solicitud de membresía autoservicio. Crea la fila como `PENDIENTE` con `origen='cliente'` y placeholders (precio 0, sin método de pago, fechas NULL). El staff completa la venta luego vía `POST /membresias/{id}/confirmar-pago`. El cliente NO puede cancelar su propia solicitud (decisión PO #4); solo el staff vía `POST /membresias/{id}/rechazar`.
+
+**Request body:**
+```json
+{
+  "id_tipo_membresia": 3
+}
+```
+
+**Body fields:**
+- `id_tipo_membresia` (required, integer) — Debe estar `activo=true` y pertenecer a la `id_compania` del JWT.
+
+**Response 201:**
+```json
+{
+  "id": 101,
+  "id_cliente": 10,
+  "id_tipo_membresia": 3,
+  "tipo_nombre": null,
+  "modo_control": null,
+  "fecha_inicio": null,
+  "fecha_fin": null,
+  "dias_acceso_total": null,
+  "dias_acceso_usados": null,
+  "dias_acceso_restantes": null,
+  "precio_pagado": "0.00",
+  "descuento_aplicado": "0.00",
+  "monto_pagado": "0.00",
+  "saldo_pendiente": "0.00",
+  "estado": "activa",
+  "estado_pago": "PENDIENTE",
+  "origen": "cliente",
+  "eliminado": false,
+  "motivo_eliminacion": null
+}
+```
+
+**Reglas de negocio:**
+1. Si el cliente ya tiene una membresía viva con `estado_pago='PENDIENTE' AND eliminado=false` (sin importar el `origen`) → `409` con `codigo=solicitud_ya_existe` y mensaje "Ya tienes una compra en trámite. Espera a que el staff la confirme o cancele antes de solicitar una nueva." El chequeo se hace en el service (check-then-act) y **además** existe el índice `UNIQUE uq_membresias_pendiente_por_cliente_vivo` que cierra la race condition — el `DataIntegrityMapper` traduce la violación al mismo `codigo` si la carrera lo evade.
+2. Si el cliente tiene una membresía PAGADA activa aún vigente (`fecha_fin >= hoy`) → `409` con `codigo=membresia_activa_vigente`.
+3. Si el `id_tipo_membresia` no existe, está inactivo o pertenece a otra compañía → `404` con `codigo=tipo_membresia_no_disponible`.
+4. La fila se inserta con: `origen='cliente'`, `estado_pago='PENDIENTE'`, `estado='activa'`, `fecha_inicio=NULL`, `fecha_fin=NULL` (CHECK `ck_membresias_fechas_por_estado_pago`), `precio_pagado=0` (placeholder — la columna es NOT NULL sin default; se sobrescribe al confirmar), `descuento_aplicado=0`, `id_metodo_pago=NULL`, `eliminado=false`, `id_sucursal=cliente.id_sucursal` (heredada del registro del cliente).
+5. `precio_pagado=0` en la solicitud NO se congela — el staff ingresa el precio real al confirmar (decisión PO #1). `dias_acceso_total` tampoco se congela; se rellena al confirmar desde el catálogo actual (decisión B1 — riesgo mitigado por widget de Home en el PWA).
+
+**Errors:**
+- `400` — `id_tipo_membresia` ausente o body inválido (`codigo=validacion`)
+- `401` — missing or invalid JWT (`codigo=no_autenticado`)
+- `403` — el JWT no es de tipo `cliente` o pertenece a otra compañía (`codigo=acceso_denegado`)
+- `404` — la persona del JWT no está registrada como cliente en la compañía (`codigo=recurso_no_encontrado`)
+- `404` — tipo de membresía no encontrado / inactivo / de otra compañía (`codigo=tipo_membresia_no_disponible`)
+- `409` — solicitud viva ya existe (`codigo=solicitud_ya_existe`)
+- `409` — membresía PAGADA activa vigente (`codigo=membresia_activa_vigente`)
+
+> Revisar contra código: `MembresiaController#solicitarMembresia` + `MembresiaService#solicitarMembresia`.
 
 ---
 
@@ -326,19 +391,37 @@ Service: core-service (port 8083)
 ---
 
 ### POST /api/v1/membresias/{id}/confirmar-pago
-**Auth:** Bearer JWT (`tipo: staff`)  
-**Permission:** `requireRecepcionOrAbove()` + permiso granular `membresias:confirmar_pago` (se exige solo si el token trae la lista `permisos` explícita; los tokens legacy sin `permisos` y `super_admin` la bypass-ean — el gate real vive en `MembresiaController#requireConfirmarPagoPermiso`).  
-**Description:** Marca una membresía `PENDIENTE` como `PAGADO`. Calcula `fecha_inicio = hoy` y `fecha_fin = hoy + duración`. Publica `MembresiaPagadaEvent` en el bus interno (Spring `ApplicationEventPublisher`) solo en la transición real. Idempotente sobre membresías ya `PAGADO`.
+**Auth:** Bearer JWT (`tipo: staff`)
+**Permission:** `requireRecepcionOrAbove()` + permiso granular `membresias:confirmar_pago` (se exige solo si el token trae la lista `permisos` explícita; los tokens legacy sin `permisos` y `super_admin` la bypass-ean — el gate real vive en `MembresiaController#requireConfirmarPagoPermiso`).
+**Description:** Marca una membresía `PENDIENTE` como `PAGADO`. El comportamiento del body es **condicional según `origen`** de la membresía:
+- `origen='staff'` (venta directa mostrador): body opcional; si viene se **ignora** completamente. `fecha_inicio=hoy` y se preserva el `precio_pagado` fijado en la venta.
+- `origen='cliente'` (solicitud autoservicio): body **obligatorio** con `id_metodo_pago`, `precio_pagado` y `fecha_inicio` (el `descuento_aplicado` es opcional, default `0.00`).
+
+Calcula `fecha_fin = fecha_inicio + duración`. Publica `MembresiaPagadaEvent` en el bus interno solo en la transición real PENDIENTE → PAGADO. Idempotente sobre membresías ya `PAGADO` (incluso si viene body).
 
 **Path param:**
 - `id` — Membership ID
 
-**Request body:** ninguno.
-
-**Response 200:**
+**Request body (opcional, requerido si `origen='cliente'`):**
 ```json
 {
-  "id": 1,
+  "id_metodo_pago": 1,
+  "precio_pagado": "35.00",
+  "descuento_aplicado": "0.00",
+  "fecha_inicio": "2026-07-17"
+}
+```
+
+**Body fields:**
+- `id_metodo_pago` (required si `origen='cliente'`, ignored si `origen='staff'`, integer) — ID del método de pago con que se cobró.
+- `precio_pagado` (required si `origen='cliente'`, ignored si `origen='staff'`, decimal >= 0) — Monto efectivamente cobrado. El staff puede ajustarlo (decisión PO #1: el precio del catálogo NO se congela al solicitar).
+- `descuento_aplicado` (optional, decimal >= 0, default `0.00`) — Descuento aplicado.
+- `fecha_inicio` (required si `origen='cliente'`, ignored si `origen='staff'`, `YYYY-MM-DD`) — Día real que empieza la membresía; el staff puede backdatear.
+
+**Response 200 (venta autoservicio completada):**
+```json
+{
+  "id": 101,
   "id_cliente": 10,
   "id_tipo_membresia": 3,
   "fecha_inicio": "2026-07-17",
@@ -348,17 +431,32 @@ Service: core-service (port 8083)
   "descuento_aplicado": "0.00",
   "estado": "activa",
   "estado_pago": "PAGADO",
+  "origen": "cliente",
   "eliminado": false,
   "motivo_eliminacion": null
 }
 ```
 
 **Reglas:**
-- Idempotente: si la membresía ya está `PAGADO`, devuelve `200 OK` con el recurso actual (no recalcula fechas, no re-emite evento).
-- Si `eliminado = true` → `409 Conflict` con mensaje `"La membresía fue rechazada y no puede confirmarse"`.
+- Idempotente: si la membresía ya está `PAGADO`, devuelve `200 OK` con el recurso actual (no recalcula fechas, no re-emite evento, no aplica el body).
+- Si `eliminado = true` → `409 Conflict` con mensaje `"La membresía fue rechazada y no puede confirmarse"` (`codigo=conflicto`).
+- Si `origen='cliente'` y falta algún campo obligatorio del body → `400` con `codigo=datos_venta_incompletos` y detalle por-campo:
+  ```json
+  {
+    "codigo": "datos_venta_incompletos",
+    "detail": "Faltan datos de venta para confirmar la solicitud del cliente",
+    "status": 400,
+    "errores": [
+      { "campo": "id_metodo_pago", "mensaje": "es obligatorio para completar la venta" },
+      { "campo": "fecha_inicio",   "mensaje": "es obligatoria para iniciar la membresía" }
+    ]
+  }
+  ```
 - Efecto lateral: cambia el estado del cliente a `activo`.
+- Cuando la membresía es `origen='cliente'` de tipo `accesos`, `dias_acceso_total` (que quedó NULL en la solicitud) se completa con `tipos_membresia.dias_acceso` al confirmar.
 
 **Errors:**
+- `400` — datos de venta incompletos (`codigo=datos_venta_incompletos`, solo para `origen='cliente'`)
 - `401` — missing or invalid JWT
 - `403` — sin permiso `membresias:confirmar_pago`, o compañía distinta
 - `404` — membership o tipo de membresía no encontrados
@@ -439,6 +537,7 @@ Service: core-service (port 8083)
     "modo_control": "calendario",
     "precio_pagado": "35.00",
     "descuento_aplicado": "0.00",
+    "origen": "cliente",
     "creacion_fecha": "2026-07-15T09:12:33Z"
   }
 ]
@@ -451,8 +550,9 @@ Service: core-service (port 8083)
 - `id_tipo_membresia` — Membership type ID
 - `tipo_nombre` — Nombre del tipo (join a `core.tipos_membresia`)
 - `modo_control` — `calendario` o `accesos`
-- `precio_pagado` — Amount to be paid
+- `precio_pagado` — Amount to be paid (placeholder `0.00` cuando `origen='cliente'`; el staff lo ingresa al confirmar)
 - `descuento_aplicado` — Discount applied
+- `origen` — `cliente` (solicitud autoservicio PWA, requiere que staff complete datos de venta al confirmar) | `staff` (venta directa PENDIENTE, solo requiere confirmación)
 - `creacion_fecha` — Timestamp de creación (ISO-8601 con TZ)
 
 **Errors:**
@@ -463,12 +563,47 @@ Service: core-service (port 8083)
 
 ---
 
+### GET /api/v1/companias/{idCompania}/membresias/pendientes/contador
+**Auth:** Bearer JWT (`tipo: staff`)
+**Permission:** `requireRecepcionOrAbove()` + permiso granular `membresias:confirmar_pago`.
+**Description:** Contador para el badge del dashboard staff. Retorna el total de membresías PENDIENTE + vivas de la compañía con desglose por `origen` (cliente vs. staff). La UI usa `por_origen.cliente` para llamar la atención sobre solicitudes autoservicio pendientes de completar. Query única con `GROUP BY origen` (usa el índice parcial `idx_membresias_pendientes_cliente`).
+
+**Path param:**
+- `idCompania` — Company ID (debe coincidir con la compañía del JWT).
+
+**Response 200:**
+```json
+{
+  "total": 5,
+  "por_origen": {
+    "cliente": 3,
+    "staff": 2
+  }
+}
+```
+
+**Response fields:**
+- `total` — Suma total de membresías `PENDIENTE` + `eliminado=false` de la compañía.
+- `por_origen.cliente` — Solicitudes autoservicio pendientes de completar (staff debe ingresar precio, método, fecha).
+- `por_origen.staff` — Ventas mostrador PENDIENTES (staff solo debe confirmar pago).
+
+Si algún origen no tiene filas la clave sigue apareciendo con valor `0`.
+
+**Errors:**
+- `401` — missing or invalid JWT
+- `403` — cross-tenant (`idCompania` no es la del JWT) o sin permiso granular
+
+> Revisar contra código: `MembresiaController#contadorPendientes` + `MembresiaService#contarPendientesPorCompania`.
+
+---
+
 ## Reglas de acceso por endpoint
 
 | Endpoint | Método | Rol/Permiso |
 |----------|--------|-------------|
 | `/clientes/{id}/membresias` | GET | `requireGymStaff()` \| `requireCliente()` |
 | `/clientes/me/membresias` | GET | `requireCliente()` (resuelve id_cliente del JWT) |
+| `/clientes/me/membresias/solicitar` | POST | `requireCliente()` (autoservicio PWA) |
 | `/clientes/{id}/membresias` | POST | `requireRecepcionOrAbove()` |
 | `/membresias/{id}` | GET | `requireGymStaff()` \| `requireCliente()` |
 | `/membresias/{id}/asistencias-previas` | PATCH | `requireRecepcionOrAbove()` |
@@ -476,16 +611,21 @@ Service: core-service (port 8083)
 | `/membresias/{id}/confirmar-pago` | POST | `requireRecepcionOrAbove()` + `membresias:confirmar_pago` |
 | `/membresias/{id}/rechazar` | POST | `requireRecepcionOrAbove()` + `membresias:confirmar_pago` |
 | `/companias/{idCompania}/membresias/pendientes` | GET | `requireRecepcionOrAbove()` + `membresias:confirmar_pago` |
+| `/companias/{idCompania}/membresias/pendientes/contador` | GET | `requireRecepcionOrAbove()` + `membresias:confirmar_pago` |
 | `/membresias/validar-acceso` | GET | PUBLIC (sin auth) |
 
 ---
 
 ## Códigos de error comunes
 
-| Código | Significado |
-|--------|-------------|
-| 400 | Datos de request inválidos |
-| 401 | Token ausente o inválido |
-| 403 | Sin permisos o acceso denegado |
-| 404 | Recurso no encontrado |
-| 409 | Conflicto de negocio |
+| Código HTTP | `codigo` | Significado |
+|-------------|----------|-------------|
+| 400 | `validacion` | Datos de request inválidos |
+| 400 | `datos_venta_incompletos` | Solicitud origen=cliente sin `id_metodo_pago` / `precio_pagado` / `fecha_inicio` al confirmar |
+| 401 | `no_autenticado` | Token ausente o inválido |
+| 403 | `acceso_denegado` | Sin permisos o cross-tenant |
+| 404 | `recurso_no_encontrado` | Membresía / cliente / tipo no encontrado |
+| 404 | `tipo_membresia_no_disponible` | En solicitar: tipo inactivo, inexistente o de otra compañía |
+| 409 | `conflicto` | Membresía rechazada, ya pagada, etc. |
+| 409 | `solicitud_ya_existe` | Cliente ya tiene cualquier compra viva en trámite (PENDIENTE + no eliminada, sin importar origen) |
+| 409 | `membresia_activa_vigente` | Cliente tiene una membresía PAGADA activa aún vigente al solicitar |

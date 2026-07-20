@@ -104,6 +104,7 @@ class MembresiaServiceTest {
         c.setId(id);
         c.setIdPersona(idPersona);
         c.setIdCompania(idCompania);
+        c.setIdSucursal(1L); // default de test — la sucursal viva bajo la que se registró el cliente
         c.setEstado(estado);
         return c;
     }
@@ -670,6 +671,8 @@ class MembresiaServiceTest {
                     TipoMembresia.DuracionTipo.meses, 1, null, BigDecimal.valueOf(50));
 
             when(clienteRepository.findByIdPersonaAndIdCompania(100L, 1L)).thenReturn(Mono.just(cliente));
+            when(membresiaRepository.findPendienteVivaByIdCliente(10L, 1L)).thenReturn(Mono.empty());
+            when(membresiaRepository.findUltimaRechazadaByIdCliente(10L, 1L)).thenReturn(Mono.empty());
             when(membresiaRepository.findActivaByIdClienteAndIdCompania(10L, 1L)).thenReturn(Mono.just(mem));
             when(tipoMembresiaRepository.findById(2L)).thenReturn(Mono.just(tipo));
 
@@ -688,8 +691,9 @@ class MembresiaServiceTest {
                     TipoMembresia.DuracionTipo.meses, 1, null, BigDecimal.valueOf(50));
 
             when(clienteRepository.findByIdPersonaAndIdCompania(100L, 1L)).thenReturn(Mono.just(cliente));
+            when(membresiaRepository.findPendienteVivaByIdCliente(10L, 1L)).thenReturn(Mono.empty());
+            when(membresiaRepository.findUltimaRechazadaByIdCliente(10L, 1L)).thenReturn(Mono.empty());
             when(membresiaRepository.findActivaByIdClienteAndIdCompania(10L, 1L)).thenReturn(Mono.just(mem));
-            when(tipoMembresiaRepository.findById(2L)).thenReturn(Mono.just(tipo));
 
             StepVerifier.create(membresiaService.validarAcceso(100L, 1L))
                     .expectNextMatches(r -> !r.permitido() && "membresia_vencida".equals(r.razon()))
@@ -704,6 +708,8 @@ class MembresiaServiceTest {
                     LocalDate.now().minusMonths(1), LocalDate.now().plusMonths(1));
 
             when(clienteRepository.findByIdPersonaAndIdCompania(100L, 1L)).thenReturn(Mono.just(cliente));
+            when(membresiaRepository.findPendienteVivaByIdCliente(10L, 1L)).thenReturn(Mono.empty());
+            when(membresiaRepository.findUltimaRechazadaByIdCliente(10L, 1L)).thenReturn(Mono.empty());
             when(membresiaRepository.findActivaByIdClienteAndIdCompania(10L, 1L)).thenReturn(Mono.just(mem));
 
             StepVerifier.create(membresiaService.validarAcceso(100L, 1L))
@@ -723,6 +729,8 @@ class MembresiaServiceTest {
                     TipoMembresia.DuracionTipo.meses, 1, 10, BigDecimal.valueOf(60));
 
             when(clienteRepository.findByIdPersonaAndIdCompania(100L, 1L)).thenReturn(Mono.just(cliente));
+            when(membresiaRepository.findPendienteVivaByIdCliente(10L, 1L)).thenReturn(Mono.empty());
+            when(membresiaRepository.findUltimaRechazadaByIdCliente(10L, 1L)).thenReturn(Mono.empty());
             when(membresiaRepository.findActivaByIdClienteAndIdCompania(10L, 1L)).thenReturn(Mono.just(mem));
             when(tipoMembresiaRepository.findById(3L)).thenReturn(Mono.just(tipo));
             when(membresiaRepository.countAsistenciasByIdMembresia(1L)).thenReturn(Mono.just(10L)); // agotados
@@ -744,6 +752,8 @@ class MembresiaServiceTest {
                     TipoMembresia.DuracionTipo.meses, 1, 10, BigDecimal.valueOf(60));
 
             when(clienteRepository.findByIdPersonaAndIdCompania(100L, 1L)).thenReturn(Mono.just(cliente));
+            when(membresiaRepository.findPendienteVivaByIdCliente(10L, 1L)).thenReturn(Mono.empty());
+            when(membresiaRepository.findUltimaRechazadaByIdCliente(10L, 1L)).thenReturn(Mono.empty());
             when(membresiaRepository.findActivaByIdClienteAndIdCompania(10L, 1L)).thenReturn(Mono.just(mem));
             when(tipoMembresiaRepository.findById(3L)).thenReturn(Mono.just(tipo));
             when(membresiaRepository.countAsistenciasByIdMembresia(1L)).thenReturn(Mono.just(7L)); // 3 restantes
@@ -1058,6 +1068,416 @@ class MembresiaServiceTest {
             StepVerifier.create(membresiaService.actualizarAsistenciasPrevias(99L, 1L, 3))
                     .expectErrorSatisfies(err -> assertThat(err).isInstanceOf(NotFoundException.class))
                     .verify();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // solicitarMembresia (cliente PWA autoservicio)
+    // -------------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("solicitarMembresia")
+    class SolicitarMembresia {
+
+        @Test
+        @DisplayName("crea la solicitud con origen=cliente, estadoPago=PENDIENTE, fechas NULL y precio=0")
+        void solicitaExitosamente() {
+            Cliente cliente = buildCliente(10L, 500L, 1L, Cliente.Estado.vencido);
+            TipoMembresia tipo = buildTipo(2L, TipoMembresia.ModoControl.calendario,
+                    TipoMembresia.DuracionTipo.meses, 1, null, BigDecimal.valueOf(35));
+            tipo.setIdCompania(1L);
+
+            when(clienteRepository.findByIdPersonaAndIdCompania(500L, 1L)).thenReturn(Mono.just(cliente));
+            when(membresiaRepository.findPendienteVivaByIdCliente(10L, 1L)).thenReturn(Mono.empty());
+            when(membresiaRepository.findActivaByIdClienteAndIdCompania(10L, 1L)).thenReturn(Mono.empty());
+            when(tipoMembresiaRepository.findById(2L)).thenReturn(Mono.just(tipo));
+            when(membresiaRepository.save(any())).thenAnswer(inv -> {
+                Membresia m = inv.getArgument(0);
+                m.setId(101L);
+                return Mono.just(m);
+            });
+
+            StepVerifier.create(membresiaService.solicitarMembresia(500L, 1L, 2L))
+                    .expectNextMatches(m -> m.getId().equals(101L)
+                            && m.getIdCliente().equals(10L)
+                            && m.getIdSucursal().equals(1L) // heredada del registro del cliente
+                            && m.getIdTipoMembresia().equals(2L)
+                            && m.getEstadoPago() == Membresia.EstadoPago.PENDIENTE
+                            && m.getOrigen() == Membresia.Origen.cliente
+                            && m.getFechaInicio() == null
+                            && m.getFechaFin() == null
+                            && m.getPrecioPagado().compareTo(BigDecimal.ZERO) == 0
+                            && m.getDescuentoAplicado().compareTo(BigDecimal.ZERO) == 0
+                            && m.getIdMetodoPago() == null
+                            && m.getEstado() == Membresia.Estado.activa
+                            && Boolean.FALSE.equals(m.getEliminado()))
+                    .verifyComplete();
+        }
+
+        @Test
+        @DisplayName("404 cuando la persona no está registrada como cliente en la compañía")
+        void notFoundSiPersonaNoRegistrada() {
+            when(clienteRepository.findByIdPersonaAndIdCompania(500L, 1L)).thenReturn(Mono.empty());
+
+            StepVerifier.create(membresiaService.solicitarMembresia(500L, 1L, 2L))
+                    .expectErrorSatisfies(err -> assertThat(err).isInstanceOf(NotFoundException.class))
+                    .verify();
+        }
+
+        @Test
+        @DisplayName("409 solicitud_ya_existe si el cliente ya tiene cualquier PENDIENTE viva (origen cliente)")
+        void conflictSiYaTieneSolicitudPendiente() {
+            Cliente cliente = buildCliente(10L, 500L, 1L, Cliente.Estado.vencido);
+            Membresia existente = buildMembresia(9L, 10L, 1L, 2L, Membresia.Estado.activa, null, null);
+            existente.setEstadoPago(Membresia.EstadoPago.PENDIENTE);
+            existente.setOrigen(Membresia.Origen.cliente);
+            existente.setEliminado(false);
+
+            when(clienteRepository.findByIdPersonaAndIdCompania(500L, 1L)).thenReturn(Mono.just(cliente));
+            when(membresiaRepository.findPendienteVivaByIdCliente(10L, 1L)).thenReturn(Mono.just(existente));
+
+            StepVerifier.create(membresiaService.solicitarMembresia(500L, 1L, 2L))
+                    .expectErrorSatisfies(err -> {
+                        assertThat(err).isInstanceOf(CodedException.class);
+                        assertThat(((CodedException) err).getErrorCode()).isEqualTo(ErrorCode.SOLICITUD_YA_EXISTE);
+                    })
+                    .verify();
+
+            verify(tipoMembresiaRepository, never()).findById(anyLong());
+            verify(membresiaRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("409 solicitud_ya_existe también cuando la PENDIENTE viva es venta staff (asimetría cerrada)")
+        void conflictSiYaTienePendienteStaff() {
+            Cliente cliente = buildCliente(10L, 500L, 1L, Cliente.Estado.vencido);
+            Membresia ventaStaffPendiente = buildMembresia(9L, 10L, 1L, 2L, Membresia.Estado.activa, null, null);
+            ventaStaffPendiente.setEstadoPago(Membresia.EstadoPago.PENDIENTE);
+            ventaStaffPendiente.setOrigen(Membresia.Origen.staff);
+            ventaStaffPendiente.setEliminado(false);
+
+            when(clienteRepository.findByIdPersonaAndIdCompania(500L, 1L)).thenReturn(Mono.just(cliente));
+            when(membresiaRepository.findPendienteVivaByIdCliente(10L, 1L)).thenReturn(Mono.just(ventaStaffPendiente));
+
+            StepVerifier.create(membresiaService.solicitarMembresia(500L, 1L, 2L))
+                    .expectErrorSatisfies(err -> {
+                        assertThat(err).isInstanceOf(CodedException.class);
+                        assertThat(((CodedException) err).getErrorCode()).isEqualTo(ErrorCode.SOLICITUD_YA_EXISTE);
+                    })
+                    .verify();
+
+            verify(tipoMembresiaRepository, never()).findById(anyLong());
+            verify(membresiaRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("409 membresia_activa_vigente si tiene una PAGADA activa aún vigente")
+        void conflictSiTieneMembresiaActivaVigente() {
+            Cliente cliente = buildCliente(10L, 500L, 1L, Cliente.Estado.activo);
+            Membresia activa = buildMembresia(7L, 10L, 1L, 2L, Membresia.Estado.activa,
+                    LocalDate.now().minusMonths(1), LocalDate.now().plusDays(10));
+            activa.setEstadoPago(Membresia.EstadoPago.PAGADO);
+
+            when(clienteRepository.findByIdPersonaAndIdCompania(500L, 1L)).thenReturn(Mono.just(cliente));
+            when(membresiaRepository.findPendienteVivaByIdCliente(10L, 1L)).thenReturn(Mono.empty());
+            when(membresiaRepository.findActivaByIdClienteAndIdCompania(10L, 1L)).thenReturn(Mono.just(activa));
+
+            StepVerifier.create(membresiaService.solicitarMembresia(500L, 1L, 2L))
+                    .expectErrorSatisfies(err -> {
+                        assertThat(err).isInstanceOf(CodedException.class);
+                        assertThat(((CodedException) err).getErrorCode()).isEqualTo(ErrorCode.MEMBRESIA_ACTIVA_VIGENTE);
+                    })
+                    .verify();
+
+            verify(tipoMembresiaRepository, never()).findById(anyLong());
+            verify(membresiaRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("permite solicitar si la única PAGADA activa ya está vencida por fecha")
+        void permiteSolicitarSiActivaEstaVencida() {
+            Cliente cliente = buildCliente(10L, 500L, 1L, Cliente.Estado.vencido);
+            Membresia activaVencida = buildMembresia(7L, 10L, 1L, 2L, Membresia.Estado.activa,
+                    LocalDate.now().minusMonths(2), LocalDate.now().minusDays(1)); // vencida
+            activaVencida.setEstadoPago(Membresia.EstadoPago.PAGADO);
+            TipoMembresia tipo = buildTipo(2L, TipoMembresia.ModoControl.calendario,
+                    TipoMembresia.DuracionTipo.meses, 1, null, BigDecimal.valueOf(35));
+            tipo.setIdCompania(1L);
+
+            when(clienteRepository.findByIdPersonaAndIdCompania(500L, 1L)).thenReturn(Mono.just(cliente));
+            when(membresiaRepository.findPendienteVivaByIdCliente(10L, 1L)).thenReturn(Mono.empty());
+            when(membresiaRepository.findActivaByIdClienteAndIdCompania(10L, 1L)).thenReturn(Mono.just(activaVencida));
+            when(tipoMembresiaRepository.findById(2L)).thenReturn(Mono.just(tipo));
+            when(membresiaRepository.save(any())).thenAnswer(inv -> {
+                Membresia m = inv.getArgument(0);
+                m.setId(200L);
+                return Mono.just(m);
+            });
+
+            StepVerifier.create(membresiaService.solicitarMembresia(500L, 1L, 2L))
+                    .expectNextMatches(m -> m.getOrigen() == Membresia.Origen.cliente)
+                    .verifyComplete();
+        }
+
+        @Test
+        @DisplayName("404 tipo_membresia_no_disponible cuando el tipo no existe")
+        void notFoundSiTipoNoExiste() {
+            Cliente cliente = buildCliente(10L, 500L, 1L, Cliente.Estado.vencido);
+
+            when(clienteRepository.findByIdPersonaAndIdCompania(500L, 1L)).thenReturn(Mono.just(cliente));
+            when(membresiaRepository.findPendienteVivaByIdCliente(10L, 1L)).thenReturn(Mono.empty());
+            when(membresiaRepository.findActivaByIdClienteAndIdCompania(10L, 1L)).thenReturn(Mono.empty());
+            when(tipoMembresiaRepository.findById(99L)).thenReturn(Mono.empty());
+
+            StepVerifier.create(membresiaService.solicitarMembresia(500L, 1L, 99L))
+                    .expectErrorSatisfies(err -> {
+                        assertThat(err).isInstanceOf(CodedException.class);
+                        assertThat(((CodedException) err).getErrorCode()).isEqualTo(ErrorCode.TIPO_MEMBRESIA_NO_DISPONIBLE);
+                    })
+                    .verify();
+        }
+
+        @Test
+        @DisplayName("404 tipo_membresia_no_disponible cuando el tipo pertenece a otra compañía")
+        void notFoundSiTipoDeOtraCompania() {
+            Cliente cliente = buildCliente(10L, 500L, 1L, Cliente.Estado.vencido);
+            TipoMembresia tipoOtro = buildTipo(2L, TipoMembresia.ModoControl.calendario,
+                    TipoMembresia.DuracionTipo.meses, 1, null, BigDecimal.valueOf(35));
+            tipoOtro.setIdCompania(99L); // otra compañía
+
+            when(clienteRepository.findByIdPersonaAndIdCompania(500L, 1L)).thenReturn(Mono.just(cliente));
+            when(membresiaRepository.findPendienteVivaByIdCliente(10L, 1L)).thenReturn(Mono.empty());
+            when(membresiaRepository.findActivaByIdClienteAndIdCompania(10L, 1L)).thenReturn(Mono.empty());
+            when(tipoMembresiaRepository.findById(2L)).thenReturn(Mono.just(tipoOtro));
+
+            StepVerifier.create(membresiaService.solicitarMembresia(500L, 1L, 2L))
+                    .expectErrorSatisfies(err -> {
+                        assertThat(err).isInstanceOf(CodedException.class);
+                        assertThat(((CodedException) err).getErrorCode()).isEqualTo(ErrorCode.TIPO_MEMBRESIA_NO_DISPONIBLE);
+                    })
+                    .verify();
+        }
+
+        @Test
+        @DisplayName("404 tipo_membresia_no_disponible cuando el tipo está inactivo")
+        void notFoundSiTipoInactivo() {
+            Cliente cliente = buildCliente(10L, 500L, 1L, Cliente.Estado.vencido);
+            TipoMembresia tipoInactivo = buildTipo(2L, TipoMembresia.ModoControl.calendario,
+                    TipoMembresia.DuracionTipo.meses, 1, null, BigDecimal.valueOf(35));
+            tipoInactivo.setIdCompania(1L);
+            tipoInactivo.setActivo(false);
+
+            when(clienteRepository.findByIdPersonaAndIdCompania(500L, 1L)).thenReturn(Mono.just(cliente));
+            when(membresiaRepository.findPendienteVivaByIdCliente(10L, 1L)).thenReturn(Mono.empty());
+            when(membresiaRepository.findActivaByIdClienteAndIdCompania(10L, 1L)).thenReturn(Mono.empty());
+            when(tipoMembresiaRepository.findById(2L)).thenReturn(Mono.just(tipoInactivo));
+
+            StepVerifier.create(membresiaService.solicitarMembresia(500L, 1L, 2L))
+                    .expectErrorSatisfies(err -> {
+                        assertThat(err).isInstanceOf(CodedException.class);
+                        assertThat(((CodedException) err).getErrorCode()).isEqualTo(ErrorCode.TIPO_MEMBRESIA_NO_DISPONIBLE);
+                    })
+                    .verify();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // contarPendientesPorCompania
+    // -------------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("contarPendientesPorCompania")
+    class ContarPendientes {
+
+        @Test
+        @DisplayName("suma total y desagrega por origen cliente/staff")
+        void devuelveTotalYDesglose() {
+            Map<String, Long> porOrigen = new HashMap<>();
+            porOrigen.put("cliente", 3L);
+            porOrigen.put("staff", 2L);
+            when(membresiaRepository.contarPendientesPorOrigen(1L)).thenReturn(Mono.just(porOrigen));
+
+            StepVerifier.create(membresiaService.contarPendientesPorCompania(1L))
+                    .expectNextMatches(r -> r.total() == 5L
+                            && r.porOrigenCliente() == 3L
+                            && r.porOrigenStaff() == 2L)
+                    .verifyComplete();
+        }
+
+        @Test
+        @DisplayName("origen sin filas → 0")
+        void origenSinFilasEsCero() {
+            Map<String, Long> porOrigen = new HashMap<>();
+            porOrigen.put("cliente", 4L); // solo cliente
+            when(membresiaRepository.contarPendientesPorOrigen(1L)).thenReturn(Mono.just(porOrigen));
+
+            StepVerifier.create(membresiaService.contarPendientesPorCompania(1L))
+                    .expectNextMatches(r -> r.total() == 4L
+                            && r.porOrigenCliente() == 4L
+                            && r.porOrigenStaff() == 0L)
+                    .verifyComplete();
+        }
+
+        @Test
+        @DisplayName("compañía sin pendientes → total 0")
+        void sinPendientesTotalCero() {
+            when(membresiaRepository.contarPendientesPorOrigen(1L)).thenReturn(Mono.just(new HashMap<>()));
+
+            StepVerifier.create(membresiaService.contarPendientesPorCompania(1L))
+                    .expectNextMatches(r -> r.total() == 0L
+                            && r.porOrigenCliente() == 0L
+                            && r.porOrigenStaff() == 0L)
+                    .verifyComplete();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // confirmarPago — body condicional (venta autoservicio del cliente)
+    // -------------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("confirmarPago (con body condicional)")
+    class ConfirmarPagoConBody {
+
+        private Membresia buildOrigenCliente() {
+            Membresia mem = buildMembresia(1L, 10L, 1L, 2L, Membresia.Estado.activa, null, null);
+            mem.setEstadoPago(Membresia.EstadoPago.PENDIENTE);
+            mem.setOrigen(Membresia.Origen.cliente);
+            mem.setPrecioPagado(BigDecimal.ZERO); // placeholder al solicitar
+            mem.setDescuentoAplicado(BigDecimal.ZERO);
+            mem.setEliminado(false);
+            return mem;
+        }
+
+        @Test
+        @DisplayName("origen=cliente + body completo: aplica precio, fecha, método y publica evento")
+        void origenClienteConBodyCompleto() {
+            Membresia mem = buildOrigenCliente();
+            TipoMembresia tipo = buildTipo(2L, TipoMembresia.ModoControl.calendario,
+                    TipoMembresia.DuracionTipo.meses, 1, null, BigDecimal.valueOf(35));
+            Cliente cliente = buildCliente(10L, 20L, 1L, Cliente.Estado.vencido);
+            LocalDate inicio = LocalDate.of(2026, 7, 17);
+
+            when(membresiaRepository.findById(1L)).thenReturn(Mono.just(mem));
+            when(tipoMembresiaRepository.findById(2L)).thenReturn(Mono.just(tipo));
+            when(membresiaRepository.save(any())).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
+            when(clienteRepository.findById(10L)).thenReturn(Mono.just(cliente));
+            when(clienteRepository.save(any())).thenReturn(Mono.just(cliente));
+
+            MembresiaUseCase.ConfirmarPagoCommand cmd = new MembresiaUseCase.ConfirmarPagoCommand(
+                    1L, BigDecimal.valueOf(35), BigDecimal.ZERO, inicio);
+
+            StepVerifier.create(membresiaService.confirmarPago(1L, 1L, 99L, cmd))
+                    .expectNextMatches(m -> m.getEstadoPago() == Membresia.EstadoPago.PAGADO
+                            && m.getFechaInicio().equals(inicio)
+                            && m.getFechaFin().equals(inicio.plusMonths(1))
+                            && m.getIdMetodoPago().equals(1L)
+                            && m.getPrecioPagado().compareTo(BigDecimal.valueOf(35)) == 0)
+                    .verifyComplete();
+
+            ArgumentCaptor<MembresiaPagadaEvent> captor = ArgumentCaptor.forClass(MembresiaPagadaEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue().montoPagado()).isEqualByComparingTo(BigDecimal.valueOf(35));
+            assertThat(captor.getValue().fechaConfirmacion()).isEqualTo(inicio);
+        }
+
+        @Test
+        @DisplayName("origen=cliente + body vacío → 400 datos_venta_incompletos con lista de campos")
+        void origenClienteSinBody() {
+            Membresia mem = buildOrigenCliente();
+
+            when(membresiaRepository.findById(1L)).thenReturn(Mono.just(mem));
+
+            StepVerifier.create(membresiaService.confirmarPago(1L, 1L, 99L,
+                            MembresiaUseCase.ConfirmarPagoCommand.empty()))
+                    .expectErrorSatisfies(err -> {
+                        assertThat(err).isInstanceOf(DatosVentaIncompletosException.class);
+                        DatosVentaIncompletosException dvi = (DatosVentaIncompletosException) err;
+                        assertThat(dvi.getErrores()).hasSize(3);
+                        assertThat(dvi.getErrores()).extracting(m -> m.get("campo"))
+                                .containsExactlyInAnyOrder("id_metodo_pago", "precio_pagado", "fecha_inicio");
+                    })
+                    .verify();
+
+            verify(membresiaRepository, never()).save(any());
+            verify(eventPublisher, never()).publishEvent(any());
+        }
+
+        @Test
+        @DisplayName("origen=cliente + body parcial (falta fecha_inicio) → 400 con solo ese campo")
+        void origenClienteBodyParcial() {
+            Membresia mem = buildOrigenCliente();
+
+            when(membresiaRepository.findById(1L)).thenReturn(Mono.just(mem));
+
+            MembresiaUseCase.ConfirmarPagoCommand cmd = new MembresiaUseCase.ConfirmarPagoCommand(
+                    1L, BigDecimal.valueOf(35), BigDecimal.ZERO, null);
+
+            StepVerifier.create(membresiaService.confirmarPago(1L, 1L, 99L, cmd))
+                    .expectErrorSatisfies(err -> {
+                        assertThat(err).isInstanceOf(DatosVentaIncompletosException.class);
+                        DatosVentaIncompletosException dvi = (DatosVentaIncompletosException) err;
+                        assertThat(dvi.getErrores()).extracting(m -> m.get("campo"))
+                                .containsExactly("fecha_inicio");
+                    })
+                    .verify();
+        }
+
+        @Test
+        @DisplayName("origen=staff: ignora el body — usa fecha_inicio=hoy y respeta precio previo")
+        void origenStaffIgnoraBody() {
+            Membresia mem = buildMembresia(1L, 10L, 1L, 2L, Membresia.Estado.activa, null, null);
+            mem.setEstadoPago(Membresia.EstadoPago.PENDIENTE);
+            mem.setOrigen(Membresia.Origen.staff);
+            mem.setPrecioPagado(BigDecimal.valueOf(50)); // precio ya fijado al vender
+            mem.setEliminado(false);
+            TipoMembresia tipo = buildTipo(2L, TipoMembresia.ModoControl.calendario,
+                    TipoMembresia.DuracionTipo.meses, 1, null, BigDecimal.valueOf(50));
+            Cliente cliente = buildCliente(10L, 20L, 1L, Cliente.Estado.vencido);
+
+            when(membresiaRepository.findById(1L)).thenReturn(Mono.just(mem));
+            when(tipoMembresiaRepository.findById(2L)).thenReturn(Mono.just(tipo));
+            when(membresiaRepository.save(any())).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
+            when(clienteRepository.findById(10L)).thenReturn(Mono.just(cliente));
+            when(clienteRepository.save(any())).thenReturn(Mono.just(cliente));
+
+            // Body con datos "bogus" que deben ser ignorados
+            MembresiaUseCase.ConfirmarPagoCommand cmd = new MembresiaUseCase.ConfirmarPagoCommand(
+                    999L, BigDecimal.valueOf(9999), BigDecimal.TEN, LocalDate.of(2020, 1, 1));
+
+            StepVerifier.create(membresiaService.confirmarPago(1L, 1L, 99L, cmd))
+                    .expectNextMatches(m -> m.getEstadoPago() == Membresia.EstadoPago.PAGADO
+                            && m.getFechaInicio().equals(LocalDate.now())
+                            && m.getPrecioPagado().compareTo(BigDecimal.valueOf(50)) == 0
+                            && m.getIdMetodoPago() == null) // no lo puso el vender de origen staff
+                    .verifyComplete();
+
+            verify(eventPublisher).publishEvent(any(MembresiaPagadaEvent.class));
+        }
+
+        @Test
+        @DisplayName("idempotencia: ya PAGADO → 200 sin recalcular ni publicar evento (incluso si viene body)")
+        void idempotenciaConBody() {
+            LocalDate inicioViejo = LocalDate.of(2025, 1, 1);
+            LocalDate finViejo = LocalDate.of(2025, 2, 1);
+            Membresia pagada = buildMembresia(1L, 10L, 1L, 2L, Membresia.Estado.activa,
+                    inicioViejo, finViejo);
+            pagada.setEstadoPago(Membresia.EstadoPago.PAGADO);
+            pagada.setOrigen(Membresia.Origen.cliente);
+            pagada.setEliminado(false);
+
+            when(membresiaRepository.findById(1L)).thenReturn(Mono.just(pagada));
+
+            MembresiaUseCase.ConfirmarPagoCommand cmd = new MembresiaUseCase.ConfirmarPagoCommand(
+                    1L, BigDecimal.valueOf(35), BigDecimal.ZERO, LocalDate.of(2026, 7, 17));
+
+            StepVerifier.create(membresiaService.confirmarPago(1L, 1L, 99L, cmd))
+                    .expectNextMatches(m -> m.getFechaInicio().equals(inicioViejo)
+                            && m.getFechaFin().equals(finViejo))
+                    .verifyComplete();
+
+            verify(membresiaRepository, never()).save(any());
+            verify(eventPublisher, never()).publishEvent(any());
         }
     }
 }

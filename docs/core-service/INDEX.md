@@ -20,7 +20,7 @@ Gestión de clientes y membresías; validación de acceso al gym. Ver [core-serv
 
 | Documento | Estado | Contenido |
 |-----------|--------|-----------|
-| [solicitudes-membresia.md](spec/solicitudes-membresia.md) | 🟡 Diseño completado | Feature aún no implementado: cliente PWA solicita membresía, staff completa venta. Incluye schema Liquibase, endpoints nuevos/modificados, decisiones de PO y checklist de sincronización. |
+| [solicitudes-membresia.md](spec/solicitudes-membresia.md) | ✅ Implementado (backend) | Cliente PWA solicita membresía autoservicio → staff completa venta. Endpoints, decisiones PO y contrato ya reflejados en [api/membresias.md](api/membresias.md) (§`POST /clientes/me/membresias/solicitar`, §`GET /companias/{id}/membresias/pendientes/contador`, §`POST /membresias/{id}/confirmar-pago` con body condicional). Schema Liquibase en baseline GYM-001. |
 
 ---
 

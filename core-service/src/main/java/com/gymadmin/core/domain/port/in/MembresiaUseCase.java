@@ -45,9 +45,11 @@ public interface MembresiaUseCase {
      * Cliente PWA envía una solicitud de membresía. Crea una fila
      * {@code estado_pago=PENDIENTE}, {@code origen=cliente}, fechas NULL, {@code precio_pagado=0}
      * (placeholder), {@code descuento=0}, {@code id_metodo_pago=NULL}. Resuelve el
-     * {@code id_cliente} a partir del {@code id_persona} del JWT.
+     * {@code id_cliente} y el {@code id_sucursal} a partir del registro del cliente
+     * ({@code core.clientes}) — la solicitud queda bajo la misma sucursal donde el
+     * cliente está registrado.
      */
-    Mono<Membresia> solicitarMembresia(Long idPersona, Long idCompania, Long idSucursal, Long idTipoMembresia);
+    Mono<Membresia> solicitarMembresia(Long idPersona, Long idCompania, Long idTipoMembresia);
 
     /**
      * Conteo de membresías pendientes agrupado por origen. Usado por el badge del dashboard
