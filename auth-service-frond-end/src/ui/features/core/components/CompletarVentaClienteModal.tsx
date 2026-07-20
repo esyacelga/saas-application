@@ -23,12 +23,13 @@ const METODOS_PAGO_PLACEHOLDER = [
 ]
 
 const schema = z.object({
-  precio_pagado: z.coerce.number({ invalid_type_error: 'Ingresa un precio válido' }).min(0, 'El precio no puede ser negativo'),
-  id_metodo_pago: z.coerce.number({ invalid_type_error: 'Selecciona un método' }).int().min(1, 'Selecciona un método de pago'),
+  precio_pagado: z.coerce.number().min(0, 'El precio no puede ser negativo'),
+  id_metodo_pago: z.coerce.number().int().min(1, 'Selecciona un método de pago'),
   fecha_inicio: z.string().min(1, 'La fecha es requerida'),
   descuento_aplicado: z.coerce.number().min(0).default(0),
 })
 
+type FormInput = z.input<typeof schema>
 type FormValues = z.infer<typeof schema>
 
 interface Props {
@@ -49,7 +50,7 @@ export function CompletarVentaClienteModal({ idMembresia, nombreCliente, tipoNom
     reset,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({
+  } = useForm<FormInput, unknown, FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       precio_pagado: 0,
@@ -160,7 +161,7 @@ export function CompletarVentaClienteModal({ idMembresia, nombreCliente, tipoNom
               {t('ventasPendientes.completar.fieldMetodoPago')}
             </label>
             <select {...register('id_metodo_pago')} className={inputCls} style={inputStyle}>
-              <option value={0} disabled>Selecciona un método...</option>
+              <option value={0}>Selecciona un método...</option>
               {METODOS_PAGO_PLACEHOLDER.map(m => (
                 <option key={m.id} value={m.id}>{m.nombre}</option>
               ))}

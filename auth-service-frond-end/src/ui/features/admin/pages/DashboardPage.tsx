@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useState} from 'react'
-import {Link} from 'react-router-dom'
+import {Link, useNavigate} from 'react-router-dom'
 import {useTranslation} from 'react-i18next'
 import {toast} from 'sonner'
 import {
@@ -18,7 +18,7 @@ import {
 import type {EntradaResumen} from '@/infrastructure/http/attendance/AttendanceHttpRepository'
 import type {AsistenciasHoy, EstadisticasDashboard} from '@/infrastructure/http/attendance/AttendanceHttpRepository'
 import {attendanceRepository} from '@/infrastructure/http/attendance/AttendanceHttpRepository'
-import type {ClienteListItem, MembresiaResumen} from '@/infrastructure/http/core/core.dto'
+import type {ClienteListItem, MembresiaResumen, ContadorPendientes} from '@/infrastructure/http/core/core.dto'
 import {platformRepository} from '@/infrastructure/http/platform/PlatformHttpRepository'
 import {coreRepository} from '@/infrastructure/http/core/CoreRepository'
 import type {Compania} from '@/domain/platform/entities/Plan.entity'
@@ -37,6 +37,7 @@ interface DashboardState {
     totalClientesActivos: number | null
     sinSuscripcionTotal: number | null
     proximosVencerTotal: number | null
+    contadorPendientes: ContadorPendientes | null
 }
 
 // ── KPI Card (estático) ───────────────────────────────────────────────────────
@@ -673,10 +674,12 @@ function OnboardingChecklist() {
 export function DashboardPage() {
     const {t} = useTranslation()
     const user = useAuthStore(s => s.user)
+    const navigate = useNavigate()
     const [loading, setLoading] = useState(true)
     const [state, setState] = useState<DashboardState>({
         empresa: null, hoy: null, stats: null,
         totalClientesActivos: null, sinSuscripcionTotal: null, proximosVencerTotal: null,
+        contadorPendientes: null,
     })
     const [showPanel, setShowPanel] = useState(false)
     const [showProximosPanel, setShowProximosPanel] = useState(false)
@@ -690,6 +693,7 @@ export function DashboardPage() {
 
     useEffect(() => {
         setLoading(true)
+        const idCompania = user?.tipo === 'staff' ? (user as JwtPayloadStaff).id_compania : null
         Promise.allSettled([
             platformRepository.getMiEmpresa(),
             attendanceRepository.getAsistenciasHoy(),
@@ -697,7 +701,8 @@ export function DashboardPage() {
             coreRepository.getClientes({estado: 'activo', limit: 1}),
             coreRepository.getClientes({sin_membresia: true, limit: 1}),
             coreRepository.getClientes({estado: 'proximo_vencer', limit: 1}),
-        ]).then(([empresaR, hoyR, statsR, clientesR, vencidosR, proximosR]) => {
+            idCompania ? coreRepository.getContadorPendientes(idCompania) : Promise.resolve(null),
+        ]).then(([empresaR, hoyR, statsR, clientesR, vencidosR, proximosR, contadorR]) => {
             setState({
                 empresa: empresaR.status === 'fulfilled' ? empresaR.value : null,
                 hoy: hoyR.status === 'fulfilled' ? hoyR.value : null,
@@ -705,6 +710,7 @@ export function DashboardPage() {
                 totalClientesActivos: clientesR.status === 'fulfilled' ? clientesR.value.total : null,
                 sinSuscripcionTotal: vencidosR.status === 'fulfilled' ? vencidosR.value.total : null,
                 proximosVencerTotal: proximosR.status === 'fulfilled' ? proximosR.value.total : null,
+                contadorPendientes: contadorR.status === 'fulfilled' ? contadorR.value : null,
             })
 
             const anyFailed = [empresaR, hoyR, statsR, clientesR, vencidosR, proximosR].some(r => r.status === 'rejected')
@@ -727,7 +733,7 @@ export function DashboardPage() {
         }))
     }, [])
 
-    const {empresa, hoy, stats: _stats, totalClientesActivos, sinSuscripcionTotal, proximosVencerTotal} = state
+    const {empresa, hoy, stats: _stats, totalClientesActivos, sinSuscripcionTotal, proximosVencerTotal, contadorPendientes} = state
     const planNombre = empresa?.planActivo?.nombre ?? t('dashboard.noPlan')
 
     const metodLabel = (m: string) =>
@@ -769,7 +775,7 @@ export function DashboardPage() {
             <OnboardingChecklist />
 
             {/* ── KPI cards ──────────────────────────────────────────────────────── */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <AlertKpiCard
                     label={t('dashboard.kpi.sinSuscripcion')}
                     value={sinSuscripcionTotal ?? 0}
@@ -795,6 +801,13 @@ export function DashboardPage() {
                     sub={t('dashboard.kpi.proximosVencerSub')}
                     loading={loading}
                     onClick={() => setShowProximosPanel(true)}
+                />
+                <AlertKpiCard
+                    label={t('dashboard.kpi.ventasPendientes')}
+                    value={contadorPendientes?.total ?? 0}
+                    sub={t('dashboard.kpi.ventasPendientesSub', { cliente: contadorPendientes?.porOrigenCliente ?? 0 })}
+                    loading={loading}
+                    onClick={() => navigate('/admin/ventas-pendientes')}
                 />
             </div>
 

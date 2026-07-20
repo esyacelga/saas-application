@@ -209,7 +209,9 @@
       "renovar": "Renew",
       "venceHoy": "Expires today",
       "sinAccesos": "No accesses",
-      "proximosVencerEmpty": "No members expiring soon!"
+      "proximosVencerEmpty": "No members expiring soon!",
+      "ventasPendientes": "Pending sales",
+      "ventasPendientesSub": "{{cliente}} from PWA members"
     },
     "verLista": "View list",
     "sinSuscripcionTitle": "Clients without subscription",
@@ -1229,14 +1231,40 @@
     "description": "Queue of sold memberships awaiting payment",
     "colCliente": "Client",
     "colTipo": "Membership type",
+    "colOrigen": "Origin",
     "colPrecio": "Price",
     "colDescuento": "Discount",
     "colPendienteDesde": "Pending since",
     "colAcciones": "Actions",
     "accionConfirmar": "Confirm",
+    "accionCompletar": "Complete",
     "accionRechazar": "Reject",
     "tooltipConfirmar": "Mark as paid",
+    "tooltipCompletar": "Complete payment details",
     "tooltipRechazar": "Reject this sale",
+    "origen": {
+      "cliente": "PWA member",
+      "staff": "Staff sale"
+    },
+    "tabs": {
+      "todas": "All",
+      "cliente": "Member requests",
+      "staff": "Staff sales"
+    },
+    "completar": {
+      "titulo": "Complete sale — {{cliente}}",
+      "subtitulo": "The member requested \"{{tipo}}\" from the PWA. Enter the payment details.",
+      "fieldPrecio": "Amount charged",
+      "fieldMetodoPago": "Payment method",
+      "fieldFecha": "Start date",
+      "fieldDescuento": "Discount applied",
+      "submit": "Complete and activate",
+      "cancel": "Cancel",
+      "success": "Request completed. The membership is now active.",
+      "errorDatosIncompletos": "Missing data to complete the sale. Review the fields.",
+      "errorGenerico": "Could not complete the sale.",
+      "conflictoIdempotente": "This request has already been processed."
+    },
     "haceN_one": "{{count}} day ago",
     "haceN_other": "{{count}} days ago",
     "emptyTitle": "No pending sales",

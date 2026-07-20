@@ -11,6 +11,7 @@ Gestión de clientes y membresías; validación de acceso al gym. Ver [core-serv
 | [clientes.md](api/clientes.md) | `/api/v1/clientes` | CRUD de clientes: registro, búsqueda, perfil, acceso desde plataforma |
 | [membresias.md](api/membresias.md) | `/api/v1/clientes/{id}/membresias` | Venta, validación de acceso, historial, anulación de membresías |
 | [tipos-membresia.md](api/tipos-membresia.md) | `/api/v1/tipos-membresia` | Catálogo de tipos de membresía (calendario y por accesos) |
+| [metodos-pago.md](api/metodos-pago.md) | `/api/v1/metodos-pago` | Catálogo interno de métodos de pago activos por compañía |
 | [congelamientos.md](api/congelamientos.md) | `/api/v1/congelamientos` | Congelamiento y reactivación de membresías |
 | [internal.md](api/internal.md) | `/internal/v1` | Endpoints privados: conteo de clientes activos para platform-service |
 

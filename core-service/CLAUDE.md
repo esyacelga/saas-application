@@ -15,6 +15,7 @@ Antes de confiar en un doc como referencia, verifica su estado en [../docs/STATU
 | API — clientes (CRUD + registro app + plataforma) | [../docs/core-service/api/clientes.md](../docs/core-service/api/clientes.md) | ✅ Refleja el código (verificado contra `ClienteController`) |
 | API — membresías (venta, validación, anulación) | [../docs/core-service/api/membresias.md](../docs/core-service/api/membresias.md) | ✅ Refleja el código (verificado contra `MembresiaController`) |
 | API — tipos de membresía (catálogo) | [../docs/core-service/api/tipos-membresia.md](../docs/core-service/api/tipos-membresia.md) | ✅ Refleja el código (verificado contra `TipoMembresiaController`) |
+| API — métodos de pago (catálogo interno) | [../docs/core-service/api/metodos-pago.md](../docs/core-service/api/metodos-pago.md) | ✅ Refleja el código (verificado contra `MetodoPagoController`) |
 | API — congelamientos (admin y cliente) | [../docs/core-service/api/congelamientos.md](../docs/core-service/api/congelamientos.md) | ✅ Refleja el código (verificado contra `CongelamientoController`) |
 | API — endpoints internos (platform-service) | [../docs/core-service/api/internal.md](../docs/core-service/api/internal.md) | ✅ Refleja el código (verificado contra `InternalCoreController`) |
 | Índice de docs centralizados | [../docs/core-service/INDEX.md](../docs/core-service/INDEX.md) | ✅ Actualizado con 4 nuevos documentos de API |

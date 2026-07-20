@@ -1,0 +1,13 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: GYM-002-1
+      author: sistema
+      context: dev, test, prod
+      runOnChange: false
+      comment: 'Seed config.metodos_pago para compañía demo (RUC 0000000000001): Efectivo, Tarjeta, Transferencia — requerido por flujo confirmar-pago origen=cliente en core-service'
+      changes:
+        - sqlFile:
+            path: ddl/01_insert_seed_config_metodos_pago.sql
+            relativeToChangelogFile: true
+            splitStatements: false

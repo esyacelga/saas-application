@@ -653,6 +653,9 @@ UNIQUE(id_producto,                         ║    tipo               ║
   meses_congelar_max
 ```
 
+**Seed compañía demo (RUC `0000000000001`)** — story `202607_GYM-002` (changeSet `GYM-002-1`) inserta 3 métodos de pago (`Efectivo`, `Tarjeta`, `Transferencia`, todos `activo=TRUE`) idempotentemente vía `WHERE NOT EXISTS` sobre `(id_compania, nombre)`. Requerido por el flujo `confirmar-pago` con `origen=cliente` en `core-service`, que exige `id_metodo_pago` no nulo.
+
+
 ---
 
 ## Vista Global de Relaciones
