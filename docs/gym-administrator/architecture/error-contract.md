@@ -1,10 +1,12 @@
 # Contrato de Errores Estandarizado — Global Exception Handler
 
 **Última actualización:** 2026-07-18
-**Estado:** 📋 Requerimiento / diseño aprobado — pendiente de implementación
+**Estado:** 🚧 Piloto implementado en `core-service` — pendiente de replicar a los otros 5 servicios
 **Autores:** Team SaaS Platform
 
 > **v2 (2026-07-18):** refinado tras auditar el código real. Se añadieron 8 hallazgos que el diseño inicial no cubría (ver §"Análisis adversarial"). Los más críticos: (a) los 401/403 de Spring Security **no pasan** por el `GlobalExceptionHandler`; (b) `ProblemDetail` **no respeta** `SNAKE_CASE` de Jackson por defecto; (c) el **PWA ya depende de `codigo`** — es contrato intocable; (d) hay **2 frontends**, no 1.
+>
+> **v3 (2026-07-18) — piloto implementado en `core-service`:** paquete completo (`ErrorCode`, `ProblemDetailFactory`, `DataIntegrityMapper`, `GlobalExceptionHandler` reescrito, `ApiAuthenticationEntryPoint`/`ApiAccessDeniedHandler` cableados en `SecurityConfig`, `JwtAuthenticationFilter` delega su 401 al entrypoint). Tests nuevos: `GlobalExceptionHandlerTest` + `SecurityErrorContractTest` (9/9 verdes). Frontend transversal hecho: **ambos** `api-error.ts` alineados (`detail` primero + `getApiErrorCode` en el panel admin) y el interceptor `axios-core.instance.ts` migrado a `plan_actual` (snake_case). **Hallazgo #2 confirmado en la práctica:** un `ObjectMapper` plano serializa las extensiones de `ProblemDetail` anidadas bajo `properties` — se resolvió aplanándolas en `ProblemDetailFactory.toMap()` (verificado por test). Pendiente: replicar a `auth`, `platform`, `billing`, `attendance`, `finance`.
 
 ---
 

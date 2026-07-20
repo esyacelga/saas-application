@@ -135,16 +135,30 @@ vencido ──(new membership)──→ activo
 
 ## Error Handling
 
-`GlobalExceptionHandler` (implements `ErrorWebExceptionHandler`) maps custom exceptions to HTTP status codes. Throw the right type from service/adapter layers:
+Contrato de errores estandarizado **RFC 7807 (`ProblemDetail`) + campo `codigo`** — ver [../docs/gym-administrator/architecture/error-contract.md](../docs/gym-administrator/architecture/error-contract.md). core-service es el **piloto** de este contrato (implementado 2026-07-18).
 
-| Exception | HTTP |
-|---|---|
-| `BusinessException` | 422 |
-| `NotFoundException` | 404 |
-| `ConflictException` | 409 |
-| `ForbiddenException` | 403 |
+`GlobalExceptionHandler` (implements `ErrorWebExceptionHandler`, `@Order(HIGHEST_PRECEDENCE)`) es el punto único de salida de errores. Traduce las excepciones de dominio al sobre estándar; lanza el tipo correcto desde service/adapter:
 
-Validation errors (`WebExchangeBindException`) → 400. All error responses include `timestamp`, `status`, `error`, `message`, `path`.
+| Exception | HTTP | `codigo` |
+|---|---|---|
+| `NotFoundException` | 404 | `recurso_no_encontrado` |
+| `ConflictException` | 409 | `conflicto` |
+| `ForbiddenException` / `AccessDeniedException` | 403 | `acceso_denegado` |
+| `BusinessException` | 422 | `regla_negocio` |
+| `LimiteAlcanzadoException` | 403 | `limite_plan_alcanzado` (+ `recurso`, `actual`, `maximo`, `plan_actual`) |
+| `DataIntegrityViolationException` | 409 | `datos_duplicados` / `referencia_invalida` / `campo_requerido` (vía `DataIntegrityMapper`) |
+| `WebExchangeBindException` | 400 | `validacion` (+ `errores: [{campo, mensaje}]`) |
+| no controlada | 500 | `error_interno` |
+
+**Sobre de salida** (`application/problem+json`): 5 campos RFC 7807 (`type`, `title`, `status`, `detail`, `instance`) + extensiones en **snake_case** (`codigo`, `mensaje` [alias de `detail`], `timestamp`, y `errores`/metadata según el caso).
+
+**Piezas del paquete** (bajo `infrastructure/exception/` y `infrastructure/config/`):
+- `ErrorCode` (enum) — catálogo `codigo` → HTTP status.
+- `ProblemDetailFactory` — construye y **aplana** el `ProblemDetail` (un `ObjectMapper` plano anidaría las extensiones bajo `properties`; `toMap()` las lleva al nivel raíz en snake_case).
+- `DataIntegrityMapper` — traduce constraints de PostgreSQL a `codigo` + mensaje legible.
+- `ApiAuthenticationEntryPoint` (401 → `no_autenticado`) + `ApiAccessDeniedHandler` (403 → `acceso_denegado`) — registrados en `SecurityConfig.exceptionHandling(...)` para que los errores de Spring Security emitan el mismo sobre. El `JwtAuthenticationFilter` delega su 401 al entrypoint (no un 401 vacío).
+
+Tests: `GlobalExceptionHandlerTest` (mapeo + serialización snake_case), `SecurityErrorContractTest` (401/403 de Security).
 
 ## Membership Control Modes
 

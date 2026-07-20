@@ -29,11 +29,13 @@ coreApi.interceptors.response.use(
       typeof error.response.data?.codigo === 'string' &&
       error.response.data.codigo === 'limite_plan_alcanzado'
     ) {
-      const { recurso, actual, maximo, planActual } = error.response.data as {
+      // El sobre estandarizado (RFC 7807 + codigo) emite la metadata en snake_case:
+      // `plan_actual` (antes `planActual`). Ver error-contract.md, riesgo #1.
+      const { recurso, actual, maximo, plan_actual: planActual } = error.response.data as {
         recurso: string
         actual: number
         maximo: number
-        planActual: string
+        plan_actual: string
       }
       useLimitPlanModalStore.getState().abrirModal({ recurso, actual, maximo, planActual })
     }
