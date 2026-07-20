@@ -1263,7 +1263,9 @@
       "success": "Solicitud completada. La membresía está activa.",
       "errorDatosIncompletos": "Faltan datos para completar la venta. Revisa los campos.",
       "errorGenerico": "No se pudo completar la venta.",
-      "conflictoIdempotente": "Esta solicitud ya fue procesada."
+      "conflictoIdempotente": "Esta solicitud ya fue procesada.",
+      "metodosVacios": "No hay métodos de pago configurados. Contacta al admin.",
+      "metodosCargando": "Cargando métodos de pago…"
     },
     "haceN_one": "hace {{count}} día",
     "haceN_other": "hace {{count}} días",

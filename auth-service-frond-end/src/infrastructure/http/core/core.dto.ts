@@ -297,3 +297,11 @@ export interface MembresiaResponse {
 export interface RechazarMembresiaDto {
   motivo_eliminacion: string
 }
+
+// ── Métodos de pago ───────────────────────────────────────────────────────────
+
+export interface MetodoPago {
+  id: number
+  nombre: string
+  activo: boolean
+}

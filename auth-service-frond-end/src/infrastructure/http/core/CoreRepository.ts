@@ -6,7 +6,7 @@ import type {
   MembresiaHistorial, MembresiaDetalle, VenderMembresiaDto, AnularMembresiaDto,
   CongelarMembresiaDto, CongelarResponse, ReactivarResponse, CongelamientoHistorial,
   VentaPendienteRaw, VentaPendiente, MembresiaResponse, RechazarMembresiaDto,
-  ContadorPendientesRaw, ContadorPendientes, CompletarVentaClienteDto,
+  ContadorPendientesRaw, ContadorPendientes, CompletarVentaClienteDto, MetodoPago,
 } from './core.dto'
 
 // ── Tipos de membresía ───────────────────────────────────────────────────────
@@ -161,6 +161,13 @@ async function rechazarMembresia(idMembresia: number, motivo: string): Promise<M
   return data
 }
 
+// ── Métodos de pago ───────────────────────────────────────────────────────────
+
+async function getMetodosPago(): Promise<MetodoPago[]> {
+  const { data } = await coreApi.get<MetodoPago[]>('/metodos-pago')
+  return data
+}
+
 export const coreRepository = {
   getTiposMembresia,
   crearTipoMembresia,
@@ -187,4 +194,5 @@ export const coreRepository = {
   getContadorPendientes,
   confirmarPago,
   rechazarMembresia,
+  getMetodosPago,
 }

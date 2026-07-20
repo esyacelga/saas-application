@@ -1,8 +1,4 @@
-// TODO(backend): reemplazar por GET /metodos-pago cuando esté disponible. IDs actuales son placeholders.
-// Los IDs 1, 2, 3 NO existen en la BD todavía — el endpoint de métodos de pago no está implementado.
-// Cuando el backend exponga el endpoint, reemplazar METODOS_PAGO_PLACEHOLDER por una llamada dinámica.
-
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -11,16 +7,9 @@ import { useTranslation } from 'react-i18next'
 import { Button } from 'primereact/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { coreRepository } from '@/infrastructure/http/core/CoreRepository'
-import { getApiErrorCode, getApiErrorStatus } from '@/lib/api-error'
-import type { CompletarVentaClienteDto } from '@/infrastructure/http/core/core.dto'
+import { getApiErrorCode, getApiErrorMessage, getApiErrorStatus } from '@/lib/api-error'
+import type { CompletarVentaClienteDto, MetodoPago } from '@/infrastructure/http/core/core.dto'
 import { isAxiosError } from 'axios'
-
-// TODO(backend): reemplazar por GET /metodos-pago cuando esté disponible. IDs actuales son placeholders.
-const METODOS_PAGO_PLACEHOLDER = [
-  { id: 1, nombre: 'Efectivo' },
-  { id: 2, nombre: 'Tarjeta' },
-  { id: 3, nombre: 'Transferencia' },
-]
 
 const schema = z.object({
   precio_pagado: z.coerce.number().min(0, 'El precio no puede ser negativo'),
@@ -43,6 +32,8 @@ interface Props {
 
 export function CompletarVentaClienteModal({ idMembresia, nombreCliente, tipoNombre, open, onClose, onCompletada }: Props) {
   const { t } = useTranslation()
+  const [metodosPago, setMetodosPago] = useState<MetodoPago[]>([])
+  const [loadingMetodos, setLoadingMetodos] = useState(false)
 
   const {
     register,
@@ -68,7 +59,15 @@ export function CompletarVentaClienteModal({ idMembresia, nombreCliente, tipoNom
         fecha_inicio: new Date().toISOString().split('T')[0],
         descuento_aplicado: 0,
       })
+      setMetodosPago([])
+      return
     }
+
+    setLoadingMetodos(true)
+    coreRepository.getMetodosPago()
+      .then(data => setMetodosPago(data))
+      .catch(err => toast.error(getApiErrorMessage(err)))
+      .finally(() => setLoadingMetodos(false))
   }, [open, reset])
 
   const onSubmit = async (values: FormValues) => {
@@ -89,7 +88,6 @@ export function CompletarVentaClienteModal({ idMembresia, nombreCliente, tipoNom
 
       if (codigo === 'datos_venta_incompletos') {
         toast.error(t('ventasPendientes.completar.errorDatosIncompletos'))
-        // Attempt to paint per-field errors from ProblemDetail extensions
         if (isAxiosError(err)) {
           const errores = (err.response?.data as Record<string, unknown> | undefined)?.errores
           if (errores && typeof errores === 'object') {
@@ -118,6 +116,9 @@ export function CompletarVentaClienteModal({ idMembresia, nombreCliente, tipoNom
       }
     }
   }
+
+  const sinMetodos = !loadingMetodos && metodosPago.length === 0
+  const submitDisabled = isSubmitting || loadingMetodos || sinMetodos
 
   const inputCls = 'w-full px-3 py-2 text-xs rounded-md font-sans focus:outline-none focus:ring-2 focus:ring-orange-500'
   const inputStyle = { background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-text)' }
@@ -160,12 +161,29 @@ export function CompletarVentaClienteModal({ idMembresia, nombreCliente, tipoNom
             <label className={labelCls} style={labelStyle}>
               {t('ventasPendientes.completar.fieldMetodoPago')}
             </label>
-            <select {...register('id_metodo_pago')} className={inputCls} style={inputStyle}>
-              <option value={0}>Selecciona un método...</option>
-              {METODOS_PAGO_PLACEHOLDER.map(m => (
-                <option key={m.id} value={m.id}>{m.nombre}</option>
-              ))}
-            </select>
+            {loadingMetodos ? (
+              <div
+                className={`${inputCls} motion-safe:animate-pulse`}
+                style={{ ...inputStyle, opacity: 0.6 }}
+              >
+                {t('ventasPendientes.completar.metodosCargando')}
+              </div>
+            ) : sinMetodos ? (
+              <p className="text-xs mt-1" style={{ color: 'var(--page-muted)' }}>
+                {t('ventasPendientes.completar.metodosVacios')}
+              </p>
+            ) : (
+              <select
+                {...register('id_metodo_pago')}
+                className={inputCls}
+                style={inputStyle}
+              >
+                <option value={0}>{t('ventasPendientes.completar.fieldMetodoPago')}...</option>
+                {metodosPago.map(m => (
+                  <option key={m.id} value={m.id}>{m.nombre}</option>
+                ))}
+              </select>
+            )}
             {errors.id_metodo_pago && (
               <p className="text-xs text-red-400 mt-1">{errors.id_metodo_pago.message}</p>
             )}
@@ -219,7 +237,7 @@ export function CompletarVentaClienteModal({ idMembresia, nombreCliente, tipoNom
             label={isSubmitting ? t('common.saving') : t('ventasPendientes.completar.submit')}
             severity="warning"
             size="small"
-            disabled={isSubmitting}
+            disabled={submitDisabled}
             onClick={handleSubmit(onSubmit)}
           />
         </DialogFooter>

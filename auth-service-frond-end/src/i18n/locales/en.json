@@ -1263,7 +1263,9 @@
       "success": "Request completed. The membership is now active.",
       "errorDatosIncompletos": "Missing data to complete the sale. Review the fields.",
       "errorGenerico": "Could not complete the sale.",
-      "conflictoIdempotente": "This request has already been processed."
+      "conflictoIdempotente": "This request has already been processed.",
+      "metodosVacios": "No payment methods configured. Contact the admin.",
+      "metodosCargando": "Loading payment methods…"
     },
     "haceN_one": "{{count}} day ago",
     "haceN_other": "{{count}} days ago",
