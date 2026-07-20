@@ -1,6 +1,6 @@
 # ¿Cómo habilitar el botón Play en WebStorm para correr la aplicación?
 
-> **ESTADO:** 📜 Histórico — nota personal de aprendizaje, no documentación técnica del sistema. Ver [../../STATUS.md](../../STATUS.md).
+> **ESTADO:** 📜 Histórico — nota personal de aprendizaje, no documentación técnica del sistema. Ver [../../STATUS.md](../../../STATUS.md).
 
 El botón ▶ de la barra superior está deshabilitado porque WebStorm no tiene ninguna **Run Configuration** creada para este proyecto. Hay que crearla una vez y queda guardada.
 

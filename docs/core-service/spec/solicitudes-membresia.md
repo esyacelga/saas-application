@@ -1,5 +1,7 @@
 # Solicitudes de Membresía desde PWA Cliente
 
+> **Sub-documento (backend/core) de la HU canónica** [`../../gym-administrator/requirements/solicitudes-membresia.md`](../../gym-administrator/requirements/solicitudes-membresia.md). Ahí está el requerimiento cross-cutting completo (negocio + decisiones de PO + alcance en los 3 componentes). Este archivo detalla solo la parte de **core-service**. El frontend PWA está en [`../../gym-member-pwa/spec-solicitud-membresia.md`](../../gym-member-pwa/spec-solicitud-membresia.md).
+
 **ESTADO:** 🟡 **Feature aún no implementado** — Especificación de diseño del nuevo flujo de compra autoservicio. El código es la fuente de verdad una vez implementado; esta spec refleja las decisiones cerradas de producto.
 
 **Servicio:** core-service  

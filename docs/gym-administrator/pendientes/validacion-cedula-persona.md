@@ -94,5 +94,5 @@ correo, `POST /personas`):
 ## Relacionado
 
 - Validación de cédula en el registro público:
-  [../../auth-service-frond-end/registro-mejoras-implementadas.md](../../auth-service-frond-end/registro-mejoras-implementadas.md) §5.
+  [../../_archive/auth-service-frond-end/registro-mejoras-implementadas.md](../../_archive/auth-service-frond-end/registro-mejoras-implementadas.md) §5.
 - Frontera de validación pura `src/lib/sri/` (replicable a otros SaaS ecuatorianos).

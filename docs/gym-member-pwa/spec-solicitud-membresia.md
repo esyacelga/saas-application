@@ -1,5 +1,7 @@
 # Especificación UX — Solicitud de Membresía
 
+> **Sub-documento (frontend PWA) de la HU canónica** [`../gym-administrator/requirements/solicitudes-membresia.md`](../gym-administrator/requirements/solicitudes-membresia.md). Ahí está el requerimiento cross-cutting completo. Este archivo detalla solo la **UX del PWA de socios**. El backend está en [`../core-service/spec/solicitudes-membresia.md`](../core-service/spec/solicitudes-membresia.md).
+
 **Versión:** 1.0  
 **Fecha:** 2026-07-17  
 **Estado:** Spec definida, implementación pendiente  

@@ -1,6 +1,6 @@
 # IMPL-13 — Portal del Miembro: PWA (nuevo repo)
 
-> **ESTADO:** 📜 Histórico — paso de implementación ya completado. NO describe el estado actual del código; es el registro de cómo se construyó este módulo. Ver [../../STATUS.md](../../STATUS.md).
+> **ESTADO:** 📜 Histórico — paso de implementación ya completado. NO describe el estado actual del código; es el registro de cómo se construyó este módulo. Ver [../../STATUS.md](../../../STATUS.md).
 
 > **Módulo:** Portal del Miembro — Fase 2 (frontend independiente)
 > **Complejidad:** ★★★★★

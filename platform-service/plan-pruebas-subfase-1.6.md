@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-07-12
 **Ámbito:** funcionalidades introducidas en la sub-fase — activación de Trial, rechazo de pagos con notificación por email, procesamiento de la cola de notificaciones (`TRIAL_ACTIVADO`, `PAGO_RECHAZADO`) y flujos UI relacionados (Admin `MiSuscripcion` y Root `PagosPendientes`).
-**Deuda técnica NO corregida:** ver [DEUDA_TECNICA_SUBFASE_1.6.md](DEUDA_TECNICA_SUBFASE_1.6.md). Los hallazgos HIGH/MEDIUM quedan pendientes y NO bloquean estas pruebas — se testea el "happy path" del negocio.
+**Deuda técnica NO corregida:** ver [deuda-tecnica-subfase-1.6.md](deuda-tecnica-subfase-1.6.md). Los hallazgos HIGH/MEDIUM quedan pendientes y NO bloquean estas pruebas — se testea el "happy path" del negocio.
 
 ---
 
@@ -258,4 +258,4 @@ Si algún test falla, es un bloqueante — no está en la lista de deuda técnic
 - [ ] G1 y G2 completan end-to-end con email real recibido.
 - [ ] R1 y R2 sin regresiones.
 - [ ] `mvn ... test` verde.
-- [ ] Deuda técnica documentada en [DEUDA_TECNICA_SUBFASE_1.6.md](DEUDA_TECNICA_SUBFASE_1.6.md) revisada y comprendida por el equipo.
+- [ ] Deuda técnica documentada en [deuda-tecnica-subfase-1.6.md](deuda-tecnica-subfase-1.6.md) revisada y comprendida por el equipo.

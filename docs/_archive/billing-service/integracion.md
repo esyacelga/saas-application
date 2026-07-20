@@ -41,13 +41,13 @@ core-service                              billing-service                   SRI
     | o core.ventas (columna id_comprobante)
 ```
 
-Con G2 (Fase 1) el comprobante llega a un estado terminal (`AUTORIZADO`) o transitorio (`DEVUELTO`, `NO_AUTORIZADO`, `ERROR`) **dentro del mismo POST**. Si el pipeline síncrono falla o cae por timeout, la firma XML, envío al SRI y autorización se reintentan asíncronamente vía `facturacion.cola_envio` (ver [flows/sri-submission-retry.md](../flows/sri-submission-retry.md)).
+Con G2 (Fase 1) el comprobante llega a un estado terminal (`AUTORIZADO`) o transitorio (`DEVUELTO`, `NO_AUTORIZADO`, `ERROR`) **dentro del mismo POST**. Si el pipeline síncrono falla o cae por timeout, la firma XML, envío al SRI y autorización se reintentan asíncronamente vía `facturacion.cola_envio` (ver [flows/sri-submission-retry.md](../../billing-service/flows/sri-submission-retry.md)).
 
 ---
 
 ## Endpoint invocado
 
-Referencia completa en [comprobantes.md — POST /api/v1/comprobantes/facturas](comprobantes.md#post-apiv1comprobantesfacturas).
+Referencia completa en [comprobantes.md — POST /api/v1/comprobantes/facturas](../../billing-service/api/comprobantes.md#post-apiv1comprobantesfacturas).
 
 **Contrato HTTP mínimo:**
 
@@ -150,7 +150,7 @@ Después de emitir la factura, `core-service` puede necesitar:
 - **Descargar RIDE PDF para el cliente:** `GET /api/v1/comprobantes/{id}/ride` — disponible cuando el SRI autoriza (estado `AUTORIZADO`). Enviar por email o guardar en blob.
 - **Anular la factura:** `POST /api/v1/comprobantes/{id}/anular` — si el usuario cancela la membresía/venta. Solo funciona en estados `AUTORIZADO` o `GENERADO`.
 
-Ver [comprobantes.md](comprobantes.md) para el contrato completo de estas operaciones.
+Ver [comprobantes.md](../../billing-service/api/comprobantes.md) para el contrato completo de estas operaciones.
 
 ---
 
@@ -201,7 +201,7 @@ Ver [comprobantes.md](comprobantes.md) para el contrato completo de estas operac
 
 ## Breaking change — G5 (reserva atómica del secuencial)
 
-**Cuándo:** Fase 0 del [roadmap SRI 2026](../pendientes/roadmap-sri-2026.md).
+**Cuándo:** Fase 0 del [roadmap SRI 2026](../../billing-service/pendientes/roadmap-sri-2026.md).
 
 **Qué cambia:**
 
@@ -231,6 +231,6 @@ Ver [comprobantes.md](comprobantes.md) para el contrato completo de estas operac
 
 ## Referencias cruzadas
 
-- [comprobantes.md](comprobantes.md) — Contrato HTTP completo del endpoint.
-- [flows/sri-submission-retry.md](../flows/sri-submission-retry.md) — Máquina de estados y lógica de reintentos.
+- [comprobantes.md](../../billing-service/api/comprobantes.md) — Contrato HTTP completo del endpoint.
+- [flows/sri-submission-retry.md](../../billing-service/flows/sri-submission-retry.md) — Máquina de estados y lógica de reintentos.
 - [../../gym-administrator/specs/billing-service.md](../../gym-administrator/specs/billing-service.md) — Especificación de dominio y arquitectura (nota: algunos paths están desalineados; usar este doc como referencia de negocio).

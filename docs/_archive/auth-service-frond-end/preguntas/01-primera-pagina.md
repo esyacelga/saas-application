@@ -1,6 +1,6 @@
 # ¿Cómo sabe la aplicación cuál es la primera página a mostrar?
 
-> **ESTADO:** 📜 Histórico — nota personal de aprendizaje, no documentación técnica del sistema. Ver [../../STATUS.md](../../STATUS.md).
+> **ESTADO:** 📜 Histórico — nota personal de aprendizaje, no documentación técnica del sistema. Ver [../../STATUS.md](../../../STATUS.md).
 
 ## Resumen
 

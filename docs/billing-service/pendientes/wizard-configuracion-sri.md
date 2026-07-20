@@ -73,7 +73,7 @@ ALTER TABLE tenant.companias
 
 > ⚠️ Antes de ejecutarla, **volver a verificar que nadie las lee** (el código pudo cambiar). `tenant.companias.ruc` **se conserva** — es identidad del tenant, no dato fiscal de facturación.
 >
-> 🔗 **El `ALTER COLUMN ruc DROP NOT NULL` viene de una decisión relacionada:** [quitar el RUC del registro de gimnasios](../../auth-service-frond-end/registro-quitar-ruc.md). Como no todo gym factura, el RUC deja de pedirse en el registro y pasa al wizard de facturación. **Conviene hacer ambos cambios en la misma story** — un solo `ALTER TABLE tenant.companias` a coordinar con la Neon. El `UNIQUE` de `ruc` **no se toca**: en Postgres, un único sobre columna nullable permite varios NULL (varios gyms sin RUC) y sigue impidiendo dos gyms con el mismo RUC real.
+> 🔗 **El `ALTER COLUMN ruc DROP NOT NULL` viene de una decisión relacionada:** [quitar el RUC del registro de gimnasios](../../_archive/auth-service-frond-end/registro-quitar-ruc.md) (📜 archivado, ya implementado). Como no todo gym factura, el RUC deja de pedirse en el registro y pasa al wizard de facturación. **Conviene hacer ambos cambios en la misma story** — un solo `ALTER TABLE tenant.companias` a coordinar con la Neon. El `UNIQUE` de `ruc` **no se toca**: en Postgres, un único sobre columna nullable permite varios NULL (varios gyms sin RUC) y sigue impidiendo dos gyms con el mismo RUC real.
 
 ### 2.4 Qué pide el wizard entonces
 

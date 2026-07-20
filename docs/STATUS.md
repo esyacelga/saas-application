@@ -188,8 +188,8 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 | Documento | Estado |
 |-----------|--------|
 | auth-service.md, platform-service.md, core-service.md, attendance-service.md | 🟡 Spec de diseño de un servicio ya implementado — el código es la verdad, la spec puede haber divergido |
-| billing-service.md | 🟡 Spec de diseño histórica — servicio implementado (Fases SRI 0-3). Encabezado corregido 2026-07-19. Su §9 lista 13 endpoints; hoy son 23 (6 controllers). Fuente de verdad: [docs/billing-service/](../billing-service/INDEX.md). |
-| finance-service.md | 🟡 Spec de diseño histórica — servicio implementado (5 controllers, 13 endpoints). Encabezado corregido 2026-07-19. Fuente de verdad: [docs/finance-service/](../finance-service/INDEX.md). |
+| billing-service.md | 🟡 Spec de diseño histórica — servicio implementado (Fases SRI 0-3). Encabezado corregido 2026-07-19. Su §9 lista 13 endpoints; hoy son 23 (6 controllers). Fuente de verdad: [docs/billing-service/](billing-service/INDEX.md). |
+| finance-service.md | 🟡 Spec de diseño histórica — servicio implementado (5 controllers, 13 endpoints). Encabezado corregido 2026-07-19. Fuente de verdad: [docs/finance-service/](finance-service/INDEX.md). |
 | marketing-service.md, inventory-service.md | 📋 Planeado — sin implementar |
 
 ### docs/gym-administrator/architecture/

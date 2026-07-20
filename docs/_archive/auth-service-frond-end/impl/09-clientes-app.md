@@ -1,6 +1,6 @@
 # IMPL-09 — ClientesAppPage (Cuentas de la app móvil)
 
-> **ESTADO:** 📜 Histórico — paso de implementación ya completado. NO describe el estado actual del código; es el registro de cómo se construyó este módulo. Ver [../../STATUS.md](../../STATUS.md).
+> **ESTADO:** 📜 Histórico — paso de implementación ya completado. NO describe el estado actual del código; es el registro de cómo se construyó este módulo. Ver [../../STATUS.md](../../../STATUS.md).
 
 > **Pantalla:** P-08 Clientes App  
 > **Complejidad:** ★★★★☆  

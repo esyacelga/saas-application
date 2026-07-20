@@ -52,7 +52,7 @@ Este documento es el registro de qué se cambió y por qué, para consultas futu
 - **`validarCedula.ts`** — algoritmo oficial del Registro Civil (módulo 10): 10 dígitos, provincia 01–24 o 30, tercer dígito < 6, verificador.
 - **`validarRuc.ts`** — RUC ecuatoriano SRI: persona natural (cédula + "001"), sociedad pública (módulo 11 / "0001"), sociedad privada (módulo 11 / "001"). Reutiliza `validarCedula`.
 
-Esta es la frontera prevista en [facturacion-diseno.md §14](facturacion-diseno.md#14-sección-clave-qué-es-replicable-a-otros-rubros). `validarRuc` todavía no se consume desde ninguna pantalla — queda lista para el wizard de facturación.
+Esta es la frontera prevista en [facturacion-diseno.md §14](../../auth-service-frond-end/facturacion-diseno.md#14-sección-clave-qué-es-replicable-a-otros-rubros). `validarRuc` todavía no se consume desde ninguna pantalla — queda lista para el wizard de facturación.
 
 ## 5. Validación real de cédula en el Paso 4
 
@@ -91,7 +91,7 @@ Ver el diseño y la decisión de producto en [registro-quitar-ruc.md](registro-q
 
 ### 7.3 Base de datos (plegado en la baseline `GYM-001`)
 
-**Decisión (2026-07-14):** como la BD aún está en desarrollo y la Neon se va a recrear desde cero, el cambio de esquema **no** quedó como un `ALTER` incremental en una story aparte, sino que se **plegó dentro de la baseline `GYM-001`**. Esto respeta la invariante del repo (*"cada tabla se define una sola vez en su `CREATE TABLE`, sin `ALTER` correctivos; un gym nuevo se levanta en una pasada"* — ver [gym-administrator/CLAUDE.md](../../gym-administrator/CLAUDE.md)).
+**Decisión (2026-07-14):** como la BD aún está en desarrollo y la Neon se va a recrear desde cero, el cambio de esquema **no** quedó como un `ALTER` incremental en una story aparte, sino que se **plegó dentro de la baseline `GYM-001`**. Esto respeta la invariante del repo (*"cada tabla se define una sola vez en su `CREATE TABLE`, sin `ALTER` correctivos; un gym nuevo se levanta en una pasada"* — ver [gym-administrator/CLAUDE.md](../../../gym-administrator/CLAUDE.md)).
 
 - **`202605_GYM-001/ddl/16_create_table_tenant_companias.sql`:** la columna `ruc` nace como `VARCHAR(20) UNIQUE` (sin `NOT NULL`) directamente en el `CREATE TABLE`, con su `COMMENT` explicativo. El `UNIQUE` se conserva.
 - **Comportamiento con RUC null:** el `UNIQUE` de Postgres permite varios NULL, así que múltiples gyms sin RUC conviven; dos RUC reales iguales siguen prohibidos (constraint `companias_ruc_key`).

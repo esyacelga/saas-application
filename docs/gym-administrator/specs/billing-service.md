@@ -1,6 +1,6 @@
 # Módulo de Facturación Electrónica — Ecuador SRI
 
-> **ESTADO:** 📋 Planeado — sin implementar. Este servicio NO existe en el código todavía; es una especificación de diseño futura. Ver [../../STATUS.md](../../STATUS.md).
+> **ESTADO:** 🟡 **Spec de diseño histórica — el servicio ya está implementado (Fases SRI 0-3, verificado 2026-07-14).** El código en `billing-service/` es la fuente de verdad. Ver [docs/billing-service/](../../billing-service/INDEX.md) para la API real (6 controllers, 23 endpoints). Esta spec puede haber divergido; en particular su tabla de endpoints (§9) listaba 13 rutas y hoy son 23 (Fases 2-3: notas de crédito, anulación fiscal, motivos). Úsala como referencia de intención de diseño, no de comportamiento vigente. Ver [../../STATUS.md](../../STATUS.md).
 
 > **Proyecto:** Gym Administrator — Plataforma SaaS de gestión de gimnasios
 > **Regulador:** SRI (Servicio de Rentas Internas del Ecuador)
@@ -847,7 +847,7 @@ billing-service/
               └── Al autorizar SRI: UPDATE finanzas.ingresos SET id_comprobante = X
 ```
 
-Patrón: **fire-and-forget** con cola de mensajes. Si el Billing Service falla, la membresía ya está registrada; la factura queda pendiente para reintento automático. Ver [contrato de integración propuesto](../../billing-service/api/integracion.md).
+Patrón: **fire-and-forget** con cola de mensajes. Si el Billing Service falla, la membresía ya está registrada; la factura queda pendiente para reintento automático. Ver [contrato de integración propuesto](../../_archive/billing-service/integracion.md) (📜 archivado; `core-service` aún no lo consume).
 
 ### 11.2 Inventory Service — al vender producto
 

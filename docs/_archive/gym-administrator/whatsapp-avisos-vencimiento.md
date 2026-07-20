@@ -938,7 +938,7 @@ Crear/verificar WABA + `phone_number_id` y **subir las plantillas HSM a aprobaci
 ## Relacionado
 
 - Spec del lado socio (mensajería + plantillas + `mensajes_log`):
-  [../specs/attendance-service.md](../specs/attendance-service.md) §5 y §11 (RN-05, RN-06, RN-09).
+  [../specs/attendance-service.md](../../gym-administrator/specs/attendance-service.md) §5 y §11 (RN-05, RN-06, RN-09).
 - Detección de vencimiento del socio: `core-service` → `ClienteStatusJobService`; patrón interno
   service-to-service: [../../core-service/api/internal.md](../../core-service/api/internal.md).
 - Job y cola del lado dueño: `platform-service` → `NotificacionVencimientoJob` /

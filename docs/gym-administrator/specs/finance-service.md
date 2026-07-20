@@ -8,7 +8,7 @@
 > **Plan requerido:** Premium  
 > **Depende de:** auth-service (JWT) · platform-service (`/modulos/check` → `finanzas`)  
 > **Es llamado por:** core-service (al vender membresía) · inventory-service (al registrar venta)  
-> **Estado:** Listo para desarrollar
+> **Estado:** ✅ Implementado (2026-07-14) — ver encabezado.
 
 ---
 

@@ -3,13 +3,13 @@
 > **ESTADO:** ✅ **Implementado (2026-07-14)** para el auto-registro público — código y migración. Ver el registro de cambios en [registro-mejoras-implementadas.md](registro-mejoras-implementadas.md). Falta aplicar la migración a la Neon (se borra y recorre). El **teléfono** y el **WhatsApp** se quitaron del Paso 1 junto con el RUC.
 > **Fecha:** 2026-07-14
 > **Decisión de producto (2026-07-14):**
-> - El **RUC** sale del registro → se pide en el [wizard de facturación](../billing-service/pendientes/wizard-configuracion-sri.md), solo cuando el gym decide facturar.
+> - El **RUC** sale del registro → se pide en el [wizard de facturación](../../billing-service/pendientes/wizard-configuracion-sri.md), solo cuando el gym decide facturar.
 > - El **WhatsApp** sale del registro → se pedirá al **activar notificaciones por WhatsApp** (feature futura que hoy no existe).
 > - El **teléfono** sale del registro → queda editable en **"Mi Empresa"** (`EditarCompaniaModal`, que ya lo tiene) para completar cuando quieran.
 > - El **Paso 2 (sucursal)** se **suaviza**: se renombra (deja de decir "sede/sucursal", que asusta a un gym de un solo local) y se **pre-llena** el nombre con el del gym del Paso 1, para que el caso mayoritario —un único local— solo dé "Siguiente". No se elimina el paso: el local físico sí es un dato real.
 > **Principio aplicado:** disclosure progresivo — no pedir un dato hasta que haya una razón concreta para pedirlo.
 > **Parte de:** [restructuración de onboarding y facturación](../gym-administrator/restructuracion-onboarding-facturacion.md) (documento paraguas). **Es la Pieza 1 — la de menor riesgo.**
-> **Relacionado:** [wizard-configuracion-sri.md](../billing-service/pendientes/wizard-configuracion-sri.md) · [facturacion-diseno.md](facturacion-diseno.md)
+> **Relacionado:** [wizard-configuracion-sri.md](../../billing-service/pendientes/wizard-configuracion-sri.md) · [facturacion-diseno.md](../../auth-service-frond-end/facturacion-diseno.md)
 
 ---
 
@@ -21,7 +21,7 @@ Los daños:
 
 1. **Fricción de conversión.** Cada campo de más en un formulario de registro es gente que abandona. Y un dato *fiscal* de entrada (el RUC) asusta especialmente. El usuario que solo quiere probar no tiene por qué pensar en tributación ni dar sus números de contacto todavía.
 2. **Son datos que no se usan.** Verificado en el código (2026-07-14):
-   - El **RUC** se guarda en `tenant.companias.ruc`, pero **el emisor de facturas no lo lee** — factura desde `facturacion.config_sri`, que llena el wizard de facturación (ver [decisión de fuente única](../billing-service/pendientes/wizard-configuracion-sri.md#23-decisión-fuente-única-en-config_sri-borrar-las-columnas-muertas)).
+   - El **RUC** se guarda en `tenant.companias.ruc`, pero **el emisor de facturas no lo lee** — factura desde `facturacion.config_sri`, que llena el wizard de facturación (ver [decisión de fuente única](../../billing-service/pendientes/wizard-configuracion-sri.md#23-decisión-fuente-única-en-config_sri-borrar-las-columnas-muertas)).
    - El **WhatsApp** se guarda, pero **ningún servicio lo usa**: existe la constante `NotificacionSuscripcion.CANAL_WHATSAPP` pero no hay ningún emisor que la consuma. Las notificaciones de vencimiento van por email o banner.
    - O sea: **se piden datos que intimidan o cansan, para después no usarlos.** Lo peor de los dos mundos.
 
@@ -74,7 +74,7 @@ Hoy el registro arrastra pedazos de las otras tres intenciones hacia la primera.
 
 **Con la opción A**, ojo con el `UNIQUE`: un índice único sobre una columna nullable permite **múltiples NULL** en Postgres (dos gyms sin RUC no chocan), y sigue impidiendo dos gyms con el **mismo** RUC real. Es exactamente el comportamiento que queremos. **No hay que tocar el `UNIQUE`.**
 
-> ⚠️ **Coherencia con la otra migración pendiente.** El [wizard de facturación §2.3](../billing-service/pendientes/wizard-configuracion-sri.md#23-decisión-fuente-única-en-config_sri-borrar-las-columnas-muertas) ya propone una migración que **borra 4 columnas fiscales muertas** de `tenant.companias` (`nombre_comercial`, `dir_matriz`, `obligado_contabilidad`, `contribuyente_especial`). **Conviene hacer ambos cambios en la misma story Liquibase:** dejar `ruc` nullable + borrar las 4 columnas muertas. Un solo `ALTER TABLE tenant.companias`, un solo cambio a coordinar con la Neon.
+> ⚠️ **Coherencia con la otra migración pendiente.** El [wizard de facturación §2.3](../../billing-service/pendientes/wizard-configuracion-sri.md#23-decisión-fuente-única-en-config_sri-borrar-las-columnas-muertas) ya propone una migración que **borra 4 columnas fiscales muertas** de `tenant.companias` (`nombre_comercial`, `dir_matriz`, `obligado_contabilidad`, `contribuyente_especial`). **Conviene hacer ambos cambios en la misma story Liquibase:** dejar `ruc` nullable + borrar las 4 columnas muertas. Un solo `ALTER TABLE tenant.companias`, un solo cambio a coordinar con la Neon.
 >
 > **`ruc` se conserva** (solo pasa a nullable) — es identidad del tenant. Las otras 4 sí se borran.
 
@@ -82,7 +82,7 @@ Hoy el registro arrastra pedazos de las otras tres intenciones hacia la primera.
 
 ### 3.3 Validación del RUC — se muda, no se pierde
 
-La validación de RUC ecuatoriano (13 dígitos + dígito verificador) **no desaparece**: se mueve al wizard de facturación, que es donde el RUC pasa a ser obligatorio y crítico. Vivirá en `src/lib/sri/validarRuc.ts` (la frontera ya definida en [facturacion-diseno.md §14](facturacion-diseno.md#14-sección-clave-qué-es-replicable-a-otros-rubros)).
+La validación de RUC ecuatoriano (13 dígitos + dígito verificador) **no desaparece**: se mueve al wizard de facturación, que es donde el RUC pasa a ser obligatorio y crítico. Vivirá en `src/lib/sri/validarRuc.ts` (la frontera ya definida en [facturacion-diseno.md §14](../../auth-service-frond-end/facturacion-diseno.md#14-sección-clave-qué-es-replicable-a-otros-rubros)).
 
 > Nota: el registro actual valida el RUC **flojo** (`min(10).max(20)`, sin dígito verificador). O sea que hoy acepta RUCs inválidos de todas formas — otra razón por la que no aporta valor en el registro. En el wizard de facturación se valida **en serio**.
 
@@ -173,4 +173,4 @@ Este documento y sus decisiones se replican tal cual.
 > 📌 **Feature futura — activación de notificaciones por WhatsApp.**
 > Cuando se implemente el canal `CANAL_WHATSAPP` (hoy declarado en `NotificacionSuscripcion` pero sin ningún emisor que lo consuma), **debe existir una opción para activarlo, y esa activación SÍ debe pedir el número de WhatsApp y hacerlo obligatorio** — porque ahí sí es un dato necesario para que la feature funcione. Es el otro lado del disclosure progresivo: el dato que quitamos del registro se vuelve **obligatorio** en el punto exacto donde se usa.
 >
-> Esto **no se implementa ahora** — se registra aquí para no perderlo. El foco actual son los dos wizards: el [de facturación](../billing-service/pendientes/wizard-configuracion-sri.md) y el adelgazamiento del registro (este documento).
+> Esto **no se implementa ahora** — se registra aquí para no perderlo. El foco actual son los dos wizards: el [de facturación](../../billing-service/pendientes/wizard-configuracion-sri.md) y el adelgazamiento del registro (este documento).

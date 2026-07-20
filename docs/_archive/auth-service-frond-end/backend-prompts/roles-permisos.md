@@ -1,6 +1,6 @@
 # Backend Prompt – Módulo Roles y Permisos (Platform)
 
-> **ESTADO:** 📜 Histórico — prompt usado para pedir un cambio al backend. NO es documentación de estado actual. Ver [../../STATUS.md](../../STATUS.md).
+> **ESTADO:** 📜 Histórico — prompt usado para pedir un cambio al backend. NO es documentación de estado actual. Ver [../../STATUS.md](../../../STATUS.md).
 
 ## Contexto
 

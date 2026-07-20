@@ -28,7 +28,7 @@ El resultado que buscamos:
 Ninguna abre trabajo de documentación nuevo — las tres ya están especificadas. Este paraguas las conecta y ordena.
 
 ### Pieza 1 · Adelgazar el registro de gimnasios
-📄 [../../auth-service-frond-end/registro-quitar-ruc.md](../../auth-service-frond-end/registro-quitar-ruc.md)
+📄 [../../auth-service-frond-end/registro-quitar-ruc.md](../auth-service-frond-end/registro-quitar-ruc.md)
 
 - **Qué es:** rediseño puntual — quitar del **Paso 1** del registro el RUC, el teléfono y el WhatsApp. Los pasos 2 (sucursal), 3 (plan) y 4 (tu cuenta) **no se tocan**.
 - **Naturaleza:** cirugía en un solo paso de un wizard que ya funciona bien. **Riesgo bajo.**
@@ -105,4 +105,4 @@ Todo esto es genérico de un SaaS ecuatoriano, no de gimnasios:
 
 ## 6. Pendientes registrados (fuera del alcance actual)
 
-- **Activación de notificaciones por WhatsApp:** cuando se implemente el canal `CANAL_WHATSAPP` (hoy declarado sin emisor), su pantalla de activación **debe pedir el número y hacerlo obligatorio** — el otro lado del disclosure progresivo. Detalle en [registro-quitar-ruc.md §7](../../auth-service-frond-end/registro-quitar-ruc.md#7-pendiente-relacionado-no-es-parte-de-este-cambio).
+- **Activación de notificaciones por WhatsApp:** cuando se implemente el canal `CANAL_WHATSAPP` (hoy declarado sin emisor), su pantalla de activación **debe pedir el número y hacerlo obligatorio** — el otro lado del disclosure progresivo. Detalle en [registro-quitar-ruc.md §7](../auth-service-frond-end/registro-quitar-ruc.md#7-pendiente-relacionado-no-es-parte-de-este-cambio).
