@@ -79,9 +79,35 @@ Three **non-interchangeable** JWT user types (claim `tipo`):
 - `infrastructure/security/JwtService` — JJWT 0.12.6 generate/parse (implements `TokenGeneratorPort`)
 - `infrastructure/security/JwtAuthWebFilter`, `SecurityUtils` — auth pipeline (see README "Pipeline de seguridad")
 - `application/service/AuthApplicationService` — all three login flows, token refresh, password reset
-- `infrastructure/config/GlobalExceptionHandler` — maps domain exceptions to `ApiError` JSON
+- `infrastructure/config/GlobalExceptionHandler` — mapea excepciones al sobre estandarizado RFC 7807 + `codigo` (ver "Error Handling")
 - `RateLimiterPort` — key format `"tipo:idCompania:login"`, platform uses `"platform:email"`
 - `BitacoraPort` — every POST/PUT/DELETE must write an audit entry via this port
+
+## Error Handling
+
+Contrato de errores estandarizado **RFC 7807 (`ProblemDetail`) + campo `codigo`** — ver [../docs/gym-administrator/architecture/error-contract.md](../docs/gym-administrator/architecture/error-contract.md). Replica el piloto de `core-service` (implementado en auth 2026-07-19).
+
+`GlobalExceptionHandler` (implements `ErrorWebExceptionHandler`, `@Order(-2)`) es el punto único de salida de errores. Traduce las excepciones de dominio al sobre estándar:
+
+| Exception | HTTP | `codigo` |
+|---|---|---|
+| `AuthException` | 401 | `no_autenticado` |
+| `ResourceNotFoundException` | 404 | `recurso_no_encontrado` |
+| `ConflictException` | 409 | `conflicto` |
+| `ForbiddenException` / `AccessDeniedException` | 403 | `acceso_denegado` |
+| `TooManyRequestsException` | 429 | `demasiadas_solicitudes` |
+| `BadRequestException` / `IllegalArgumentException` | 400 | `validacion` |
+| `WebExchangeBindException` | 400 | `validacion` (+ `errores: [{campo, mensaje}]`) |
+| `DataIntegrityViolationException` | 409 | `datos_duplicados` / `referencia_invalida` / `campo_requerido` (vía `DataIntegrityMapper`) |
+| no controlada | 500 | `error_interno` |
+
+**Sobre de salida** (`application/problem+json`): 5 campos RFC 7807 (`type`, `title`, `status`, `detail`, `instance`) + extensiones en **snake_case** (`codigo`, `mensaje` [alias de `detail`], `timestamp`, y `errores` en validación).
+
+**Piezas del paquete:**
+- `infrastructure/exception/{ErrorCode, ProblemDetailFactory, DataIntegrityMapper}` — enum de `codigo` → HTTP status, construcción/aplanado del `ProblemDetail`, y traducción de constraints de PostgreSQL a `codigo` + mensaje legible (lógica originada en este servicio).
+- `infrastructure/security/JwtAuthenticationEntryPoint` (401 → `no_autenticado`) + `infrastructure/security/ApiAccessDeniedHandler` (403 → `acceso_denegado`) — registrados en `SecurityConfig.exceptionHandling(...)` para que los errores de Spring Security emitan el mismo sobre.
+
+El record `exception/ApiError` quedó obsoleto (ya nadie lo emite). Tests: `unit/GlobalExceptionHandlerTest` (mapeo + serialización snake_case + constraint violations), `unit/SecurityErrorContractTest` (401/403 de Security).
 
 ## Testing
 

@@ -1,5 +1,6 @@
 package com.gymadmin.auth.infrastructure.config;
 
+import com.gymadmin.auth.infrastructure.security.ApiAccessDeniedHandler;
 import com.gymadmin.auth.infrastructure.security.JwtAuthWebFilter;
 import com.gymadmin.auth.infrastructure.security.JwtAuthenticationEntryPoint;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ public class SecurityConfig {
     private final JwtAuthWebFilter jwtAuthWebFilter;
     private final AppProperties appProperties;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final ApiAccessDeniedHandler apiAccessDeniedHandler;
 
     @Bean
     public SecurityWebFilterChain springWebFilterChain(ServerHttpSecurity http) {
@@ -39,7 +41,9 @@ public class SecurityConfig {
                         ).permitAll()
                         .anyExchange().authenticated()
                 )
-                .exceptionHandling(e -> e.authenticationEntryPoint(jwtAuthenticationEntryPoint))
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                        .accessDeniedHandler(apiAccessDeniedHandler))
                 .addFilterAt(jwtAuthWebFilter, SecurityWebFiltersOrder.AUTHENTICATION)
                 .build();
     }

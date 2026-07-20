@@ -93,7 +93,35 @@ ReactiveSecurityContextHolder.getContext()
 
 **File uploads** — Multipart handling in reactive context uses `DataBufferUtils.join(filePart.content())` to collect bytes before calling Cloudinary.
 
-**Error handling** — `GlobalExceptionHandler` maps domain exceptions (`NotFoundException`, `ConflictException`, `ForbiddenException`, etc.) to HTTP responses. Throw these from services; do not return error `Mono`s with generic `RuntimeException`.
+**Error handling** — Contrato de errores estandarizado **RFC 7807 (`ProblemDetail`) + campo `codigo`** — ver [../docs/gym-administrator/architecture/error-contract.md](../docs/gym-administrator/architecture/error-contract.md). Replicado del piloto de `core-service` (2026-07-19).
+
+`GlobalExceptionHandler` (implements `ErrorWebExceptionHandler`, `@Order(HIGHEST_PRECEDENCE)`) es el punto único de salida de errores. Traduce todas las excepciones al mismo sobre; lanza el tipo correcto desde service/adapter (no devuelvas `Mono`s con `RuntimeException` genérico):
+
+| Exception | HTTP | `codigo` |
+|---|---|---|
+| `NotFoundException` | 404 | `recurso_no_encontrado` |
+| `ConflictException` | 409 | `conflicto` (+ `conflicto` extra si `getConflicto() != null`) |
+| `ForbiddenException` / `AccessDeniedException` | 403 | `acceso_denegado` |
+| `BusinessException` | 422 | `regla_negocio` |
+| `LimiteAlcanzadoException` | 403 | `limite_plan_alcanzado` (+ `recurso`, `actual`, `maximo`, `plan_actual`) |
+| `TrialYaUsadoException` | 409 | `trial_ya_usado` |
+| `SuscripcionActivaException` | 409 | `suscripcion_activa` |
+| `SinSuscripcionCancelableException` | 400 | `sin_suscripcion_cancelable` |
+| `PagoDuplicadoException` | 409 | `pago_duplicado` |
+| `PagoYaProcesadoException` | 409 | `pago_ya_procesado` |
+| `EstadoInvalidoException` | 400 | `transicion_invalida` |
+| `RateLimitExcedidoException` | 429 | `rate_limit_excedido` (+ `ventana`, `max`) |
+| `DataIntegrityViolationException` | 409 | `datos_duplicados` / `referencia_invalida` / `campo_requerido` (vía `DataIntegrityMapper`) |
+| `WebExchangeBindException` | 400 | `validacion` (+ `errores: [{campo, mensaje}]`) |
+| no controlada | 500 | `error_interno` |
+
+**Sobre de salida** (`application/problem+json`): 5 campos RFC 7807 (`type`, `title`, `status`, `detail`, `instance`) + extensiones en **snake_case** (`codigo`, `mensaje` [alias de `detail`], `timestamp`, y `errores`/metadata según el caso). La metadata SaaS que consume el frontend (`UpgradeModal`) va al nivel raíz — nota: `plan_actual` es **snake_case** (antes salía como `planActual`).
+
+**Piezas del paquete** (bajo `infrastructure/exception/` y `infrastructure/config/`):
+- `ErrorCode` (enum), `ProblemDetailFactory` (construye y **aplana** el `ProblemDetail` vía `toMap()`), `DataIntegrityMapper`.
+- `ApiAuthenticationEntryPoint` (401 → `no_autenticado`) + `ApiAccessDeniedHandler` (403 → `acceso_denegado`), registrados en `SecurityConfig.exceptionHandling(...)`. El `JwtAuthenticationFilter` delega su 401 al entrypoint. Las reglas `permitAll` públicas se mantienen intactas.
+
+Tests: `GlobalExceptionHandlerTest` (mapeo + serialización snake_case, incl. `plan_actual`), `SecurityErrorContractTest` (401/403 de Security).
 
 **Module check cache** — Redis was removed for Cloud Run deployment without external dependencies (see [docs/REDIS_REMOVAL.md](../docs/REDIS_REMOVAL.md) if it exists, and the stub at `infrastructure/adapter/out/cache/RedisModuloCheckCache.java`). The `ModuloCheckCache` port is currently implemented as a no-op stub: `get` returns `Mono.empty()`, `put`/`evict` do nothing, and `invalidateByCompania` returns `0`. Consequence: every call to `/api/v1/modulos/check` hits Postgres directly (small join over `saas.plan_caracteristicas × saas.caracteristicas`). Consumers that need caching (e.g. billing-service's `ModuloGatingFilter`) implement their own in-JVM cache (Caffeine). Redis is **not required** to start the service.
 

@@ -118,17 +118,32 @@ return getJwtPrincipal()
         .map(result -> ResponseEntity.status(201).body(result)));
 ```
 
-### Custom exceptions → HTTP status mapping
+### Error Handling — contrato estandarizado (RFC 7807 + `codigo`)
 
-`GlobalExceptionHandler` maps these to specific HTTP statuses:
-- `NotFoundException` → 404
-- `ForbiddenException` → 403
-- `ConflictException` → 409
-- `GoneException` → 410
-- `com.gymadmin.attendance.infrastructure.exception.IllegalArgumentException` → 422
-- Bean validation failures (`@Valid`) → 400 with field-level error details
+Contrato de errores estandarizado **RFC 7807 (`ProblemDetail`) + campo `codigo`** — ver [../docs/gym-administrator/architecture/error-contract.md](../docs/gym-administrator/architecture/error-contract.md). Replicado del piloto de core-service (2026-07-19). El antiguo `@RestControllerAdvice` fue **reemplazado** por un `GlobalExceptionHandler` que implementa `ErrorWebExceptionHandler` con `@Order(HIGHEST_PRECEDENCE)` (vive en `infrastructure/config/`, no en `infrastructure/exception/`). Es el punto único de salida de errores y captura también fallos de filtros/routing que el advice no veía.
+
+| Exception | HTTP | `codigo` |
+|---|---|---|
+| `NotFoundException` | 404 | `recurso_no_encontrado` |
+| `ForbiddenException` / `AccessDeniedException` | 403 | `acceso_denegado` |
+| `ConflictException` | 409 | **su `getCodigo()` EXACTO** (fallback `conflicto` si null) |
+| `GoneException` | 410 | `recurso_no_disponible` |
+| `com.gymadmin.attendance.infrastructure.exception.IllegalArgumentException` | 422 | `regla_negocio` |
+| `DataIntegrityViolationException` | 409 | `datos_duplicados` / `referencia_invalida` / `campo_requerido` (vía `DataIntegrityMapper`) |
+| `WebExchangeBindException` (`@Valid`) | 400 | `validacion` (+ `errores: [{campo, mensaje}]`) |
+| no controlada | 500 | `error_interno` |
 
 Use the **custom** `IllegalArgumentException` from the `infrastructure.exception` package, not `java.lang.IllegalArgumentException`, to get 422 responses.
+
+> 🔒 **Contrato PWA CONGELADO (hallazgo #3):** los `codigo` que lanza `ConflictException` — `ya_registrado_hoy`, `sin_membresia`, `membresia_expirada`, `accesos_agotados`, `congelado`, `ultima_plantilla` — se emiten **tal cual** en el campo `codigo` del sobre. El handler NO los traduce (usa `getCodigo()` directo). El PWA (`gym-member-pwa` `CheckInPage`) hace branching de UI sobre esos strings exactos — renombrarlos rompe el check-in del socio en producción.
+
+**Sobre de salida** (`application/problem+json`): 5 campos RFC 7807 (`type`, `title`, `status`, `detail`, `instance`) + extensiones en **snake_case** (`codigo`, `mensaje` [alias de `detail`], `timestamp`, y `errores` en validación).
+
+**Piezas del paquete:**
+- `infrastructure/exception/`: `ErrorCode` (enum, incluye `RECURSO_NO_DISPONIBLE` para el 410), `ProblemDetailFactory` (construye y aplana el sobre), `DataIntegrityMapper` (constraints PostgreSQL → `codigo` + mensaje legible), + las excepciones de dominio existentes.
+- `infrastructure/config/`: `GlobalExceptionHandler` (el `ErrorWebExceptionHandler`), `ApiAuthenticationEntryPoint` (401 → `no_autenticado`) + `ApiAccessDeniedHandler` (403 → `acceso_denegado`), registrados en `SecurityConfig.exceptionHandling(...)`. El `JwtAuthenticationFilter` delega su 401 al entrypoint (no un 401 vacío).
+
+Tests: `unit/GlobalExceptionHandlerTest` (mapeo, serialización snake_case, 410, y verificación de los `codigo` congelados del PWA), `unit/SecurityErrorContractTest` (401/403 de Security).
 
 ### Jackson serialization
 

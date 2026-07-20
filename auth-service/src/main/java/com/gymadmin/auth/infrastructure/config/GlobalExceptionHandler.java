@@ -1,8 +1,15 @@
 package com.gymadmin.auth.infrastructure.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.gymadmin.auth.domain.exception.*;
-import com.gymadmin.auth.exception.ApiError;
+import com.gymadmin.auth.domain.exception.AuthException;
+import com.gymadmin.auth.domain.exception.BadRequestException;
+import com.gymadmin.auth.domain.exception.ConflictException;
+import com.gymadmin.auth.domain.exception.ForbiddenException;
+import com.gymadmin.auth.domain.exception.ResourceNotFoundException;
+import com.gymadmin.auth.domain.exception.TooManyRequestsException;
+import com.gymadmin.auth.infrastructure.exception.DataIntegrityMapper;
+import com.gymadmin.auth.infrastructure.exception.ErrorCode;
+import com.gymadmin.auth.infrastructure.exception.ProblemDetailFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler;
@@ -11,14 +18,27 @@ import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
+import org.springframework.web.bind.support.WebExchangeBindException;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
+/**
+ * Handler global de errores — contrato estandarizado RFC 7807 ({@link ProblemDetail})
+ * + campo {@code codigo}. Punto único de salida de errores del servicio.
+ *
+ * <p>Ver {@code docs/gym-administrator/architecture/error-contract.md}. Todas las
+ * respuestas de error (incluidas las de Spring Security vía
+ * {@code JwtAuthenticationEntryPoint}/{@code ApiAccessDeniedHandler}) emiten el
+ * mismo sobre. Las claves de extensión van en snake_case literal.
+ */
 @Slf4j
 @Component
 @Order(-2)
@@ -29,80 +49,71 @@ public class GlobalExceptionHandler implements ErrorWebExceptionHandler {
 
     @Override
     public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
-        HttpStatus status;
-        ApiError error;
+        ProblemDetail pd = toProblemDetail(exchange, ex);
+        return write(exchange, pd);
+    }
 
-        if (ex instanceof AuthException e) {
-            status = HttpStatus.UNAUTHORIZED;
-            error  = ApiError.of(401, "Unauthorized", e.getMessage());
-        } else if (ex instanceof ConflictException e) {
-            status = HttpStatus.CONFLICT;
-            error  = ApiError.of(409, "Conflict", e.getMessage());
-        } else if (ex instanceof ResourceNotFoundException e) {
-            status = HttpStatus.NOT_FOUND;
-            error  = ApiError.of(404, "Not Found", e.getMessage());
-        } else if (ex instanceof ForbiddenException e) {
-            status = HttpStatus.FORBIDDEN;
-            error  = ApiError.of(403, "Forbidden", e.getMessage());
-        } else if (ex instanceof TooManyRequestsException e) {
-            status = HttpStatus.TOO_MANY_REQUESTS;
-            error  = ApiError.of(429, "Too Many Requests", e.getMessage());
-        } else if (ex instanceof BadRequestException e) {
-            status = HttpStatus.BAD_REQUEST;
-            error  = ApiError.of(400, "Bad Request", e.getMessage());
-        } else if (ex instanceof IllegalArgumentException e) {
-            status = HttpStatus.BAD_REQUEST;
-            error  = ApiError.of(400, "Bad Request", e.getMessage());
-        } else if (ex instanceof DataIntegrityViolationException e) {
-            status = HttpStatus.CONFLICT;
-            String detail = resolveConstraintMessage(e);
-            log.warn("DataIntegrityViolationException: {}", rootMessage(e));
-            error  = ApiError.of(409, "Conflict", detail);
-        } else {
-            log.error("Unhandled exception [{}]: {}", ex.getClass().getName(), ex.getMessage(), ex);
-            status = HttpStatus.INTERNAL_SERVER_ERROR;
-            error  = ApiError.of(500, "Internal Server Error", "Error interno del servidor");
+    private ProblemDetail toProblemDetail(ServerWebExchange exchange, Throwable ex) {
+        if (ex instanceof AuthException) {
+            return ProblemDetailFactory.create(ErrorCode.NO_AUTENTICADO, ex.getMessage(), exchange);
+        }
+        if (ex instanceof ResourceNotFoundException) {
+            return ProblemDetailFactory.create(ErrorCode.RECURSO_NO_ENCONTRADO, ex.getMessage(), exchange);
+        }
+        if (ex instanceof ConflictException) {
+            return ProblemDetailFactory.create(ErrorCode.CONFLICTO, ex.getMessage(), exchange);
+        }
+        if (ex instanceof ForbiddenException) {
+            return ProblemDetailFactory.create(ErrorCode.ACCESO_DENEGADO, ex.getMessage(), exchange);
+        }
+        if (ex instanceof AccessDeniedException) {
+            return ProblemDetailFactory.create(ErrorCode.ACCESO_DENEGADO, ex.getMessage(), exchange);
+        }
+        if (ex instanceof TooManyRequestsException) {
+            return ProblemDetailFactory.create(ErrorCode.DEMASIADAS_SOLICITUDES, ex.getMessage(), exchange);
+        }
+        if (ex instanceof DataIntegrityViolationException dive) {
+            // Lógica preservada desde auth-service (única en el monorepo): traduce
+            // constraints de PostgreSQL a codigo + mensaje legible (hallazgo #6).
+            log.warn("DataIntegrityViolationException: {}", DataIntegrityMapper.rootMessage(dive));
+            DataIntegrityMapper.Resolved r = DataIntegrityMapper.resolve(dive);
+            return ProblemDetailFactory.create(r.code(), r.detail(), exchange);
+        }
+        if (ex instanceof WebExchangeBindException bindEx) {
+            List<Map<String, String>> errores = bindEx.getBindingResult().getFieldErrors().stream()
+                    .map(fe -> {
+                        Map<String, String> m = new LinkedHashMap<>();
+                        m.put("campo", fe.getField());
+                        m.put("mensaje", fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "inválido");
+                        return m;
+                    })
+                    .toList();
+            // detail conserva un resumen legible para UIs que solo muestran detail (hallazgo #8).
+            String detail = errores.stream()
+                    .map(m -> m.get("campo") + ": " + m.get("mensaje"))
+                    .reduce("", (a, b) -> a.isEmpty() ? b : a + "; " + b);
+            return ProblemDetailFactory.validacion(detail, errores, exchange);
+        }
+        if (ex instanceof BadRequestException || ex instanceof IllegalArgumentException) {
+            return ProblemDetailFactory.create(ErrorCode.VALIDACION, ex.getMessage(), exchange);
         }
 
-        exchange.getResponse().setStatusCode(status);
-        exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
+        // No controlado: no filtrar internos.
+        log.error("Unhandled exception [{}]: {}", ex.getClass().getName(), ex.getMessage(), ex);
+        return ProblemDetailFactory.create(ErrorCode.ERROR_INTERNO, "Error interno del servidor", exchange);
+    }
 
+    private Mono<Void> write(ServerWebExchange exchange, ProblemDetail pd) {
+        HttpStatus status = HttpStatus.valueOf(pd.getStatus());
+        exchange.getResponse().setStatusCode(status);
+        exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_PROBLEM_JSON);
         byte[] bytes;
         try {
-            bytes = objectMapper.writeValueAsBytes(error);
+            bytes = objectMapper.writeValueAsBytes(ProblemDetailFactory.toMap(pd));
         } catch (Exception e) {
-            bytes = ("{\"status\":500,\"error\":\"Internal Server Error\"}").getBytes(StandardCharsets.UTF_8);
+            bytes = "{\"status\":500,\"codigo\":\"error_interno\"}".getBytes(StandardCharsets.UTF_8);
         }
-
         DataBuffer buffer = exchange.getResponse().bufferFactory().wrap(bytes);
         return exchange.getResponse().writeWith(Mono.just(buffer));
-    }
-
-    private String rootMessage(DataIntegrityViolationException ex) {
-        Throwable cause = ex.getMostSpecificCause();
-        return cause != null ? cause.getMessage() : ex.getMessage();
-    }
-
-    private String resolveConstraintMessage(DataIntegrityViolationException ex) {
-        String msg = rootMessage(ex);
-        if (msg == null) return "Violación de restricción de integridad de datos";
-        String lower = msg.toLowerCase();
-
-        if (lower.contains("not-null constraint") || lower.contains("violates not-null")) {
-            Matcher m = Pattern.compile("column \"(\\w+)\"").matcher(msg);
-            if (m.find()) return "El campo '" + m.group(1) + "' es requerido y no puede ser nulo";
-            return "Un campo obligatorio no fue proporcionado";
-        }
-        if (lower.contains("unique constraint") || lower.contains("duplicate key")) {
-            Matcher m = Pattern.compile("constraint \"([\\w]+)\"").matcher(msg);
-            if (m.find()) return "Registro duplicado (restricción: " + m.group(1) + ")";
-            return "Registro duplicado: ya existe un elemento con los datos proporcionados";
-        }
-        if (lower.contains("foreign key constraint")) {
-            Matcher m = Pattern.compile("constraint \"([\\w]+)\"").matcher(msg);
-            if (m.find()) return "Referencia inválida: el registro relacionado no existe (restricción: " + m.group(1) + ")";
-            return "Referencia inválida: el registro relacionado no existe";
-        }
-        return "Violación de restricción de integridad de datos: " + msg;
     }
 }

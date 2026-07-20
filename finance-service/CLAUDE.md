@@ -77,16 +77,31 @@ Special case for `POST /finanzas/ingresos`: also allowed for `isRecepcion()`.
 
 All JSON uses `SNAKE_CASE` (configured globally in `application.yml`). DTO fields are `camelCase` in Java — Jackson maps them automatically. `write-dates-as-timestamps: false` means `Instant`/`LocalDate` fields serialize as ISO-8601 strings.
 
-### Custom exceptions → HTTP status mapping
+### Error Handling — contrato estandarizado RFC 7807 + `codigo`
 
-`GlobalExceptionHandler` maps:
-- `NotFoundException` → 404
-- `ForbiddenException` → 403
-- `ConflictException` → 409
-- `com.gymadmin.finance.infrastructure.exception.IllegalArgumentException` → 422
-- Bean validation failures → 400 with field-level error details
+Contrato de errores estandarizado **RFC 7807 (`ProblemDetail`) + campo `codigo`** — ver [../docs/gym-administrator/architecture/error-contract.md](../docs/gym-administrator/architecture/error-contract.md). Replicado del piloto de `core-service` (2026-07-19). Reemplaza al antiguo `@RestControllerAdvice`.
+
+`GlobalExceptionHandler` (implements `ErrorWebExceptionHandler`, `@Order(HIGHEST_PRECEDENCE)`, en `infrastructure/config/`) es el punto único de salida de errores; captura también los errores fuera del controller (filtros/routing):
+
+| Exception | HTTP | `codigo` |
+|---|---|---|
+| `NotFoundException` | 404 | `recurso_no_encontrado` |
+| `ConflictException` | 409 | su `getCodigo()` propio (o `conflicto` si es null) |
+| `ForbiddenException` / `AccessDeniedException` | 403 | `acceso_denegado` |
+| `com.gymadmin.finance.infrastructure.exception.IllegalArgumentException` | 422 | `regla_negocio` |
+| `DataIntegrityViolationException` | 409 | `datos_duplicados` / `referencia_invalida` / `campo_requerido` (vía `DataIntegrityMapper`) |
+| `WebExchangeBindException` | 400 | `validacion` (+ `errores: [{campo, mensaje}]`) |
+| no controlada | 500 | `error_interno` |
 
 Always use the **custom** `IllegalArgumentException` from `infrastructure.exception`, not `java.lang.IllegalArgumentException`.
+
+**Sobre de salida** (`application/problem+json`): 5 campos RFC 7807 (`type`, `title`, `status`, `detail`, `instance`) + extensiones en **snake_case** (`codigo`, `mensaje` [alias de `detail`], `timestamp`, y `errores` en validación).
+
+**Piezas del paquete:**
+- `infrastructure/exception/`: `ErrorCode` (enum), `ProblemDetailFactory` (construye y aplana el `ProblemDetail`), `DataIntegrityMapper`.
+- `infrastructure/config/`: `GlobalExceptionHandler`, `ApiAuthenticationEntryPoint` (401 → `no_autenticado`) + `ApiAccessDeniedHandler` (403 → `acceso_denegado`) registrados en `SecurityConfig.exceptionHandling(...)`. El `JwtAuthenticationFilter` delega su 401 al entrypoint (no un 401 vacío).
+
+Tests: `GlobalExceptionHandlerTest` (mapeo + serialización snake_case + preservación del `codigo` propio de `ConflictException`), `SecurityErrorContractTest` (401/403 de Security).
 
 ### Persistence adapter pattern
 

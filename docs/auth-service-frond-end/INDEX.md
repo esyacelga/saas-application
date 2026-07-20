@@ -47,6 +47,8 @@ Documentos usados para pedir/especificar cambios de API al backend desde la pers
 |-----------|-----------|
 | [design-guidelines.md](design-guidelines.md) | Directrices de diseño: sistema de temas, tipografía, tokens |
 | [api-index.md](api-index.md) | Índice de endpoints consumidos del auth-service |
+| [pendientes-backlog.md](pendientes-backlog.md) | 📜 Backlog de features pendientes: Solicitudes de membresía en dashboard. |
+| [spec-solicitudes-membresia.md](spec-solicitudes-membresia.md) | 📋 **Pendiente — spec definida** — UI detallada para gestión de solicitudes de membresía (cliente PWA) en dashboard staff: filtros por origen, modal de pago, widget contador. |
 | [facturacion-diseno.md](facturacion-diseno.md) | 📋 **Planeado** — Spec de diseño del módulo de Facturación Electrónica SRI (no existe ninguna pantalla hoy). Incluye la frontera `src/lib/sri/` para replicar el módulo en otros SaaS ecuatorianos. |
 | [registro-quitar-ruc.md](registro-quitar-ruc.md) | ✅ **Implementado (2026-07-14)** — Diseño del adelgazamiento del registro: sacar del Paso 1 el **RUC** (va al wizard de facturación), el **teléfono** y el **WhatsApp**; suavizar el Paso 2. Disclosure progresivo. |
 | [registro-mejoras-implementadas.md](registro-mejoras-implementadas.md) | ✅ **Implementado (2026-07-14)** — Registro de qué se cambió en el auto-registro público (accesibilidad, "(opcional)", pantalla de éxito, `lib/sri/` validadores, validación de cédula, Paso 2 pre-llenado, RUC opcional front+backend + esquema plegado en la baseline `GYM-001`). Para consultas futuras. |

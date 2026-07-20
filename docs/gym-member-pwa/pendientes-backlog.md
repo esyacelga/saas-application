@@ -171,7 +171,66 @@ Response: { id_compania: number; nombre: string }
 
 ---
 
-## Tarea 5 — CLAUDE.md del proyecto
+## Tarea 5 — Solicitud de Membresía
+
+**Prioridad:** Media  
+**Estimado:** 4–5 h (backend + frontend)  
+**Estado:** Pendiente — spec definida, esperando implementación backend  
+
+### Descripción
+
+Cuando un cliente entra a la sección `/membresia` sin membresía activa, en lugar de mostrar solo un estado vacío ("Sin membresía activa"), debe mostrar un catálogo de tipos de membresía disponibles en su gimnasio. El cliente puede seleccionar uno, generar una solicitud de membresía y el dueño la ve en su dashboard para completar el pago.
+
+Nuevos sub-componentes:
+- `<CatalogoMembresias/>` — lista de tipos disponibles con precio, modo (calendario/accesos), duración. Botón "Solicitar" genera solicitud.
+- `<SolicitudPendienteCard/>` — muestra solicitud en proceso de pago. Sin botón cancelar (solo staff puede).
+
+### Especificación detallada
+
+Consultar: [`../gym-member-pwa/spec-solicitud-membresia.md`](./spec-solicitud-membresia.md) para UX, componentes, flujos de error e i18n keys.
+
+### Dependencias backend
+
+1. **Endpoint nuevo:** `GET /api/v1/tipos-membresia` — lista de tipos con `id`, `nombre`, `precio`, `modo_control` (enum: `calendario` | `accesos`), duración.
+
+2. **Endpoint nuevo:** `POST /api/v1/clientes/me/membresias/solicitar` — crea solicitud con `{ id_tipo_membresia: number }`. Response: `{ id, id_tipo_membresia, tipo_nombre, precio_actual, creacion_fecha }`. Errores:
+   - `409` con `codigo=solicitud_ya_existe` → cliente ya tiene solicitud pendiente.
+
+3. **Campo en `MiPerfilResponse`:** extender para incluir `solicitud_pendiente: { id, id_tipo_membresia, tipo_nombre, precio_actual, creacion_fecha } | null`.
+
+### Requisitos de implementación
+
+1. **Logic en `MembresiaPage.tsx`** (3 branches):
+   - `data?.membresia_activa` → tarjeta actual (sin cambios).
+   - `!activa && data?.solicitud_pendiente` → `<SolicitudPendienteCard/>`.
+   - `!activa && !solicitud_pendiente` → `<CatalogoMembresias/>`.
+
+2. **`CatalogoMembresias` component**:
+   - Fetch via `coreRepository.getTiposMembresia()` (nuevo).
+   - Cards por tipo con nombre, precio, badge de modo, duración legible.
+   - Modal de confirmación al hacer "Solicitar".
+   - POST via `coreRepository.solicitarMembresia(id_tipo_membresia)`.
+   - Éxito: toast + invalidar store + re-fetch.
+   - Error 409 `solicitud_ya_existe`: toast "Ya tienes una solicitud pendiente" + re-fetch.
+
+3. **`SolicitudPendienteCard` component**:
+   - Muestra nombre tipo, precio, "Solicitud enviada — acércate a caja para completar el pago".
+   - Tiempo relativo (ej. "Hace 5 minutos").
+   - Icono reloj (`lucide-react`, ya instalado).
+   - Sin botón cancelar.
+
+4. **i18n keys nuevas** (detallar en spec):
+   - `membresia.catalogo.titulo`, `membresia.catalogo.solicitar`, `membresia.catalogo.modo.*`, etc.
+   - `membresia.solicitud.titulo`, `membresia.solicitud.mensaje`, `membresia.solicitud.hace`.
+
+### Relacionado con
+
+- Backend: `core-service` endpoints de tipos-membresia y solicitudes.
+- Cross-cutting: Ver [`docs/gym-administrator/requirements/solicitudes-membresia.md`](../gym-administrator/requirements/solicitudes-membresia.md) para requisitos completos del feature.
+
+---
+
+## Tarea 6 — CLAUDE.md del proyecto
 
 **Prioridad:** Baja  
 **Estimado:** 30 min
@@ -216,7 +275,7 @@ Hexagonal: Domain → Application → Infrastructure → UI
 
 ---
 
-## Tarea 6 — Infraestructura i18n
+## Tarea 7 — Infraestructura i18n
 
 **Prioridad:** Baja (deuda técnica)  
 **Estimado:** 3–4 h para setup + migración de strings existentes
@@ -257,8 +316,9 @@ Todos los strings están hardcodeados en español en los componentes. No hay nin
 | 2 | Íconos PWA | Pendiente | Instalación en dispositivo |
 | 3 | Flujo password reset | Pendiente | — |
 | 4 | QR deep-link | Pendiente | — |
-| 5 | CLAUDE.md | Pendiente | — |
-| 6 | i18n | Pendiente | — |
+| 5 | Solicitud de Membresía | Pendiente — spec definida | Pago de membresías sin registro previo |
+| 6 | CLAUDE.md | Pendiente | — |
+| 7 | i18n | Pendiente | — |
 
 ---
 

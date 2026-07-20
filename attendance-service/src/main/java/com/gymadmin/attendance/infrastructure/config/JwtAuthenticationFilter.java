@@ -7,7 +7,7 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
@@ -24,9 +24,12 @@ import java.util.List;
 public class JwtAuthenticationFilter implements WebFilter {
 
     private final SecretKey secretKey;
+    private final ApiAuthenticationEntryPoint authenticationEntryPoint;
 
-    public JwtAuthenticationFilter(@Value("${jwt.secret}") String secret) {
+    public JwtAuthenticationFilter(@Value("${jwt.secret}") String secret,
+                                   ApiAuthenticationEntryPoint authenticationEntryPoint) {
         this.secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
+        this.authenticationEntryPoint = authenticationEntryPoint;
     }
 
     @Override
@@ -77,8 +80,10 @@ public class JwtAuthenticationFilter implements WebFilter {
                     .contextWrite(ReactiveSecurityContextHolder.withAuthentication(authentication));
 
         } catch (JwtException e) {
-            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-            return exchange.getResponse().setComplete();
+            // Token inválido/expirado: emitir el sobre estándar (codigo=no_autenticado)
+            // en lugar de un 401 vacío (contrato de errores, hallazgo #1).
+            return authenticationEntryPoint.commence(
+                    exchange, new BadCredentialsException("Token inválido", e));
         }
     }
 }

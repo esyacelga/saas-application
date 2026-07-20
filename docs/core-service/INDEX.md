@@ -16,7 +16,16 @@ Gestión de clientes y membresías; validación de acceso al gym. Ver [core-serv
 
 ---
 
+## spec/ — Especificaciones de features en diseño
+
+| Documento | Estado | Contenido |
+|-----------|--------|-----------|
+| [solicitudes-membresia.md](spec/solicitudes-membresia.md) | 🟡 Diseño completado | Feature aún no implementado: cliente PWA solicita membresía, staff completa venta. Incluye schema Liquibase, endpoints nuevos/modificados, decisiones de PO y checklist de sincronización. |
+
+---
+
 ## Convenciones de esta carpeta
 
 - Nombres de archivo en `kebab-case` (antes `NOMBRE_API.md`, ahora `nombre.md` dentro de `api/`).
 - `core-service/CLAUDE.md` y `core-service/README.md` permanecen en la raíz de `core-service/` y enlazan aquí.
+- Specs de features no implementados en `spec/` — se mueven a `api/` una vez que el código esté escrito.

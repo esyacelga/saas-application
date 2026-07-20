@@ -1,11 +1,9 @@
-package com.gymadmin.auth.infrastructure.security;
+package com.gymadmin.platform.infrastructure.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.gymadmin.auth.infrastructure.exception.ErrorCode;
-import com.gymadmin.auth.infrastructure.exception.ProblemDetailFactory;
-import lombok.RequiredArgsConstructor;
+import com.gymadmin.platform.infrastructure.exception.ErrorCode;
+import com.gymadmin.platform.infrastructure.exception.ProblemDetailFactory;
 import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -23,26 +21,27 @@ import java.nio.charset.StandardCharsets;
  * (token ausente/expirado) escaparía al contrato (hallazgo #1).
  */
 @Component
-@RequiredArgsConstructor
-public class JwtAuthenticationEntryPoint implements ServerAuthenticationEntryPoint {
+public class ApiAuthenticationEntryPoint implements ServerAuthenticationEntryPoint {
 
     private final ObjectMapper objectMapper;
+
+    public ApiAuthenticationEntryPoint(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
 
     @Override
     public Mono<Void> commence(ServerWebExchange exchange, AuthenticationException ex) {
         ProblemDetail pd = ProblemDetailFactory.create(
                 ErrorCode.NO_AUTENTICADO, "Autenticación requerida", exchange);
-        var response = exchange.getResponse();
-        response.setStatusCode(HttpStatus.UNAUTHORIZED);
-        response.getHeaders().setContentType(MediaType.APPLICATION_PROBLEM_JSON);
-        response.getHeaders().remove(HttpHeaders.WWW_AUTHENTICATE);
+        exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+        exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_PROBLEM_JSON);
         byte[] bytes;
         try {
             bytes = objectMapper.writeValueAsBytes(ProblemDetailFactory.toMap(pd));
         } catch (Exception e) {
             bytes = "{\"status\":401,\"codigo\":\"no_autenticado\"}".getBytes(StandardCharsets.UTF_8);
         }
-        DataBuffer buffer = response.bufferFactory().wrap(bytes);
-        return response.writeWith(Mono.just(buffer));
+        DataBuffer buffer = exchange.getResponse().bufferFactory().wrap(bytes);
+        return exchange.getResponse().writeWith(Mono.just(buffer));
     }
 }
