@@ -58,6 +58,12 @@
   },
   "home": {
     "greeting": "Hola,",
+    "membershipWidget": {
+      "active": "{{plan}} · {{count}} días restantes",
+      "activeAccesos": "{{plan}} · {{count}} accesos restantes",
+      "pending": "Solicitud en revisión",
+      "empty": "Solicitar membresía"
+    },
     "cards": {
       "membership": {
         "title": "Mi membresía",
@@ -154,6 +160,30 @@
     },
     "update": "Actualizar",
     "verHistorialPagos": "Ver historial de pagos",
+    "solicitud": {
+      "pendienteCorto": "Solicitud en revisión",
+      "pendienteTitulo": "Tu solicitud está en revisión",
+      "pendienteDescripcion": "El staff está revisando tu solicitud de {{plan}}. Recibirás confirmación pronto.",
+      "solicitar": "Solicitar membresía",
+      "solicitando": "Enviando…",
+      "exito": "Solicitud enviada. El staff la revisará pronto.",
+      "catalogoTitulo": "Planes disponibles",
+      "catalogoSubtitulo": "Elige el plan que mejor se ajuste a ti",
+      "catalogoVacio": "Aún no hay planes disponibles. Habla con recepción.",
+      "duracion": {
+        "DIAS": "{{count}} días",
+        "SEMANAS": "{{count}} semanas",
+        "MESES": "{{count}} meses",
+        "ANIOS": "{{count}} años",
+        "accesos": "{{count}} accesos"
+      },
+      "errores": {
+        "yaExiste": "Ya tienes una solicitud en trámite. Espera a que el staff la confirme.",
+        "activaVigente": "Ya tienes una membresía activa. Espera a que venza para solicitar una nueva.",
+        "tipoNoDisponible": "Este plan ya no está disponible. Elige otro del catálogo.",
+        "generico": "No se pudo enviar la solicitud. Intenta de nuevo."
+      }
+    },
     "errors": {
       "load": "Error al cargar tu membresía",
       "reactivate": "No se pudo reactivar la membresía"

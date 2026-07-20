@@ -9,11 +9,12 @@ import { Tooltip } from 'primereact/tooltip'
 import { PageHeader } from '@/ui/components/PageHeader'
 import { IfPermission } from '@/ui/router/guards/PermissionGuard'
 import { coreRepository } from '@/infrastructure/http/core/CoreRepository'
-import type { VentaPendiente } from '@/infrastructure/http/core/core.dto'
+import type { VentaPendiente, ContadorPendientes } from '@/infrastructure/http/core/core.dto'
 import { useAuthStore, useHasPermission } from '@/infrastructure/store/auth/auth.store'
 import type { JwtPayloadStaff } from '@/domain/auth/entities/User.entity'
 import { getApiErrorStatus } from '@/lib/api-error'
 import { RechazarVentaPendienteModal } from '../components/RechazarVentaPendienteModal'
+import { CompletarVentaClienteModal } from '../components/CompletarVentaClienteModal'
 
 // ── Util: tiempo relativo ────────────────────────────────────────────────────
 
@@ -38,6 +39,68 @@ function SkeletonRows() {
   )
 }
 
+// ── Tab types ─────────────────────────────────────────────────────────────────
+
+type TabOrigen = 'todas' | 'cliente' | 'staff'
+
+// ── Tabs component ────────────────────────────────────────────────────────────
+
+interface TabsProps {
+  activeTab: TabOrigen
+  onChange: (tab: TabOrigen) => void
+  contador: ContadorPendientes | null
+}
+
+function OrigenTabs({ activeTab, onChange, contador }: TabsProps) {
+  const { t } = useTranslation()
+
+  const tabs: { key: TabOrigen; labelKey: string; count: number | null }[] = [
+    { key: 'todas', labelKey: 'ventasPendientes.tabs.todas', count: contador?.total ?? null },
+    { key: 'cliente', labelKey: 'ventasPendientes.tabs.cliente', count: contador?.porOrigenCliente ?? null },
+    { key: 'staff', labelKey: 'ventasPendientes.tabs.staff', count: contador?.porOrigenStaff ?? null },
+  ]
+
+  return (
+    <div
+      className="flex items-center gap-1 px-6 py-2 flex-shrink-0"
+      style={{ borderBottom: '1px solid var(--page-border)' }}
+    >
+      {tabs.map(tab => {
+        const isActive = activeTab === tab.key
+        return (
+          <button
+            key={tab.key}
+            onClick={() => onChange(tab.key)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
+            style={{
+              background: isActive ? 'var(--page-surface)' : 'transparent',
+              color: isActive ? 'var(--page-text)' : 'var(--page-muted)',
+              border: isActive ? '1px solid var(--page-border)' : '1px solid transparent',
+            }}
+          >
+            {t(tab.labelKey)}
+            {tab.count !== null && (
+              <span
+                className="text-[0.6rem] font-bold px-1.5 py-0.5 rounded-full"
+                style={{
+                  background: isActive
+                    ? tab.key === 'cliente'
+                      ? 'rgba(245,158,11,0.2)'
+                      : 'var(--page-border)'
+                    : 'var(--page-border)',
+                  color: isActive && tab.key === 'cliente' ? '#f59e0b' : 'var(--page-muted)',
+                }}
+              >
+                {tab.count}
+              </span>
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── Página principal ─────────────────────────────────────────────────────────
 
 export function VentasPendientesPage() {
@@ -48,25 +111,41 @@ export function VentasPendientesPage() {
   const idCompania = user?.tipo === 'staff' ? (user as JwtPayloadStaff).id_compania : null
 
   const [items, setItems] = useState<VentaPendiente[]>([])
+  const [contador, setContador] = useState<ContadorPendientes | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<'forbidden' | 'error' | null>(null)
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
+  const [activeTab, setActiveTab] = useState<TabOrigen>('todas')
 
   const [loadingRowId, setLoadingRowId] = useState<number | null>(null)
   const [rechazarData, setRechazarData] = useState<{ id: number; nombreCliente: string | null } | null>(null)
+  const [completarData, setCompletarData] = useState<{ idMembresia: number; nombreCliente: string | null; tipoNombre: string } | null>(null)
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), 300)
     return () => clearTimeout(timer)
   }, [query])
 
+  const cargarContador = useCallback(async () => {
+    if (!idCompania) return
+    try {
+      const c = await coreRepository.getContadorPendientes(idCompania)
+      setContador(c)
+    } catch {
+      // contador is non-critical — silently ignore
+    }
+  }, [idCompania])
+
   const cargar = useCallback(async () => {
     if (!idCompania) return
     setLoading(true)
     setError(null)
     try {
-      const data = await coreRepository.getPendientes(idCompania)
+      const [data] = await Promise.all([
+        coreRepository.getPendientes(idCompania),
+        cargarContador(),
+      ])
       setItems(data)
     } catch (err) {
       if (getApiErrorStatus(err) === 403) {
@@ -77,15 +156,21 @@ export function VentasPendientesPage() {
     } finally {
       setLoading(false)
     }
-  }, [idCompania])
+  }, [idCompania, cargarContador])
 
   useEffect(() => { cargar() }, [cargar])
 
   const filtered = useMemo(() => {
-    if (!debouncedQuery.trim()) return items
+    let base = items
+    if (activeTab === 'cliente') {
+      base = base.filter(i => i.origen === 'cliente')
+    } else if (activeTab === 'staff') {
+      base = base.filter(i => i.origen === 'staff')
+    }
+    if (!debouncedQuery.trim()) return base
     const q = debouncedQuery.toLowerCase()
-    return items.filter(i => (i.nombreCliente ?? '').toLowerCase().includes(q))
-  }, [items, debouncedQuery])
+    return base.filter(i => (i.nombreCliente ?? '').toLowerCase().includes(q))
+  }, [items, debouncedQuery, activeTab])
 
   const handleConfirmar = async (item: VentaPendiente) => {
     setLoadingRowId(item.id)
@@ -110,6 +195,11 @@ export function VentasPendientesPage() {
     await cargar()
   }
 
+  const handleCompletada = async () => {
+    setCompletarData(null)
+    await cargar()
+  }
+
   if (!tienePermiso) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center" style={{ color: 'var(--page-text)' }}>
@@ -130,20 +220,64 @@ export function VentasPendientesPage() {
     )
   }
 
+  const origenTemplate = (item: VentaPendiente) => {
+    if (item.origen === 'cliente') {
+      return (
+        <span
+          className="text-[0.6rem] font-semibold px-2 py-0.5 rounded-full"
+          style={{
+            background: 'rgba(245,158,11,0.15)',
+            color: '#d97706',
+            border: '1px solid rgba(245,158,11,0.3)',
+          }}
+        >
+          {t('ventasPendientes.origen.cliente')}
+        </span>
+      )
+    }
+    return (
+      <span
+        className="text-[0.6rem] font-semibold px-2 py-0.5 rounded-full"
+        style={{
+          background: 'var(--page-surface)',
+          color: 'var(--page-muted)',
+          border: '1px solid var(--page-border)',
+        }}
+      >
+        {t('ventasPendientes.origen.staff')}
+      </span>
+    )
+  }
+
   const accionesTemplate = (item: VentaPendiente) => {
     const isRowLoading = loadingRowId === item.id
+    const isCliente = item.origen === 'cliente'
     return (
       <IfPermission permiso="membresias:confirmar_pago">
         <div className="flex items-center gap-1">
-          <Tooltip target={`.btn-confirmar-${item.id}`} content={t('ventasPendientes.tooltipConfirmar')} position="top" />
+          <Tooltip
+            target={`.btn-confirmar-${item.id}`}
+            content={isCliente ? t('ventasPendientes.tooltipCompletar') : t('ventasPendientes.tooltipConfirmar')}
+            position="top"
+          />
           <Button
-            severity="success"
+            severity={isCliente ? 'warning' : 'success'}
             size="small"
-            icon="pi pi-check"
-            label={t('ventasPendientes.accionConfirmar')}
+            icon={isCliente ? 'pi pi-pencil' : 'pi pi-check'}
+            label={isCliente ? t('ventasPendientes.accionCompletar') : t('ventasPendientes.accionConfirmar')}
             loading={isRowLoading}
             disabled={isRowLoading || loadingRowId !== null}
-            onClick={() => handleConfirmar(item)}
+            onClick={() => {
+              if (isCliente) {
+                setCompletarData({
+                  idMembresia: item.id,
+                  nombreCliente: item.nombreCliente,
+                  tipoNombre: item.tipoNombre,
+                })
+              } else {
+                handleConfirmar(item)
+              }
+            }}
             className={`btn-confirmar-${item.id}`}
             pt={{ root: { className: '!text-[0.6rem] !px-1.5 !py-0.5' } }}
           />
@@ -245,6 +379,9 @@ export function VentasPendientesPage() {
         }
       />
 
+      {/* Tabs por origen */}
+      <OrigenTabs activeTab={activeTab} onChange={setActiveTab} contador={contador} />
+
       <div className="px-6 py-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--page-border)' }}>
         <div className="relative max-w-xs">
           <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
@@ -294,6 +431,11 @@ export function VentasPendientesPage() {
               header={t('ventasPendientes.colTipo')}
             />
             <Column
+              header={t('ventasPendientes.colOrigen')}
+              body={origenTemplate}
+              style={{ width: '9rem' }}
+            />
+            <Column
               header={t('ventasPendientes.colPrecio')}
               body={precioTemplate}
               style={{ width: '7rem' }}
@@ -311,7 +453,7 @@ export function VentasPendientesPage() {
             <Column
               header={t('ventasPendientes.colAcciones')}
               body={accionesTemplate}
-              style={{ width: '8rem' }}
+              style={{ width: '10rem' }}
             />
           </DataTable>
         )}
@@ -324,6 +466,17 @@ export function VentasPendientesPage() {
           nombreCliente={rechazarData.nombreCliente}
           onClose={() => setRechazarData(null)}
           onRechazada={handleRechazada}
+        />
+      )}
+
+      {completarData && (
+        <CompletarVentaClienteModal
+          open={true}
+          idMembresia={completarData.idMembresia}
+          nombreCliente={completarData.nombreCliente}
+          tipoNombre={completarData.tipoNombre}
+          onClose={() => setCompletarData(null)}
+          onCompletada={handleCompletada}
         />
       )}
     </div>

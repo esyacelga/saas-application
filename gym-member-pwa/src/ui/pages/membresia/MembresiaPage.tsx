@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarDays, Zap, Snowflake, AlertTriangle, RefreshCw, CheckCircle, Receipt } from 'lucide-react'
+import { CalendarDays, Zap, Snowflake, RefreshCw, CheckCircle, Receipt, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
-import { coreRepository, type MiPerfilResponse } from '@/infrastructure/http/CoreHttpRepository'
+import {
+  coreRepository,
+  type MiPerfilResponse,
+  type MembresiaHistorialItem,
+  type TipoMembresia,
+} from '@/infrastructure/http/CoreHttpRepository'
 import { usePerfilStore, isPerfilStale } from '@/infrastructure/store/perfil.store'
-import { getApiErrorMessage } from '@/lib/api-error'
+import { getApiErrorMessage, getApiErrorCode } from '@/lib/api-error'
 import { PulseBackground } from '@/ui/components/PulseBackground'
 
 const STATUS_CLS: Record<string, string> = {
@@ -20,17 +25,31 @@ export function MembresiaPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { data: cachedData, fetchedAt, setData: setCached, invalidate } = usePerfilStore()
+
   const [data, setData] = useState<MiPerfilResponse | null>(cachedData)
+  const [solicitudPendiente, setSolicitudPendiente] = useState<MembresiaHistorialItem | null>(null)
+  const [tipos, setTipos] = useState<TipoMembresia[]>([])
   const [loading, setLoading] = useState(!cachedData)
   const [reactivando, setReactivando] = useState(false)
   const [reactivado, setReactivado] = useState(false)
+  const [solicitando, setSolicitando] = useState(false)
 
-  const fetchPerfil = async (showLoading = true) => {
+  const fetchAll = async (showLoading = true) => {
     if (showLoading) setLoading(true)
     try {
-      const res = await coreRepository.miPerfil()
-      setData(res)
-      setCached(res)
+      const [perfil, mems] = await Promise.all([
+        coreRepository.miPerfil(),
+        coreRepository.misMembresias(),
+      ])
+      setData(perfil)
+      setCached(perfil)
+      const pending = mems.find((m) => m.estado_pago === 'PENDIENTE' && !m.eliminado) ?? null
+      setSolicitudPendiente(pending)
+
+      // Only fetch catalog when there's no active membership and no pending request
+      if (!perfil.membresia_activa && !pending) {
+        fetchTipos()
+      }
     } catch (err) {
       const hasResponse = !!(err as { response?: unknown })?.response
       if (!hasResponse) {
@@ -41,8 +60,31 @@ export function MembresiaPage() {
     }
   }
 
+  const fetchTipos = async () => {
+    try {
+      const lista = await coreRepository.listarTiposMembresia()
+      setTipos(lista)
+    } catch {
+      // Silently fail — catalog will show empty state
+    }
+  }
+
   useEffect(() => {
-    if (isPerfilStale(fetchedAt)) fetchPerfil(!cachedData)
+    if (isPerfilStale(fetchedAt)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchAll(!cachedData)
+    } else {
+      // Cache is fresh — still fetch historial to detect pending request
+      coreRepository.misMembresias()
+        .then((mems) => {
+          const pending = mems.find((m) => m.estado_pago === 'PENDIENTE' && !m.eliminado) ?? null
+          setSolicitudPendiente(pending)
+          if (!cachedData?.membresia_activa && !pending) {
+            fetchTipos()
+          }
+        })
+        .catch(() => {})
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -54,13 +96,41 @@ export function MembresiaPage() {
       invalidate()
       setReactivado(true)
       toast.success(t('membresia.success.reactivated'))
-      fetchPerfil()
+      fetchAll()
     } catch (err) {
       toast.error(getApiErrorMessage(err, t('membresia.errors.reactivate')))
     } finally {
       setReactivando(false)
     }
   }
+
+  const handleSolicitar = async (idTipoMembresia: number) => {
+    setSolicitando(true)
+    try {
+      await coreRepository.solicitarMembresia(idTipoMembresia)
+      invalidate()
+      toast.success(t('membresia.solicitud.exito'))
+      fetchAll(false)
+    } catch (err) {
+      const code = getApiErrorCode(err)
+      if (code === 'solicitud_ya_existe') {
+        toast.error(t('membresia.solicitud.errores.yaExiste'))
+        fetchAll(false)
+      } else if (code === 'membresia_activa_vigente') {
+        toast.error(t('membresia.solicitud.errores.activaVigente'))
+        fetchAll(false)
+      } else if (code === 'tipo_membresia_no_disponible') {
+        toast.error(t('membresia.solicitud.errores.tipoNoDisponible'))
+        fetchTipos()
+      } else {
+        toast.error(getApiErrorMessage(err, t('membresia.solicitud.errores.generico')))
+      }
+    } finally {
+      setSolicitando(false)
+    }
+  }
+
+  const membresiaActiva = data?.membresia_activa ?? null
 
   return (
     <div className="pb-6 space-y-5">
@@ -72,17 +142,13 @@ export function MembresiaPage() {
 
       {loading && <SkeletonCard />}
 
-      {!loading && !data?.membresia_activa && (
-        <EmptyState onRetry={fetchPerfil} />
-      )}
-
-      {!loading && data?.membresia_activa && (
+      {!loading && membresiaActiva && (
         <>
-          <StatusBanner estado={data.estado_cliente} />
+          <StatusBanner estado={data!.estado_cliente} />
 
-          <MembresiaCard mem={data.membresia_activa} />
+          <MembresiaCard mem={membresiaActiva} />
 
-          {data.congelamiento_activo && !reactivado && (
+          {data?.congelamiento_activo && !reactivado && (
             <FreezeCard
               congelamiento={data.congelamiento_activo}
               onReactivar={handleReactivar}
@@ -98,7 +164,7 @@ export function MembresiaPage() {
           )}
 
           <button
-            onClick={() => fetchPerfil()}
+            onClick={() => fetchAll()}
             disabled={loading}
             className="w-full flex items-center justify-center gap-2 rounded-lg border border-slate-700 py-2.5 text-xs text-slate-400 hover:border-slate-500 transition-colors"
           >
@@ -115,6 +181,19 @@ export function MembresiaPage() {
           </button>
         </>
       )}
+
+      {!loading && !membresiaActiva && solicitudPendiente && (
+        <SolicitudPendienteCard mem={solicitudPendiente} />
+      )}
+
+      {!loading && !membresiaActiva && !solicitudPendiente && (
+        <CatalogoMembresias
+          tipos={tipos}
+          onSolicitar={handleSolicitar}
+          loading={solicitando}
+        />
+      )}
+
       </div>
     </div>
   )
@@ -209,21 +288,87 @@ function FreezeCard({
   )
 }
 
-function EmptyState({ onRetry }: { onRetry: () => void }) {
+function SolicitudPendienteCard({ mem }: { mem: MembresiaHistorialItem }) {
   const { t } = useTranslation()
   return (
-    <div className="flex flex-col items-center gap-4 rounded-2xl bg-slate-800 border border-slate-700 p-8 text-center">
-      <AlertTriangle size={40} className="text-slate-500" />
-      <div>
-        <p className="text-sm font-semibold text-slate-300">{t('membresia.empty.title')}</p>
-        <p className="text-xs text-slate-500 mt-1">{t('membresia.empty.description')}</p>
+    <div className="rounded-2xl bg-amber-900/20 border border-amber-700 p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Clock size={18} className="text-amber-400" />
+        <p className="text-sm font-semibold text-amber-300">{t('membresia.solicitud.pendienteTitulo')}</p>
       </div>
-      <button
-        onClick={onRetry}
-        className="text-xs text-accent-400 underline underline-offset-2"
-      >
-        {t('membresia.empty.retry')}
-      </button>
+      <p className="text-xs text-amber-400">
+        {t('membresia.solicitud.pendienteDescripcion', { plan: mem.tipo_nombre })}
+      </p>
+      {mem.fecha_inicio && (
+        <p className="text-xs text-amber-500">
+          {formatDate(mem.fecha_inicio)}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function CatalogoMembresias({
+  tipos,
+  onSolicitar,
+  loading,
+}: {
+  tipos: TipoMembresia[]
+  onSolicitar: (idTipo: number) => void
+  loading: boolean
+}) {
+  const { t } = useTranslation()
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="text-base font-semibold text-slate-50">{t('membresia.solicitud.catalogoTitulo')}</p>
+        <p className="text-xs text-slate-400 mt-0.5">{t('membresia.solicitud.catalogoSubtitulo')}</p>
+      </div>
+
+      {tipos.length === 0 && (
+        <div className="rounded-2xl bg-slate-800 border border-slate-700 p-6 text-center">
+          <p className="text-sm text-slate-400">{t('membresia.solicitud.catalogoVacio')}</p>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {tipos.map((tipo) => {
+          const esAccesos = tipo.modo_control === 'accesos'
+          const duracionLabel = esAccesos
+            ? t('membresia.solicitud.duracion.accesos', { count: tipo.dias_acceso ?? 0 })
+            : t(`membresia.solicitud.duracion.${tipo.duracion_tipo}`, { count: tipo.duracion_valor })
+
+          return (
+            <div
+              key={tipo.id}
+              className="rounded-2xl bg-slate-800 border border-slate-700 overflow-hidden"
+            >
+              <div className="px-4 pt-4 pb-3 border-b border-slate-700 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-50">{tipo.nombre}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{duracionLabel}</p>
+                </div>
+                {esAccesos
+                  ? <Zap size={18} className="text-amber-400" />
+                  : <CalendarDays size={18} className="text-accent-400" />}
+              </div>
+              <div className="px-4 py-3 flex items-center justify-between">
+                <p className="text-base font-bold text-slate-50">
+                  ${tipo.precio.toFixed(2)}
+                </p>
+                <button
+                  onClick={() => onSolicitar(tipo.id)}
+                  disabled={loading}
+                  className="rounded-lg bg-accent-600 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-500 disabled:opacity-50 transition-colors"
+                >
+                  {loading ? t('membresia.solicitud.solicitando') : t('membresia.solicitud.solicitar')}
+                </button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

@@ -171,11 +171,11 @@ Response: { id_compania: number; nombre: string }
 
 ---
 
-## Tarea 5 — Solicitud de Membresía
+## Tarea 5 — Solicitud de Membresía ✅ Completada (2026-07-20)
 
 **Prioridad:** Media  
 **Estimado:** 4–5 h (backend + frontend)  
-**Estado:** Pendiente — spec definida, esperando implementación backend  
+**Estado:** Completada — backend ya estaba desplegado; frontend implementado en esta sesión.  
 
 ### Descripción
 
@@ -316,7 +316,7 @@ Todos los strings están hardcodeados en español en los componentes. No hay nin
 | 2 | Íconos PWA | Pendiente | Instalación en dispositivo |
 | 3 | Flujo password reset | Pendiente | — |
 | 4 | QR deep-link | Pendiente | — |
-| 5 | Solicitud de Membresía | Pendiente — spec definida | Pago de membresías sin registro previo |
+| 5 | Solicitud de Membresía | ✅ Completada (2026-07-20) | — |
 | 6 | CLAUDE.md | Pendiente | — |
 | 7 | i18n | Pendiente | — |
 

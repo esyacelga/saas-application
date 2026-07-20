@@ -1,5 +1,22 @@
 import coreApi from './core.instance'
 
+export interface TipoMembresia {
+  id: number
+  nombre: string
+  modo_control: 'calendario' | 'accesos'
+  duracion_tipo: 'DIAS' | 'SEMANAS' | 'MESES' | 'ANIOS'
+  duracion_valor: number
+  dias_acceso: number | null
+  precio: number
+  activo: boolean
+}
+
+export interface MembresiaResponse {
+  id: number
+  estado_pago: string
+  origen: string
+}
+
 export interface MembresiaInfo {
   id: number
   tipo_nombre: string
@@ -76,6 +93,19 @@ class CoreHttpRepository {
 
   async misMembresias(): Promise<MembresiaHistorialItem[]> {
     const { data } = await coreApi.get<MembresiaHistorialItem[]>('/clientes/me/membresias')
+    return data
+  }
+
+  async listarTiposMembresia(): Promise<TipoMembresia[]> {
+    const { data } = await coreApi.get<TipoMembresia[]>('/tipos-membresia')
+    return data
+  }
+
+  async solicitarMembresia(idTipoMembresia: number): Promise<MembresiaResponse> {
+    const { data } = await coreApi.post<MembresiaResponse>(
+      '/clientes/me/membresias/solicitar',
+      { id_tipo_membresia: idTipoMembresia },
+    )
     return data
   }
 }

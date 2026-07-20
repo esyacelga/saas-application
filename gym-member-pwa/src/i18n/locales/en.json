@@ -58,6 +58,12 @@
   },
   "home": {
     "greeting": "Hello,",
+    "membershipWidget": {
+      "active": "{{plan}} · {{count}} days left",
+      "activeAccesos": "{{plan}} · {{count}} access passes left",
+      "pending": "Request under review",
+      "empty": "Request membership"
+    },
     "cards": {
       "membership": {
         "title": "My membership",
@@ -154,6 +160,30 @@
     },
     "update": "Update",
     "verHistorialPagos": "View payment history",
+    "solicitud": {
+      "pendienteCorto": "Request under review",
+      "pendienteTitulo": "Your request is under review",
+      "pendienteDescripcion": "The staff is reviewing your {{plan}} request. You'll receive confirmation soon.",
+      "solicitar": "Request membership",
+      "solicitando": "Sending…",
+      "exito": "Request sent. The staff will review it shortly.",
+      "catalogoTitulo": "Available plans",
+      "catalogoSubtitulo": "Choose the plan that best suits you",
+      "catalogoVacio": "No plans available yet. Talk to reception.",
+      "duracion": {
+        "DIAS": "{{count}} days",
+        "SEMANAS": "{{count}} weeks",
+        "MESES": "{{count}} months",
+        "ANIOS": "{{count}} years",
+        "accesos": "{{count}} access passes"
+      },
+      "errores": {
+        "yaExiste": "You already have a pending request. Wait for the staff to confirm it.",
+        "activaVigente": "You already have an active membership. Wait for it to expire before requesting a new one.",
+        "tipoNoDisponible": "This plan is no longer available. Choose another from the catalog.",
+        "generico": "Could not send the request. Please try again."
+      }
+    },
     "errors": {
       "load": "Error loading your membership",
       "reactivate": "Could not reactivate membership"

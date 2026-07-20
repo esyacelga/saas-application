@@ -244,6 +244,7 @@ export interface VentaPendienteRaw {
   precio_pagado: string
   descuento_aplicado: string
   creacion_fecha: string
+  origen: 'staff' | 'cliente'
 }
 
 export interface VentaPendiente {
@@ -256,6 +257,26 @@ export interface VentaPendiente {
   precioPagado: string
   descuentoAplicado: string
   creacionFecha: string
+  origen: 'staff' | 'cliente'
+}
+
+export interface ContadorPendientesRaw {
+  total: number
+  por_origen_cliente: number
+  por_origen_staff: number
+}
+
+export interface ContadorPendientes {
+  total: number
+  porOrigenCliente: number
+  porOrigenStaff: number
+}
+
+export interface CompletarVentaClienteDto {
+  id_metodo_pago: number
+  precio_pagado: number
+  descuento_aplicado?: number
+  fecha_inicio: string // YYYY-MM-DD
 }
 
 export interface MembresiaResponse {

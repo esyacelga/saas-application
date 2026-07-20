@@ -6,6 +6,7 @@ import type {
   MembresiaHistorial, MembresiaDetalle, VenderMembresiaDto, AnularMembresiaDto,
   CongelarMembresiaDto, CongelarResponse, ReactivarResponse, CongelamientoHistorial,
   VentaPendienteRaw, VentaPendiente, MembresiaResponse, RechazarMembresiaDto,
+  ContadorPendientesRaw, ContadorPendientes, CompletarVentaClienteDto,
 } from './core.dto'
 
 // ── Tipos de membresía ───────────────────────────────────────────────────────
@@ -133,11 +134,24 @@ async function getPendientes(idCompania: number): Promise<VentaPendiente[]> {
     precioPagado: r.precio_pagado,
     descuentoAplicado: r.descuento_aplicado,
     creacionFecha: r.creacion_fecha,
+    origen: r.origen,
   }))
 }
 
-async function confirmarPago(idMembresia: number): Promise<MembresiaResponse> {
-  const { data } = await coreApi.post<MembresiaResponse>(`/membresias/${idMembresia}/confirmar-pago`)
+async function getContadorPendientes(idCompania: number): Promise<ContadorPendientes> {
+  const { data } = await coreApi.get<ContadorPendientesRaw>(`/companias/${idCompania}/membresias/pendientes/contador`)
+  return {
+    total: data.total,
+    porOrigenCliente: data.por_origen_cliente,
+    porOrigenStaff: data.por_origen_staff,
+  }
+}
+
+async function confirmarPago(idMembresia: number, body?: CompletarVentaClienteDto): Promise<MembresiaResponse> {
+  const { data } = await coreApi.post<MembresiaResponse>(
+    `/membresias/${idMembresia}/confirmar-pago`,
+    body ?? undefined,
+  )
   return data
 }
 
@@ -170,6 +184,7 @@ export const coreRepository = {
   reactivarCongelamiento,
   getCongelamientos,
   getPendientes,
+  getContadorPendientes,
   confirmarPago,
   rechazarMembresia,
 }
