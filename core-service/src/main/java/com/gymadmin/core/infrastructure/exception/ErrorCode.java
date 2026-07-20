@@ -28,7 +28,13 @@ public enum ErrorCode {
     ERROR_INTERNO(HttpStatus.INTERNAL_SERVER_ERROR, "error_interno"),
 
     // --- Específicos de core-service (preservados) ---
-    LIMITE_PLAN_ALCANZADO(HttpStatus.FORBIDDEN, "limite_plan_alcanzado");
+    LIMITE_PLAN_ALCANZADO(HttpStatus.FORBIDDEN, "limite_plan_alcanzado"),
+
+    // --- Solicitudes de membresía autoservicio (PWA cliente) ---
+    SOLICITUD_YA_EXISTE(HttpStatus.CONFLICT, "solicitud_ya_existe"),
+    MEMBRESIA_ACTIVA_VIGENTE(HttpStatus.CONFLICT, "membresia_activa_vigente"),
+    TIPO_MEMBRESIA_NO_DISPONIBLE(HttpStatus.NOT_FOUND, "tipo_membresia_no_disponible"),
+    DATOS_VENTA_INCOMPLETOS(HttpStatus.BAD_REQUEST, "datos_venta_incompletos");
 
     private final HttpStatus status;
     private final String codigo;

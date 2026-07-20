@@ -4,9 +4,12 @@ import com.gymadmin.core.application.service.AccessControlService;
 import com.gymadmin.core.domain.port.in.MembresiaUseCase;
 import com.gymadmin.core.infrastructure.adapter.in.web.dto.ActualizarAsistenciasPreviasRequest;
 import com.gymadmin.core.infrastructure.adapter.in.web.dto.AnularRequest;
+import com.gymadmin.core.infrastructure.adapter.in.web.dto.ConfirmarPagoRequest;
+import com.gymadmin.core.infrastructure.adapter.in.web.dto.ContadorPendientesResponse;
 import com.gymadmin.core.infrastructure.adapter.in.web.dto.MembresiaPendienteResponse;
 import com.gymadmin.core.infrastructure.adapter.in.web.dto.MembresiaResponse;
 import com.gymadmin.core.infrastructure.adapter.in.web.dto.RechazarMembresiaRequest;
+import com.gymadmin.core.infrastructure.adapter.in.web.dto.SolicitarMembresiaRequest;
 import com.gymadmin.core.infrastructure.adapter.in.web.dto.VenderMembresiaRequest;
 import com.gymadmin.core.infrastructure.config.JwtPrincipal;
 import com.gymadmin.core.infrastructure.exception.ForbiddenException;
@@ -64,6 +67,29 @@ public class MembresiaController {
                         .thenMany(membresiaUseCase.historialPorPersona(
                                 principal.getIdPersona(), principal.getIdCompania()))
                         .map(MembresiaResponse::from));
+    }
+
+    @Operation(summary = "Solicitar membresía desde PWA cliente (autoservicio)",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "201"),
+            @ApiResponse(responseCode = "400"),
+            @ApiResponse(responseCode = "403"),
+            @ApiResponse(responseCode = "404"),
+            @ApiResponse(responseCode = "409")
+    })
+    @PostMapping("/clientes/me/membresias/solicitar")
+    public Mono<ResponseEntity<MembresiaResponse>> solicitarMembresia(
+            @Valid @RequestBody SolicitarMembresiaRequest request) {
+        return extractPrincipal()
+                .flatMap(principal -> accessControl.requireCliente(principal, principal.getIdCompania())
+                        .then(membresiaUseCase.solicitarMembresia(
+                                principal.getIdPersona(),
+                                principal.getIdCompania(),
+                                principal.getIdCompania(),
+                                request.idTipoMembresia()))
+                )
+                .map(m -> ResponseEntity.status(HttpStatus.CREATED).body(MembresiaResponse.from(m)));
     }
 
     @Operation(summary = "Crear membresía", security = @SecurityRequirement(name = "bearerAuth"))
@@ -159,17 +185,24 @@ public class MembresiaController {
     @Operation(summary = "Confirmar pago de membresía pendiente", security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "400"),
             @ApiResponse(responseCode = "404"),
             @ApiResponse(responseCode = "409"),
             @ApiResponse(responseCode = "403")
     })
     @PostMapping("/membresias/{id}/confirmar-pago")
-    public Mono<ResponseEntity<MembresiaResponse>> confirmarPago(@PathVariable Long id) {
+    public Mono<ResponseEntity<MembresiaResponse>> confirmarPago(
+            @PathVariable Long id,
+            @RequestBody(required = false) ConfirmarPagoRequest request) {
+        MembresiaUseCase.ConfirmarPagoCommand command = request != null
+                ? request.toCommand()
+                : MembresiaUseCase.ConfirmarPagoCommand.empty();
         return extractPrincipal()
                 .flatMap(principal -> accessControl.requireRecepcionOrAbove(principal, principal.getIdCompania())
                         .then(requireConfirmarPagoPermiso(principal))
                         .then(membresiaUseCase.confirmarPago(
-                                id, principal.getIdCompania(), Long.parseLong(principal.getUserId())))
+                                id, principal.getIdCompania(),
+                                Long.parseLong(principal.getUserId()), command))
                 )
                 .map(m -> ResponseEntity.ok(MembresiaResponse.from(m)));
     }
@@ -209,6 +242,23 @@ public class MembresiaController {
                         .then(requireConfirmarPagoPermiso(principal))
                         .thenMany(membresiaUseCase.listarPendientesPorCompania(idCompania))
                         .map(MembresiaPendienteResponse::from));
+    }
+
+    @Operation(summary = "Contador de membresías pendientes por origen (badge dashboard)",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "403")
+    })
+    @GetMapping("/companias/{idCompania}/membresias/pendientes/contador")
+    public Mono<ResponseEntity<ContadorPendientesResponse>> contadorPendientes(
+            @PathVariable Long idCompania) {
+        return extractPrincipal()
+                .flatMap(principal -> accessControl.requireRecepcionOrAbove(principal, idCompania)
+                        .then(requireConfirmarPagoPermiso(principal))
+                        .then(membresiaUseCase.contarPendientesPorCompania(idCompania))
+                )
+                .map(r -> ResponseEntity.ok(ContadorPendientesResponse.from(r)));
     }
 
     @Operation(summary = "Validar acceso del cliente (público)")

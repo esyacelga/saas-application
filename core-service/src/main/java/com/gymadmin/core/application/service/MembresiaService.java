@@ -10,10 +10,17 @@ import com.gymadmin.core.domain.port.out.MembresiaRepository;
 import com.gymadmin.core.domain.port.out.PersonaRepository;
 import com.gymadmin.core.domain.port.out.TipoMembresiaRepository;
 import com.gymadmin.core.infrastructure.exception.BusinessException;
+import com.gymadmin.core.infrastructure.exception.CodedException;
 import com.gymadmin.core.infrastructure.exception.ConflictException;
+import com.gymadmin.core.infrastructure.exception.DatosVentaIncompletosException;
+import com.gymadmin.core.infrastructure.exception.ErrorCode;
 import com.gymadmin.core.infrastructure.exception.NotFoundException;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -160,6 +167,7 @@ public class MembresiaService implements MembresiaUseCase {
                             mem.setDescuentoAplicado(descuento);
                             mem.setEstado(Membresia.Estado.activa);
                             mem.setEstadoPago(estadoPago);
+                            mem.setOrigen(Membresia.Origen.staff);
                             mem.setEliminado(Boolean.FALSE);
 
                             return membresiaRepository.save(mem)
@@ -290,11 +298,24 @@ public class MembresiaService implements MembresiaUseCase {
      * devuelve el recurso sin re-calcular fechas ni re-emitir eventos. Si está
      * eliminada (rechazada), lanza {@link ConflictException}.
      *
+     * <p>Cuando la membresía es {@code origen='cliente'} (solicitud autoservicio con
+     * placeholders), el {@code command} debe traer {@code id_metodo_pago},
+     * {@code precio_pagado} y {@code fecha_inicio}; si falta alguno lanza
+     * {@link DatosVentaIncompletosException} (400 + {@code codigo=datos_venta_incompletos}
+     * + lista de campos faltantes). {@code descuento_aplicado} default 0.
+     *
+     * <p>Cuando la membresía es {@code origen='staff'} (venta directa PENDIENTE), el body
+     * se ignora completamente y se aplica el comportamiento clásico: {@code fecha_inicio=hoy}
+     * y {@code precio_pagado} se preserva del vender().
+     *
      * <p>Publica {@link com.gymadmin.core.domain.event.MembresiaPagadaEvent} vía
      * {@link ApplicationEventPublisher} SOLO en la transición real PENDIENTE → PAGADO.
      */
     @Override
-    public Mono<Membresia> confirmarPago(Long idMembresia, Long idCompania, Long idUsuarioActuante) {
+    public Mono<Membresia> confirmarPago(Long idMembresia, Long idCompania, Long idUsuarioActuante,
+                                          MembresiaUseCase.ConfirmarPagoCommand command) {
+        MembresiaUseCase.ConfirmarPagoCommand cmd = command != null
+                ? command : MembresiaUseCase.ConfirmarPagoCommand.empty();
         return membresiaRepository.findById(idMembresia)
                 .switchIfEmpty(Mono.error(new NotFoundException("Membresia", idMembresia)))
                 .flatMap(mem -> {
@@ -308,16 +329,35 @@ public class MembresiaService implements MembresiaUseCase {
                         // Idempotente: retorna el recurso actual sin recalcular fechas ni emitir evento.
                         return Mono.just(mem);
                     }
+                    boolean origenCliente = Membresia.Origen.cliente.equals(mem.getOrigen());
+                    if (origenCliente) {
+                        List<Map<String, String>> faltantes = validarDatosVenta(cmd);
+                        if (!faltantes.isEmpty()) {
+                            return Mono.error(new DatosVentaIncompletosException(
+                                    "Faltan datos de venta para confirmar la solicitud del cliente", faltantes));
+                        }
+                    }
                     return tipoMembresiaRepository.findById(mem.getIdTipoMembresia())
                             .switchIfEmpty(Mono.error(new NotFoundException("TipoMembresia", mem.getIdTipoMembresia())))
                             .flatMap(tipo -> {
-                                LocalDate hoy = LocalDate.now();
-                                LocalDate fin = calcularFechaFin(hoy, tipo);
+                                LocalDate inicio = origenCliente ? cmd.fechaInicio() : LocalDate.now();
+                                LocalDate fin = calcularFechaFin(inicio, tipo);
                                 mem.setEstadoPago(Membresia.EstadoPago.PAGADO);
-                                mem.setFechaInicio(hoy);
+                                mem.setFechaInicio(inicio);
                                 mem.setFechaFin(fin);
                                 if (mem.getEstado() == null) {
                                     mem.setEstado(Membresia.Estado.activa);
+                                }
+                                if (origenCliente) {
+                                    // Datos ingresados por el staff al completar la solicitud.
+                                    mem.setIdMetodoPago(cmd.idMetodoPago());
+                                    mem.setPrecioPagado(cmd.precioPagado());
+                                    mem.setDescuentoAplicado(cmd.descuentoAplicado() != null
+                                            ? cmd.descuentoAplicado() : BigDecimal.ZERO);
+                                    if (TipoMembresia.ModoControl.accesos.equals(tipo.getModoControl())
+                                            && mem.getDiasAccesoTotal() == null) {
+                                        mem.setDiasAccesoTotal(tipo.getDiasAcceso());
+                                    }
                                 }
                                 return membresiaRepository.save(mem)
                                         .flatMap(saved -> clienteRepository.findById(saved.getIdCliente())
@@ -328,10 +368,37 @@ public class MembresiaService implements MembresiaUseCase {
                                                 .defaultIfEmpty(saved))
                                         .doOnNext(saved -> eventPublisher.publishEvent(new MembresiaPagadaEvent(
                                                 saved.getId(), saved.getIdCliente(), saved.getIdCompania(),
-                                                saved.getPrecioPagado(), hoy
+                                                saved.getPrecioPagado(), inicio
                                         )));
                             });
                 });
+    }
+
+    /**
+     * Devuelve la lista de campos faltantes en un body de {@code confirmar-pago} para una
+     * solicitud de origen cliente. Cada entrada tiene {@code campo} y {@code mensaje} para
+     * que el frontend pinte errores por-campo. {@code descuento_aplicado} es opcional
+     * (default 0), no se valida.
+     */
+    private List<Map<String, String>> validarDatosVenta(MembresiaUseCase.ConfirmarPagoCommand cmd) {
+        List<Map<String, String>> faltantes = new ArrayList<>();
+        if (cmd.idMetodoPago() == null) {
+            faltantes.add(campo("id_metodo_pago", "es obligatorio para completar la venta"));
+        }
+        if (cmd.precioPagado() == null || cmd.precioPagado().signum() < 0) {
+            faltantes.add(campo("precio_pagado", "es obligatorio y debe ser >= 0"));
+        }
+        if (cmd.fechaInicio() == null) {
+            faltantes.add(campo("fecha_inicio", "es obligatoria para iniciar la membresía"));
+        }
+        return faltantes;
+    }
+
+    private Map<String, String> campo(String nombre, String mensaje) {
+        Map<String, String> m = new LinkedHashMap<>();
+        m.put("campo", nombre);
+        m.put("mensaje", mensaje);
+        return m;
     }
 
     /**
@@ -390,6 +457,90 @@ public class MembresiaService implements MembresiaUseCase {
                         String nombreCliente = tuple.getT2().orElse(null);
                         return new MembresiaPendienteResult(mem, tipoNombre, modoControl, nombreCliente);
                     });
+                });
+    }
+
+    /**
+     * Cliente PWA solicita una membresía autoservicio. Valida en orden:
+     * <ol>
+     *   <li>El {@code id_persona} debe corresponder a un cliente de la compañía (si no → 404).</li>
+     *   <li>El cliente no debe tener otra solicitud viva {@code origen=cliente, estado_pago=PENDIENTE}
+     *       (si sí → 409 {@code solicitud_ya_existe}).</li>
+     *   <li>El cliente no debe tener una membresía activa vigente PAGADA (si sí → 409
+     *       {@code membresia_activa_vigente}).</li>
+     *   <li>El tipo de membresía debe existir, estar activo y pertenecer a la compañía
+     *       (si no → 404 {@code tipo_membresia_no_disponible}).</li>
+     * </ol>
+     *
+     * <p>Crea la fila con {@code estado_pago=PENDIENTE}, {@code origen=cliente}, fechas NULL
+     * (respeta el CHECK {@code ck_membresias_fechas_por_estado_pago}), {@code precio_pagado=0}
+     * placeholder (columna NOT NULL sin default; se sobrescribe en {@code confirmar-pago}),
+     * {@code descuento=0}, {@code id_metodo_pago=NULL}.
+     */
+    @Override
+    public Mono<Membresia> solicitarMembresia(Long idPersona, Long idCompania, Long idSucursal,
+                                               Long idTipoMembresia) {
+        return clienteRepository.findByIdPersonaAndIdCompania(idPersona, idCompania)
+                .switchIfEmpty(Mono.error(new NotFoundException("Cliente en esta compañía", idPersona)))
+                .flatMap(cliente -> membresiaRepository
+                        .findSolicitudClientePendiente(cliente.getId(), idCompania)
+                        .flatMap(existing -> Mono.<Membresia>error(new CodedException(
+                                ErrorCode.SOLICITUD_YA_EXISTE,
+                                "Ya tienes una solicitud de membresía en revisión. Espera a que sea confirmada o rechazada.")))
+                        .switchIfEmpty(Mono.defer(() -> membresiaRepository
+                                .findActivaByIdClienteAndIdCompania(cliente.getId(), idCompania)
+                                .filter(activa -> activa.getFechaFin() != null
+                                        && !activa.getFechaFin().isBefore(LocalDate.now()))
+                                .flatMap(activa -> Mono.<Membresia>error(new CodedException(
+                                        ErrorCode.MEMBRESIA_ACTIVA_VIGENTE,
+                                        "No puedes solicitar una nueva membresía mientras tengas una activa. Espera a que venza.")))
+                                .switchIfEmpty(Mono.defer(() -> crearSolicitud(cliente.getId(), idCompania,
+                                        idSucursal, idTipoMembresia))))));
+    }
+
+    private Mono<Membresia> crearSolicitud(Long idCliente, Long idCompania, Long idSucursal,
+                                           Long idTipoMembresia) {
+        return tipoMembresiaRepository.findById(idTipoMembresia)
+                .filter(tipo -> Boolean.TRUE.equals(tipo.getActivo())
+                        && idCompania.equals(tipo.getIdCompania()))
+                .switchIfEmpty(Mono.error(new CodedException(
+                        ErrorCode.TIPO_MEMBRESIA_NO_DISPONIBLE,
+                        "El tipo que solicitaste no está disponible o ya no es ofrecido.")))
+                .flatMap(tipo -> {
+                    Membresia mem = new Membresia();
+                    mem.setIdCompania(idCompania);
+                    mem.setIdSucursal(idSucursal);
+                    mem.setIdCliente(idCliente);
+                    mem.setIdTipoMembresia(tipo.getId());
+                    mem.setIdMetodoPago(null);
+                    // fechas NULL (CHECK ck_membresias_fechas_por_estado_pago)
+                    mem.setFechaInicio(null);
+                    mem.setFechaFin(null);
+                    // dias_acceso_total se rellena al confirmar-pago si el tipo es accesos
+                    mem.setDiasAccesoTotal(null);
+                    // precio_pagado NOT NULL sin default → placeholder 0, sobrescrito al confirmar
+                    mem.setPrecioPagado(BigDecimal.ZERO);
+                    mem.setDescuentoAplicado(BigDecimal.ZERO);
+                    mem.setEstado(Membresia.Estado.activa);
+                    mem.setEstadoPago(Membresia.EstadoPago.PENDIENTE);
+                    mem.setOrigen(Membresia.Origen.cliente);
+                    mem.setEliminado(Boolean.FALSE);
+                    return membresiaRepository.save(mem);
+                });
+    }
+
+    /**
+     * Cuenta las membresías pendientes de la compañía agrupadas por origen. Devuelve 0
+     * para el origen que no tenga filas. Los tokens de plataforma / cross-tenant se
+     * bloquean antes de llegar aquí (controlador con {@code requireRecepcionOrAbove}).
+     */
+    @Override
+    public Mono<MembresiaUseCase.ContadorPendientesResult> contarPendientesPorCompania(Long idCompania) {
+        return membresiaRepository.contarPendientesPorOrigen(idCompania)
+                .map(porOrigen -> {
+                    long cliente = porOrigen.getOrDefault(Membresia.Origen.cliente.name(), 0L);
+                    long staff = porOrigen.getOrDefault(Membresia.Origen.staff.name(), 0L);
+                    return new MembresiaUseCase.ContadorPendientesResult(cliente + staff, cliente, staff);
                 });
     }
 

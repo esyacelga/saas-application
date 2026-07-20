@@ -10,6 +10,8 @@ CREATE TABLE core.membresias (
   fecha_fin           DATE,
   estado_pago         VARCHAR(20)   NOT NULL DEFAULT 'PAGADO'
                         CHECK (estado_pago IN ('PENDIENTE','PAGADO')),
+  origen              VARCHAR(10)   NOT NULL DEFAULT 'staff'
+                        CHECK (origen IN ('cliente','staff')),
   dias_acceso_total   INT,
   precio_pagado       DECIMAL(10,2) NOT NULL,
   descuento_aplicado  DECIMAL(5,2)  NOT NULL DEFAULT 0,

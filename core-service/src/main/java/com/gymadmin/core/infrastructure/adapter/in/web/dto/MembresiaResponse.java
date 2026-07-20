@@ -23,14 +23,15 @@ public record MembresiaResponse(
         BigDecimal saldoPendiente,
         String estado,
         String estadoPago,
+        String origen,
         Boolean eliminado,
         String motivoEliminacion
 ) {
     /**
      * Mapping usado por los endpoints que devuelven la membresía "cruda" (venta, confirmar-pago,
-     * rechazar). Los campos derivados (nombre y modo del tipo, monto pagado/saldo, accesos)
-     * se rellenan con {@code null} o desde el {@code estado_pago} — el consumidor de estos
-     * endpoints (staff dashboard) obtiene el detalle enriquecido en su siguiente refresh.
+     * rechazar, solicitar). Los campos derivados (nombre y modo del tipo, monto pagado/saldo,
+     * accesos) se rellenan con {@code null} o desde el {@code estado_pago} — el consumidor de
+     * estos endpoints (staff dashboard) obtiene el detalle enriquecido en su siguiente refresh.
      */
     public static MembresiaResponse from(Membresia m) {
         BigDecimal precio = m.getPrecioPagado() != null ? m.getPrecioPagado() : BigDecimal.ZERO;
@@ -45,6 +46,7 @@ public record MembresiaResponse(
                 pagado ? BigDecimal.ZERO : precio,
                 m.getEstado() != null ? m.getEstado().name() : null,
                 m.getEstadoPago() != null ? m.getEstadoPago().name() : null,
+                m.getOrigen() != null ? m.getOrigen().name() : null,
                 m.getEliminado(),
                 m.getMotivoEliminacion() != null ? m.getMotivoEliminacion().name() : null
         );
@@ -67,6 +69,7 @@ public record MembresiaResponse(
                 item.montoPagado(), item.saldoPendiente(),
                 m.getEstado() != null ? m.getEstado().name() : null,
                 m.getEstadoPago() != null ? m.getEstadoPago().name() : null,
+                m.getOrigen() != null ? m.getOrigen().name() : null,
                 m.getEliminado(),
                 m.getMotivoEliminacion() != null ? m.getMotivoEliminacion().name() : null
         );

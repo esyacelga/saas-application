@@ -10,7 +10,10 @@ import com.gymadmin.core.domain.port.out.MembresiaRepository;
 import com.gymadmin.core.domain.port.out.PersonaRepository;
 import com.gymadmin.core.domain.port.out.TipoMembresiaRepository;
 import com.gymadmin.core.infrastructure.exception.BusinessException;
+import com.gymadmin.core.infrastructure.exception.CodedException;
 import com.gymadmin.core.infrastructure.exception.ConflictException;
+import com.gymadmin.core.infrastructure.exception.DatosVentaIncompletosException;
+import com.gymadmin.core.infrastructure.exception.ErrorCode;
 import com.gymadmin.core.infrastructure.exception.NotFoundException;
 import com.gymadmin.core.domain.event.MembresiaPagadaEvent;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +32,8 @@ import reactor.test.StepVerifier;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -843,7 +848,7 @@ class MembresiaServiceTest {
             when(clienteRepository.findById(10L)).thenReturn(Mono.just(cliente));
             when(clienteRepository.save(any())).thenReturn(Mono.just(cliente));
 
-            StepVerifier.create(membresiaService.confirmarPago(1L, 1L, 99L))
+            StepVerifier.create(membresiaService.confirmarPago(1L, 1L, 99L, MembresiaUseCase.ConfirmarPagoCommand.empty()))
                     .expectNextMatches(m -> m.getEstadoPago() == Membresia.EstadoPago.PAGADO
                             && m.getFechaInicio().equals(LocalDate.now())
                             && m.getFechaFin().equals(LocalDate.now().plusMonths(1)))
@@ -866,7 +871,7 @@ class MembresiaServiceTest {
 
             when(membresiaRepository.findById(1L)).thenReturn(Mono.just(pagada));
 
-            StepVerifier.create(membresiaService.confirmarPago(1L, 1L, 99L))
+            StepVerifier.create(membresiaService.confirmarPago(1L, 1L, 99L, MembresiaUseCase.ConfirmarPagoCommand.empty()))
                     .expectNextMatches(m -> m.getFechaInicio().equals(inicioViejo)
                             && m.getFechaFin().equals(finViejo))
                     .verifyComplete();
@@ -884,7 +889,7 @@ class MembresiaServiceTest {
 
             when(membresiaRepository.findById(1L)).thenReturn(Mono.just(eliminada));
 
-            StepVerifier.create(membresiaService.confirmarPago(1L, 1L, 99L))
+            StepVerifier.create(membresiaService.confirmarPago(1L, 1L, 99L, MembresiaUseCase.ConfirmarPagoCommand.empty()))
                     .expectErrorSatisfies(err -> assertThat(err).isInstanceOf(ConflictException.class))
                     .verify();
 
@@ -897,7 +902,7 @@ class MembresiaServiceTest {
         void notFoundSiNoExiste() {
             when(membresiaRepository.findById(99L)).thenReturn(Mono.empty());
 
-            StepVerifier.create(membresiaService.confirmarPago(99L, 1L, 5L))
+            StepVerifier.create(membresiaService.confirmarPago(99L, 1L, 5L, MembresiaUseCase.ConfirmarPagoCommand.empty()))
                     .expectErrorSatisfies(err -> assertThat(err).isInstanceOf(NotFoundException.class))
                     .verify();
         }

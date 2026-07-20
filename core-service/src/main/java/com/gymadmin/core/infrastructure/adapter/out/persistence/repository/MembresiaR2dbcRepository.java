@@ -47,12 +47,47 @@ public interface MembresiaR2dbcRepository extends ReactiveCrudRepository<Membres
 
     @Query("""
         SELECT * FROM core.membresias
+        WHERE id_cliente = :idCliente
+          AND id_compania = :idCompania
+          AND estado_pago = 'PENDIENTE'
+          AND origen = 'cliente'
+          AND eliminado = false
+        ORDER BY creacion_fecha DESC
+        LIMIT 1
+        """)
+    Mono<MembresiaEntity> findSolicitudClientePendiente(Long idCliente, Long idCompania);
+
+    @Query("""
+        SELECT * FROM core.membresias
         WHERE id_compania = :idCompania
           AND estado_pago = 'PENDIENTE'
           AND eliminado = false
         ORDER BY creacion_fecha DESC
         """)
     Flux<MembresiaEntity> findPendientesPorCompania(Long idCompania);
+
+    /**
+     * Conteo agrupado por {@code origen} de las membresías PENDIENTE + vivas de la compañía.
+     * Retorna 0-2 filas (cliente y/o staff). El adapter agrega el mapa; si algún origen
+     * no aparece se toma como 0. Usa el índice parcial
+     * {@code idx_membresias_pendientes_cliente} (cubre el filtro
+     * {@code estado_pago='PENDIENTE' AND origen='cliente' AND eliminado=false}).
+     */
+    @Query("""
+        SELECT origen, COUNT(*) AS total
+        FROM core.membresias
+        WHERE id_compania = :idCompania
+          AND estado_pago = 'PENDIENTE'
+          AND eliminado = false
+        GROUP BY origen
+        """)
+    Flux<PendienteOrigenRow> contarPendientesPorOrigen(Long idCompania);
+
+    /**
+     * Proyección plana para el conteo agrupado por origen. Los nombres de columna
+     * coinciden con los alias del SELECT anterior.
+     */
+    record PendienteOrigenRow(String origen, Long total) {}
 
     @Query("""
         SELECT * FROM core.membresias

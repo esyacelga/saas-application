@@ -8,6 +8,9 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Component
 public class MembresiaPersistenceAdapter implements MembresiaRepository {
 
@@ -38,8 +41,20 @@ public class MembresiaPersistenceAdapter implements MembresiaRepository {
     }
 
     @Override
+    public Mono<Membresia> findSolicitudClientePendiente(Long idCliente, Long idCompania) {
+        return repository.findSolicitudClientePendiente(idCliente, idCompania).map(this::toDomain);
+    }
+
+    @Override
     public Flux<Membresia> findPendientesPorCompania(Long idCompania) {
         return repository.findPendientesPorCompania(idCompania).map(this::toDomain);
+    }
+
+    @Override
+    public Mono<Map<String, Long>> contarPendientesPorOrigen(Long idCompania) {
+        return repository.contarPendientesPorOrigen(idCompania)
+                .collect(HashMap::new,
+                        (acc, row) -> acc.put(row.origen(), row.total() != null ? row.total() : 0L));
     }
 
     @Override
@@ -73,6 +88,7 @@ public class MembresiaPersistenceAdapter implements MembresiaRepository {
         if (m.getEstado() != null)               existing.setEstado(m.getEstado().name());
         if (m.getAsistenciasPrevias() != null)   existing.setAsistenciasPrevias(m.getAsistenciasPrevias());
         if (m.getEstadoPago() != null)           existing.setEstadoPago(m.getEstadoPago().name());
+        if (m.getOrigen() != null)               existing.setOrigen(m.getOrigen().name());
         if (m.getEliminado() != null)            existing.setEliminado(m.getEliminado());
         existing.setFechaEliminacion(m.getFechaEliminacion());
         existing.setEliminadoPor(m.getEliminadoPor());
@@ -103,6 +119,7 @@ public class MembresiaPersistenceAdapter implements MembresiaRepository {
         m.setAsistenciasPrevias(e.getAsistenciasPrevias() != null ? e.getAsistenciasPrevias() : 0);
         m.setCreatedAt(e.getCreacionFecha());
         m.setEstadoPago(e.getEstadoPago() != null ? Membresia.EstadoPago.valueOf(e.getEstadoPago()) : null);
+        m.setOrigen(e.getOrigen() != null ? Membresia.Origen.valueOf(e.getOrigen()) : null);
         m.setEliminado(e.getEliminado() != null ? e.getEliminado() : Boolean.FALSE);
         m.setFechaEliminacion(e.getFechaEliminacion());
         m.setEliminadoPor(e.getEliminadoPor());
@@ -129,6 +146,7 @@ public class MembresiaPersistenceAdapter implements MembresiaRepository {
                 .estado(m.getEstado() != null ? m.getEstado().name() : null)
                 .asistenciasPrevias(m.getAsistenciasPrevias())
                 .estadoPago(m.getEstadoPago() != null ? m.getEstadoPago().name() : null)
+                .origen(m.getOrigen() != null ? m.getOrigen().name() : null)
                 .fechaEliminacion(m.getFechaEliminacion())
                 .eliminadoPor(m.getEliminadoPor())
                 .motivoEliminacion(m.getMotivoEliminacion() != null ? m.getMotivoEliminacion().name() : null)

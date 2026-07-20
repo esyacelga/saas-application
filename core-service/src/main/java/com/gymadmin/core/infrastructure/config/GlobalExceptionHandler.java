@@ -3,8 +3,10 @@ package com.gymadmin.core.infrastructure.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gymadmin.core.domain.exception.LimiteAlcanzadoException;
 import com.gymadmin.core.infrastructure.exception.BusinessException;
+import com.gymadmin.core.infrastructure.exception.CodedException;
 import com.gymadmin.core.infrastructure.exception.ConflictException;
 import com.gymadmin.core.infrastructure.exception.DataIntegrityMapper;
+import com.gymadmin.core.infrastructure.exception.DatosVentaIncompletosException;
 import com.gymadmin.core.infrastructure.exception.ErrorCode;
 import com.gymadmin.core.infrastructure.exception.ForbiddenException;
 import com.gymadmin.core.infrastructure.exception.NotFoundException;
@@ -67,6 +69,17 @@ public class GlobalExceptionHandler implements ErrorWebExceptionHandler {
             return pd;
         }
 
+        // CodedException tiene precedencia sobre las excepciones genéricas: el codigo
+        // de negocio va explícito (solicitud_ya_existe, membresia_activa_vigente, etc.).
+        if (ex instanceof DatosVentaIncompletosException dvi) {
+            ProblemDetail pd = ProblemDetailFactory.create(
+                    dvi.getErrorCode(), dvi.getMessage(), exchange);
+            pd.setProperty("errores", dvi.getErrores());
+            return pd;
+        }
+        if (ex instanceof CodedException ce) {
+            return ProblemDetailFactory.create(ce.getErrorCode(), ce.getMessage(), exchange);
+        }
         if (ex instanceof NotFoundException) {
             return ProblemDetailFactory.create(ErrorCode.RECURSO_NO_ENCONTRADO, ex.getMessage(), exchange);
         }

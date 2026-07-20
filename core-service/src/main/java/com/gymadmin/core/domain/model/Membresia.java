@@ -10,6 +10,13 @@ public class Membresia {
 
     public enum EstadoPago { PENDIENTE, PAGADO }
 
+    /**
+     * Quién originó la creación de la membresía. Usado por el dashboard staff para
+     * distinguir las solicitudes autoservicio de cliente PWA (que necesitan que
+     * el staff complete los datos de venta) de las ventas directas del staff.
+     */
+    public enum Origen { cliente, staff }
+
     public enum MotivoEliminacion {
         SOCIO_CAMBIO_OPINION, ERROR_DE_VENTA, DUPLICADA, DATOS_INCORRECTOS, OTRO
     }
@@ -30,6 +37,7 @@ public class Membresia {
     private Integer asistenciasPrevias;
     private OffsetDateTime createdAt;
     private EstadoPago estadoPago;
+    private Origen origen;
     private Boolean eliminado;
     private OffsetDateTime fechaEliminacion;
     private Integer eliminadoPor;
@@ -82,6 +90,9 @@ public class Membresia {
 
     public EstadoPago getEstadoPago() { return estadoPago; }
     public void setEstadoPago(EstadoPago estadoPago) { this.estadoPago = estadoPago; }
+
+    public Origen getOrigen() { return origen; }
+    public void setOrigen(Origen origen) { this.origen = origen; }
 
     public Boolean getEliminado() { return eliminado; }
     public void setEliminado(Boolean eliminado) { this.eliminado = eliminado; }

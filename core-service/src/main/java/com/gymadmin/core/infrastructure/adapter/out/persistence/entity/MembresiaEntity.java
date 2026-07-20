@@ -63,6 +63,9 @@ public class MembresiaEntity extends BaseAuditEntity {
     @Column("estado_pago")
     private String estadoPago;
 
+    @Column("origen")
+    private String origen;
+
     @Column("fecha_eliminacion")
     private OffsetDateTime fechaEliminacion;
 

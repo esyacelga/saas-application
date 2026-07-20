@@ -19,6 +19,7 @@ public record MembresiaPendienteResponse(
         String modoControl,
         BigDecimal precioPagado,
         BigDecimal descuentoAplicado,
+        String origen,
         OffsetDateTime creacionFecha
 ) {
     public static MembresiaPendienteResponse from(MembresiaPendienteResult r) {
@@ -31,6 +32,7 @@ public record MembresiaPendienteResponse(
                 r.modoControl(),
                 r.membresia().getPrecioPagado(),
                 r.membresia().getDescuentoAplicado(),
+                r.membresia().getOrigen() != null ? r.membresia().getOrigen().name() : null,
                 r.membresia().getCreatedAt()
         );
     }

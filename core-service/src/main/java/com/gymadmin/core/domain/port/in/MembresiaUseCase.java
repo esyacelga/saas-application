@@ -33,12 +33,27 @@ public interface MembresiaUseCase {
 
     Mono<Membresia> actualizarAsistenciasPrevias(Long id, Long idCompania, Integer cantidad);
 
-    Mono<Membresia> confirmarPago(Long idMembresia, Long idCompania, Long idUsuarioActuante);
+    Mono<Membresia> confirmarPago(Long idMembresia, Long idCompania, Long idUsuarioActuante,
+                                   ConfirmarPagoCommand command);
 
     Mono<Membresia> rechazar(Long idMembresia, Long idCompania, Long idUsuarioActuante,
                              Membresia.MotivoEliminacion motivoEliminacion);
 
     Flux<MembresiaPendienteResult> listarPendientesPorCompania(Long idCompania);
+
+    /**
+     * Cliente PWA envía una solicitud de membresía. Crea una fila
+     * {@code estado_pago=PENDIENTE}, {@code origen=cliente}, fechas NULL, {@code precio_pagado=0}
+     * (placeholder), {@code descuento=0}, {@code id_metodo_pago=NULL}. Resuelve el
+     * {@code id_cliente} a partir del {@code id_persona} del JWT.
+     */
+    Mono<Membresia> solicitarMembresia(Long idPersona, Long idCompania, Long idSucursal, Long idTipoMembresia);
+
+    /**
+     * Conteo de membresías pendientes agrupado por origen. Usado por el badge del dashboard
+     * staff para llamar la atención sobre solicitudes autoservicio del cliente.
+     */
+    Mono<ContadorPendientesResult> contarPendientesPorCompania(Long idCompania);
 
     record VenderCommand(
         Long idTipoMembresia,
@@ -47,6 +62,24 @@ public interface MembresiaUseCase {
         BigDecimal descuentoAplicado,
         Membresia.EstadoPago estadoPago
     ) {}
+
+    /**
+     * Datos opcionales del body de {@code confirmar-pago}. Requeridos cuando la
+     * membresía es {@code origen='cliente'} (venta autoservicio) porque el cliente no
+     * ingresó nada al solicitar. Ignorados cuando la membresía es {@code origen='staff'}
+     * (venta directa staff-PENDIENTE ya trae precio, descuento y método al vender).
+     * Todos pueden venir en {@code null} si el body no viene.
+     */
+    record ConfirmarPagoCommand(
+        Long idMetodoPago,
+        BigDecimal precioPagado,
+        BigDecimal descuentoAplicado,
+        LocalDate fechaInicio
+    ) {
+        public static ConfirmarPagoCommand empty() {
+            return new ConfirmarPagoCommand(null, null, null, null);
+        }
+    }
 
     record MembresiaDetalleResult(
         Membresia membresia,
@@ -90,4 +123,11 @@ public interface MembresiaUseCase {
         String modoControl,
         String nombreCliente
     ) {}
+
+    /**
+     * Resultado del badge del dashboard: cantidad total de membresías PENDIENTE
+     * vivas de la compañía y desglose por origen. Ambas cuentas de origen son 0
+     * cuando no hay pendientes de ese origen.
+     */
+    record ContadorPendientesResult(long total, long porOrigenCliente, long porOrigenStaff) {}
 }
