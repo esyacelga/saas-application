@@ -132,7 +132,7 @@ Tests: `GlobalExceptionHandlerTest` (mapeo + serialización snake_case, incl. `p
 3. `WhatsAppQueueProcessorJob.procesarLote()` (fixed-delay 30s) — procesa cola de mensajes WhatsApp pendientes
 4. `EmailQueueProcessorJob.procesarLote()` (fixed-delay 30s) — procesa cola de emails pendientes con retry exponencial
 
-Ver doc centralizado: [`../../docs/gym-administrator/architecture/scheduled-jobs.md`](../../docs/gym-administrator/architecture/scheduled-jobs.md).
+Ver doc centralizado: [`../docs/gym-administrator/architecture/scheduled-jobs.md`](../docs/gym-administrator/architecture/scheduled-jobs.md).
 
 **QR tokens** — 32-char random tokens (configurable via `QR_TOKEN_LENGTH`) issued per sucursal for mobile app entry validation. Endpoint `/api/v1/modulos/check` is public (no auth).
 

@@ -165,7 +165,7 @@ Fires on cron `${scheduling.messaging-job-cron}` (default `0 15 0 * * *` — 00:
 
 **In tests the cron is set to `"-"` to disable it.**
 
-Ver doc centralizado: [`../../docs/gym-administrator/architecture/scheduled-jobs.md`](../../docs/gym-administrator/architecture/scheduled-jobs.md).
+Ver doc centralizado: [`../docs/gym-administrator/architecture/scheduled-jobs.md`](../docs/gym-administrator/architecture/scheduled-jobs.md).
 
 Supported template variables: `{nombre}`, `{dias}`, `{fecha_vencimiento}`, `{accesos_restantes}`, `{gym_nombre}`. Falls back to hardcoded default templates if no custom `PlantillaMensaje` exists for a given `tipo` (`ausencia_2d`, `recuperacion_5d`, `recuperacion_10d`, `recuperacion_15d`, `vencimiento_3d`, `vencimiento_hoy`).
 

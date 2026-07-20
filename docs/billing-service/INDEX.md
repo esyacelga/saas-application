@@ -1,6 +1,6 @@
 # billing-service — Índice de documentación
 
-Facturación electrónica SRI Ecuador. Emisión, firma digital y autorización de facturas; gestión de certificados; reportes ATS y resumen de ventas. Ver [billing-service/README.md](../../billing-service/README.md) (Docker, variables de entorno) para el resto de la documentación. Este índice cubre solo la documentación de API.
+Facturación electrónica SRI Ecuador. Emisión, firma digital y autorización de facturas; gestión de certificados; reportes ATS y resumen de ventas. Ver [billing-service/CLAUDE.md](../../billing-service/CLAUDE.md) (arquitectura, Docker, variables de entorno) para el resto de la documentación. Este índice cubre solo la documentación de API.
 
 > **Module gating (2026-07-14):** Todas las rutas bajo `/api/v1/comprobantes`, `/api/v1/notas-credito`, `/api/v1/anulaciones` y `/api/v1/reportes` pasan por un `WebFilter` (`ModuloGatingFilter`) que consulta a **platform-service** (`GET /api/v1/modulos/check?id_compania=…&codigo=FACTURACION`) antes de invocar al controller. Respuestas: **403 `modulo_no_incluido`**, **402 `plan_vencido_o_suspendido`**, **503 `gate_unavailable`** (fail-closed en error de red/timeout). Bypass para principales `plataforma`/`super_admin`; feature flag `BILLING_GATING_ENABLED`; cache local Caffeine 60 s. Detalle en [../../billing-service/CLAUDE.md](../../billing-service/CLAUDE.md#module-gating-billing-feature-flag-por-compañía).
 
@@ -48,4 +48,4 @@ Facturación electrónica SRI Ecuador. Emisión, firma digital y autorización d
 ## Convenciones de esta carpeta
 
 - Nombres de archivo en `kebab-case` dentro de `api/` y `flows/`.
-- `billing-service/README.md` permanece en la raíz y enlaza aquí.
+- `billing-service/CLAUDE.md` permanece en la raíz y enlaza aquí.

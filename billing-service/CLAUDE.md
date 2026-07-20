@@ -146,7 +146,7 @@ Billing-service tiene 2 scheduled jobs:
 
 2. **`CertificadoAlertaService.verificarVencimientos()`** (cron `0 0 8 * * *`, 08:00 UTC) — Alerta si certificados digitales P12 vencen en ≤30 días. **EXCEPCIÓN:** NO es idempotente (sin `existsEnviadoHoy`), por lo tanto **sin startup hook** (evita spam de emails al reiniciar). Env var: **HARDCODED** (sin override).
 
-Ver doc centralizado de todos los 8 jobs del monorepo: [`../../docs/gym-administrator/architecture/scheduled-jobs.md`](../../docs/gym-administrator/architecture/scheduled-jobs.md).
+Ver doc centralizado de todos los 8 jobs del monorepo: [`../docs/gym-administrator/architecture/scheduled-jobs.md`](../docs/gym-administrator/architecture/scheduled-jobs.md).
 
 ## Module gating (billing feature-flag por compañía)
 

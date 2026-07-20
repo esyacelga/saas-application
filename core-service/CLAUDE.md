@@ -112,7 +112,7 @@ Recalcula el estado de todos los clientes activos basándose en sus membresías.
 Idempotente: ✅ Sí — recalcula desde estado actual de membresías.  
 Startup hook: ✅ Sí — se ejecuta también al arrancar el servicio si `jobs.run-on-startup=true` (recuperación de ventana perdida si el pod estuvo caído a la hora del cron).
 
-**Doc centralizado:** Ver [`../../docs/gym-administrator/architecture/scheduled-jobs.md`](../../docs/gym-administrator/architecture/scheduled-jobs.md) para todos los 8 jobs del monorepo.
+**Doc centralizado:** Ver [`../docs/gym-administrator/architecture/scheduled-jobs.md`](../docs/gym-administrator/architecture/scheduled-jobs.md) para todos los 8 jobs del monorepo.
 
 ---
 

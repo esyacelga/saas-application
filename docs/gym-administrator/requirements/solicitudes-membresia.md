@@ -610,8 +610,8 @@ Cliente intenta acceso:
 - **Estructura DB**: [`docs/gym-administrator/architecture/database-schema.md`](../architecture/database-schema.md)
 - **Permisos**: [`docs/gym-administrator/architecture/database-schema.md#seguridad`](../architecture/database-schema.md#seguridad)
 - **Convenciones de migración**: [`gym-administrator/CLAUDE.md`](../../../gym-administrator/CLAUDE.md)
-- **PWA estructura**: [`docs/gym-member-pwa/CLAUDE.md`](../../gym-member-pwa/CLAUDE.md)
-- **Dashboard estructura**: [`docs/auth-service-frond-end/CLAUDE.md`](../../auth-service-frond-end/CLAUDE.md)
+- **PWA estructura**: [`gym-member-pwa/CLAUDE.md`](../../../gym-member-pwa/CLAUDE.md)
+- **Dashboard estructura**: [`auth-service-frond-end/CLAUDE.md`](../../../auth-service-frond-end/CLAUDE.md)
 
 ---
 

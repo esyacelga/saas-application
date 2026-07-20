@@ -1,6 +1,6 @@
 # finance-service — Índice de documentación
 
-Gestión de ingresos y egresos financieros: categorización, registro, consulta y reportes analíticos (resumen, mensual, proyección). Ver [finance-service/README.md](../../finance-service/README.md) (Docker, variables de entorno) para información de despliegue. Este índice cubre solo la documentación de API.
+Gestión de ingresos y egresos financieros: categorización, registro, consulta y reportes analíticos (resumen, mensual, proyección). Ver [finance-service/CLAUDE.md](../../finance-service/CLAUDE.md) (arquitectura, Docker, variables de entorno) para información de despliegue. Este índice cubre solo la documentación de API.
 
 **Puerto:** 8085
 
@@ -87,4 +87,4 @@ Estos campos **nunca** se envían en el request body; son gestionados por el bac
 ## Más información
 
 - [finance-service/CLAUDE.md](../../finance-service/CLAUDE.md) — Arquitectura interna (hexagonal, R2DBC, WebFlux), configuración, comandos de build.
-- [finance-service/README.md](../../finance-service/README.md) — Despliegue, variables de entorno, estructura de carpetas.
+- [finance-service/CLAUDE.md](../../finance-service/CLAUDE.md) — Arquitectura, despliegue, variables de entorno, estructura de carpetas.
