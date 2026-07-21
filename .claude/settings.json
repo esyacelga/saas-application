@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "PowerShell(gcloud auth list *)",
-      "PowerShell(gcloud logging read *)"
+      "PowerShell(gcloud logging read *)",
+      "Bash(docker version *)",
+      "Bash(docker compose *)"
     ]
   }
 }

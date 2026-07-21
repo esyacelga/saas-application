@@ -173,10 +173,10 @@ export function CheckInPage() {
                   <p className="text-sm text-teal-300">{t('checkin.yaRegistrado.detalle')}</p>
                 </div>
                 <button
-                  onClick={reset}
+                  onClick={() => navigate('/membresia')}
                   className="w-full rounded-xl bg-teal-700 py-3 text-sm font-semibold text-white hover:bg-teal-600 transition-colors"
                 >
-                  {t('checkin.error.dismiss')}
+                  {t('checkin.error.verMembresias')}
                 </button>
               </>
             )}
@@ -195,10 +195,10 @@ export function CheckInPage() {
                   </p>
                 </div>
                 <button
-                  onClick={reset}
+                  onClick={() => navigate('/membresia')}
                   className="w-full rounded-xl bg-amber-700 py-3 text-sm font-semibold text-white hover:bg-amber-600 transition-colors"
                 >
-                  {t('checkin.error.dismiss')}
+                  {t('checkin.error.verMembresias')}
                 </button>
               </>
             )}

@@ -223,6 +223,15 @@ export function LoginPage() {
 
     const afterLogin = (qrToken: string | null) => {
         initTheme(useAuthStore.getState().user?.sexo ?? null)
+        // Punto único de convergencia de los 5 flujos de auth (login manual,
+        // registro, Google, Facebook, completar-OAuth). Garantiza que la persona
+        // autenticada tenga fila en core.clientes ANTES de entrar a la app; sin
+        // esto, mi-perfil/me/membresias devuelven 404. Idempotente (el repo trata
+        // el 409 "ya es cliente" como éxito). No bloquea la navegación: si falla
+        // por red, la pantalla de Membresía tiene su propio auto-registro lazy.
+        coreRepository
+            .asegurarClienteRegistrado(gymInfo?.id_sucursal ?? undefined)
+            .catch(() => {})
         navigate('/check-in', {
             replace: true,
             state: qrToken ? {autoQrToken: qrToken} : undefined,
@@ -247,17 +256,6 @@ export function LoginPage() {
         }
     }
 
-    const registrarClienteConReintentos = async (idSucursal?: number) => {
-        for (let i = 0; i < 3; i++) {
-            try {
-                await coreRepository.registrarComoCliente(idSucursal)
-                return
-            } catch {
-                if (i < 2) await new Promise<void>((r) => setTimeout(r, 3000))
-            }
-        }
-    }
-
     const onRegisterSubmit = async (data: RegisterData) => {
         const id_compania = resolvedCompanyId()
         if (!id_compania) {
@@ -273,10 +271,8 @@ export function LoginPage() {
                 id_compania,
             })
             setTokens(res.access_token, res.refresh_token)
-            registrarClienteConReintentos(gymInfo?.id_sucursal ?? undefined).catch(() => {
-            })
             toast.success(t('registro.success'))
-            afterLogin(pendingQrToken)
+            afterLogin(pendingQrToken) // asegura el cliente en core.clientes
         } catch {
             toast.error(t('registro.errors.error'))
         } finally {

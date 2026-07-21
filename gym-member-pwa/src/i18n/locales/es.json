@@ -105,6 +105,7 @@
       "title": "No se pudo registrar",
       "retry": "Intentar de nuevo",
       "dismiss": "Entendido",
+      "verMembresias": "Ver membresías",
       "defaultMessage": "No se pudo registrar la asistencia",
       "razones": {
         "sin_membresia": {

@@ -105,6 +105,7 @@
       "title": "Could not register",
       "retry": "Try again",
       "dismiss": "Got it",
+      "verMembresias": "View memberships",
       "defaultMessage": "Could not register attendance",
       "razones": {
         "sin_membresia": {

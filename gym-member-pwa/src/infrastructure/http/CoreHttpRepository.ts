@@ -84,6 +84,24 @@ class CoreHttpRepository {
     return data
   }
 
+  /**
+   * Garantiza que la persona autenticada tenga fila en `core.clientes` para su
+   * compañía. El backend (`POST /clientes/app`) no es idempotente: responde 409
+   * `conflicto` si el cliente ya existe. Aquí ese 409 se trata como éxito — la
+   * post-condición ("existe un cliente") ya se cumple. Se usa para auto-curar
+   * cuentas cuya `Persona`/`UsuarioApp` existe pero que nunca se registraron
+   * como cliente del gym (síntoma: `mi-perfil`/`me/membresias` devuelven 404).
+   */
+  async asegurarClienteRegistrado(idSucursal?: number): Promise<void> {
+    try {
+      await coreApi.post('/clientes/app', { id_sucursal: idSucursal ?? null })
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 409) return // ya es cliente — post-condición cumplida
+      throw err
+    }
+  }
+
   async reactivarCongelamiento(idCongelamiento: number): Promise<ReactivarResponse> {
     const { data } = await coreApi.put<ReactivarResponse>(
       `/mis-congelamientos/${idCongelamiento}/reactivar`,

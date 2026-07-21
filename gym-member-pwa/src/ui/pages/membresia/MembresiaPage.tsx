@@ -10,6 +10,7 @@ import {
   type TipoMembresia,
 } from '@/infrastructure/http/CoreHttpRepository'
 import { usePerfilStore, isPerfilStale } from '@/infrastructure/store/perfil.store'
+import { useAuthStore } from '@/infrastructure/store/auth.store'
 import { getApiErrorMessage, getApiErrorCode } from '@/lib/api-error'
 import { PulseBackground } from '@/ui/components/PulseBackground'
 
@@ -34,7 +35,7 @@ export function MembresiaPage() {
   const [reactivado, setReactivado] = useState(false)
   const [solicitando, setSolicitando] = useState(false)
 
-  const fetchAll = async (showLoading = true) => {
+  const fetchAll = async (showLoading = true, allowAutoRegister = true) => {
     if (showLoading) setLoading(true)
     try {
       const [perfil, mems] = await Promise.all([
@@ -51,6 +52,21 @@ export function MembresiaPage() {
         fetchTipos()
       }
     } catch (err) {
+      // La persona tiene cuenta (Persona/UsuarioApp) pero aún no está registrada
+      // como cliente del gym → `mi-perfil`/`me/membresias` responden 404. Se
+      // auto-registra una sola vez y se reintenta; tras registrar no hay membresía,
+      // así que la propia UI mostrará el catálogo.
+      const code = getApiErrorCode(err)
+      if (allowAutoRegister && code === 'recurso_no_encontrado') {
+        try {
+          const idSucursal = useAuthStore.getState().gymInfo?.id_sucursal ?? undefined
+          await coreRepository.asegurarClienteRegistrado(idSucursal)
+          await fetchAll(false, false) // reintento único, sin volver a auto-registrar
+          return
+        } catch {
+          // El auto-registro falló — cae al manejo genérico de abajo
+        }
+      }
       const hasResponse = !!(err as { response?: unknown })?.response
       if (!hasResponse) {
         toast.error(getApiErrorMessage(err, t('membresia.errors.load')))
@@ -83,7 +99,13 @@ export function MembresiaPage() {
             fetchTipos()
           }
         })
-        .catch(() => {})
+        .catch((err) => {
+          // Caché de perfil fresca pero el cliente no existe en el gym (404):
+          // delega a fetchAll para auto-registrar y recargar todo.
+          if (getApiErrorCode(err) === 'recurso_no_encontrado') {
+            fetchAll(false)
+          }
+        })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
