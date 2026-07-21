@@ -835,6 +835,47 @@ class MembresiaServiceTest {
     }
 
     // -------------------------------------------------------------------------
+    // validarAccesoPorCliente (flujo asistencia manual — resuelve por id_cliente)
+    // -------------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("validarAccesoPorCliente")
+    class ValidarAccesoPorCliente {
+
+        @Test
+        @DisplayName("permite acceso resolviendo el cliente por id_cliente con membresía activa")
+        void permiteAccesoResolviendoPorCliente() {
+            Cliente cliente = buildCliente(10L, 100L, 1L, Cliente.Estado.activo);
+            Membresia mem = buildMembresia(1L, 10L, 1L, 2L, Membresia.Estado.activa,
+                    LocalDate.now().minusDays(5), LocalDate.now().plusDays(25));
+            TipoMembresia tipo = buildTipo(2L, TipoMembresia.ModoControl.calendario,
+                    TipoMembresia.DuracionTipo.meses, 1, null, BigDecimal.valueOf(50));
+
+            when(clienteRepository.findByIdAndIdCompania(10L, 1L)).thenReturn(Mono.just(cliente));
+            when(membresiaRepository.findPendienteVivaByIdCliente(10L, 1L)).thenReturn(Mono.empty());
+            when(membresiaRepository.findUltimaRechazadaByIdCliente(10L, 1L)).thenReturn(Mono.empty());
+            when(membresiaRepository.findActivaByIdClienteAndIdCompania(10L, 1L)).thenReturn(Mono.just(mem));
+            when(tipoMembresiaRepository.findById(2L)).thenReturn(Mono.just(tipo));
+
+            StepVerifier.create(membresiaService.validarAccesoPorCliente(10L, 1L))
+                    .expectNextMatches(r -> r.permitido() && r.idCliente().equals(10L))
+                    .verifyComplete();
+        }
+
+        @Test
+        @DisplayName("deniega (sin_membresia) cuando el id_cliente no existe en esta compañía")
+        void denegaCuandoClienteNoEncontrado() {
+            when(clienteRepository.findByIdAndIdCompania(999L, 1L)).thenReturn(Mono.empty());
+
+            StepVerifier.create(membresiaService.validarAccesoPorCliente(999L, 1L))
+                    .expectNextMatches(r -> !r.permitido()
+                            && r.idCliente() == null
+                            && "sin_membresia".equals(r.razon()))
+                    .verifyComplete();
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // confirmarPago
     // -------------------------------------------------------------------------
 

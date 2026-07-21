@@ -295,6 +295,41 @@ public class MembresiaController {
                 });
     }
 
+    @Operation(summary = "Validar acceso del cliente por id_cliente (público)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "403")
+    })
+    @GetMapping("/membresias/validar-acceso-cliente")
+    public Mono<ResponseEntity<Map<String, Object>>> validarAccesoCliente(
+            @RequestParam Long id_cliente,
+            @RequestParam Long id_compania) {
+        return membresiaUseCase.validarAccesoPorCliente(id_cliente, id_compania)
+                .map(result -> {
+                    if (result.permitido()) {
+                        var body = new java.util.LinkedHashMap<String, Object>();
+                        body.put("permitido", true);
+                        body.put("id_cliente", result.idCliente());
+                        body.put("id_membresia", result.idMembresia());
+                        body.put("modo_control", result.modoControl());
+                        body.put("tipo_membresia", result.tipoNombre());
+                        body.put("dias_acceso_restantes", result.diasAccesoRestantes() != null ? result.diasAccesoRestantes() : 0);
+                        body.put("fecha_fin", result.fechaFin());
+                        if (result.accesosUsados() != null) body.put("accesos_usados", result.accesosUsados());
+                        return ResponseEntity.<Map<String, Object>>ok(body);
+                    } else {
+                        var body = new java.util.LinkedHashMap<String, Object>();
+                        body.put("permitido", false);
+                        body.put("razon", result.razon());
+                        if (result.tipoNombre() != null) body.put("tipo_membresia", result.tipoNombre());
+                        if (result.fechaFin() != null) body.put("ultima_membresia_fin", result.fechaFin());
+                        if (result.accesosUsados() != null) body.put("accesos_usados", result.accesosUsados());
+                        if (result.accesosTotal() != null) body.put("accesos_total", result.accesosTotal());
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN).<Map<String, Object>>body(body);
+                    }
+                });
+    }
+
     private Mono<JwtPrincipal> extractPrincipal() {
         return ReactiveSecurityContextHolder.getContext()
                 .map(ctx -> ctx.getAuthentication().getPrincipal())

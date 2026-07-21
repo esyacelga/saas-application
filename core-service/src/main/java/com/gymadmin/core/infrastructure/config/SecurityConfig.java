@@ -41,6 +41,7 @@ public class SecurityConfig {
                 )
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers("/api/v1/membresias/validar-acceso").permitAll()
+                        .pathMatchers("/api/v1/membresias/validar-acceso-cliente").permitAll()
                         .pathMatchers("/actuator/health").permitAll()
                         // REQ-SAAS-001 (Sub-fase 1.4): endpoints internos protegidos
                         // por header X-Internal-Call — fuera del filtro JWT.

@@ -390,6 +390,24 @@ Nota: toda venta creada por este endpoint queda con `origen='staff'`. Para solic
 
 ---
 
+### GET /api/v1/membresias/validar-acceso-cliente
+**Auth:** None (PUBLIC endpoint)  
+**Description:** Variante de `validar-acceso` que resuelve el cliente por su **propio `id_cliente`** (`core.clientes.id`) en lugar de por `id_persona`. Usada por el flujo de **asistencia manual** del heatmap admin (`attendance-service` → `CoreServiceClient.validarAccesoPorCliente`), que solo conoce el `id_cliente`. Reutiliza exactamente la misma lógica de resolución de acceso (`MembresiaService#resolverAcceso`), por lo que el body de respuesta, el catálogo de `razon` y el orden de evaluación son idénticos a los de `validar-acceso`. Los flujos QR/app siguen usando `validar-acceso` con `id_persona`.
+
+**Query parameters:**
+- `id_cliente` (required, integer) — Client ID from `core.clientes`
+- `id_compania` (required, integer) — Company ID
+
+**Response 200 / 403:** Idénticos a `validar-acceso` (mismos campos, mismo catálogo de `razon`).
+
+**Errors:**
+- `400` — missing or invalid query parameters
+- `403` — access denied (see response body for `razon`)
+
+> Revisar contra código: `MembresiaController#validarAccesoCliente` + `MembresiaService#validarAccesoPorCliente/resolverAcceso`.
+
+---
+
 ### POST /api/v1/membresias/{id}/confirmar-pago
 **Auth:** Bearer JWT (`tipo: staff`)
 **Permission:** `requireRecepcionOrAbove()` + permiso granular `membresias:confirmar_pago` (se exige solo si el token trae la lista `permisos` explícita; los tokens legacy sin `permisos` y `super_admin` la bypass-ean — el gate real vive en `MembresiaController#requireConfirmarPagoPermiso`).
@@ -613,6 +631,7 @@ Si algún origen no tiene filas la clave sigue apareciendo con valor `0`.
 | `/companias/{idCompania}/membresias/pendientes` | GET | `requireRecepcionOrAbove()` + `membresias:confirmar_pago` |
 | `/companias/{idCompania}/membresias/pendientes/contador` | GET | `requireRecepcionOrAbove()` + `membresias:confirmar_pago` |
 | `/membresias/validar-acceso` | GET | PUBLIC (sin auth) |
+| `/membresias/validar-acceso-cliente` | GET | PUBLIC (sin auth) |
 
 ---
 

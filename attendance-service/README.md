@@ -132,7 +132,7 @@ com.gymadmin.attendance/
 
 ### Dependencia externa
 
-`CoreServiceClient` llama al **Core Service** (`CORE_SERVICE_URL`) para validar membresías y códigos QR. El endpoint de override (`POST /api/v1/asistencias/manual/override`) omite esta validación. Además (REQ-SAAS-001 Fase 5) consume el endpoint interno `GET /internal/v1/companias/{id}/clientes-por-vencer` (header `X-Internal-Call: {INTERNAL_SECRET}`) para alimentar el `MensajeriaJob`.
+`CoreServiceClient` llama al **Core Service** (`CORE_SERVICE_URL`) para validar membresías y códigos QR. Los flujos QR/app usan `validarAcceso(idPersona, idCompania, token)` → `GET /api/v1/membresias/validar-acceso` (con `id_persona` del JWT). El flujo **manual** usa `validarAccesoPorCliente(idCliente, idCompania)` → `GET /api/v1/membresias/validar-acceso-cliente` (con `id_cliente`, ya que el heatmap admin solo conoce ese PK; ambos endpoints de core son públicos). El endpoint de override (`POST /api/v1/asistencias/manual/override`) omite esta validación. Además (REQ-SAAS-001 Fase 5) consume el endpoint interno `GET /internal/v1/companias/{id}/clientes-por-vencer` (header `X-Internal-Call: {INTERNAL_SECRET}`) para alimentar el `MensajeriaJob`.
 
 ### MensajeriaJob — avisos de vencimiento por WhatsApp (REQ-SAAS-001 Fase 5)
 

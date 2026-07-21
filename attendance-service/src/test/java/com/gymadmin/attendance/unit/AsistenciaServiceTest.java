@@ -90,7 +90,7 @@ class AsistenciaServiceTest {
             Asistencia saved = buildAsistencia(1L, 10, 5);
             ValidarAccesoResponse acceso = mockAccesoPermitido(10, 5);
 
-            when(coreServiceClient.validarAcceso(10, 1, "")).thenReturn(Mono.just(acceso));
+            when(coreServiceClient.validarAccesoPorCliente(10, 1)).thenReturn(Mono.just(acceso));
             when(asistenciaRepository.save(any())).thenReturn(Mono.just(saved));
 
             StepVerifier.create(service.registrarManual(cmd))
@@ -110,7 +110,7 @@ class AsistenciaServiceTest {
             Asistencia saved = buildAsistencia(2L, 10, 5);
             ValidarAccesoResponse acceso = mockAccesoPermitido(10, 5);
 
-            when(coreServiceClient.validarAcceso(10, 1, "")).thenReturn(Mono.just(acceso));
+            when(coreServiceClient.validarAccesoPorCliente(10, 1)).thenReturn(Mono.just(acceso));
             when(asistenciaRepository.save(any())).thenReturn(Mono.just(saved));
 
             StepVerifier.create(service.registrarManual(cmd))
@@ -125,7 +125,7 @@ class AsistenciaServiceTest {
                     10, LocalDate.now(), null, 1, 1, "recepcion-user"
             );
             ValidarAccesoResponse accesoDenegado = mockAccesoDenegado("membresia_vencida");
-            when(coreServiceClient.validarAcceso(10, 1, ""))
+            when(coreServiceClient.validarAccesoPorCliente(10, 1))
                     .thenReturn(Mono.just(accesoDenegado));
 
             StepVerifier.create(service.registrarManual(cmd))
@@ -143,7 +143,7 @@ class AsistenciaServiceTest {
                     10, LocalDate.now(), null, 1, 1, "recepcion-user"
             );
             ValidarAccesoResponse acceso = mockAccesoPermitido(10, 5);
-            when(coreServiceClient.validarAcceso(10, 1, "")).thenReturn(Mono.just(acceso));
+            when(coreServiceClient.validarAccesoPorCliente(10, 1)).thenReturn(Mono.just(acceso));
             when(asistenciaRepository.save(any())).thenReturn(
                     Mono.error(new RuntimeException("unique constraint violation"))
             );

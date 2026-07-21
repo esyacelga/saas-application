@@ -158,7 +158,7 @@ public class AsistenciaService implements AsistenciaUseCase {
     @Override
     public Mono<Asistencia> registrarManual(RegistrarManualCommand command) {
         log.info("[registrarManual] INICIO idCliente={} idCompania={} fecha={}", command.idCliente(), command.idCompania(), command.fecha());
-        return coreServiceClient.validarAcceso(command.idCliente(), command.idCompania(), "")
+        return coreServiceClient.validarAccesoPorCliente(command.idCliente(), command.idCompania())
                 .flatMap(acceso -> {
                     if (!acceso.isPermitido()) {
                         return Mono.error(new ForbiddenException(

@@ -31,6 +31,15 @@ public interface MembresiaUseCase {
 
     Mono<ValidarAccesoResult> validarAcceso(Long idPersona, Long idCompania);
 
+    /**
+     * Variante del flujo de validación de acceso que resuelve el cliente por su propio
+     * {@code id_cliente} (PK de {@code core.clientes}) en lugar de por {@code id_persona}.
+     * Usado por el flujo de "asistencia manual" del heatmap admin, que sólo conoce el
+     * {@code id_cliente}. Reutiliza exactamente la misma lógica de resolución de acceso que
+     * {@link #validarAcceso(Long, Long)}.
+     */
+    Mono<ValidarAccesoResult> validarAccesoPorCliente(Long idCliente, Long idCompania);
+
     Mono<Membresia> actualizarAsistenciasPrevias(Long id, Long idCompania, Integer cantidad);
 
     Mono<Membresia> confirmarPago(Long idMembresia, Long idCompania, Long idUsuarioActuante,

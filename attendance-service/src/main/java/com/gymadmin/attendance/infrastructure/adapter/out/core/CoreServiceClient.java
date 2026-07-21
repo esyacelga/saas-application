@@ -62,6 +62,47 @@ public class CoreServiceClient {
                 });
     }
 
+    /**
+     * Variante de {@link #validarAcceso(Integer, Integer, String)} para el flujo de asistencia
+     * manual del heatmap admin: consulta core por {@code id_cliente} (PK de {@code core.clientes})
+     * en lugar de {@code id_persona}. Llama el endpoint público
+     * {@code GET /api/v1/membresias/validar-acceso-cliente} (sin bearer requerido).
+     */
+    public Mono<ValidarAccesoResponse> validarAccesoPorCliente(Integer idCliente, Integer idCompania) {
+        log.info("[CoreService] validarAccesoPorCliente → idCliente={} idCompania={}", idCliente, idCompania);
+        return coreWebClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/membresias/validar-acceso-cliente")
+                        .queryParam("id_cliente", idCliente)
+                        .queryParam("id_compania", idCompania)
+                        .build())
+                .header("Authorization", "")
+                .exchangeToMono(response -> {
+                    int status = response.statusCode().value();
+                    log.info("[CoreService] validarAccesoPorCliente ← HTTP {} idCliente={} idCompania={}", status, idCliente, idCompania);
+                    if (status >= 400) {
+                        log.warn("[CoreService] validarAccesoPorCliente HTTP {} inesperado idCliente={} idCompania={}", status, idCliente, idCompania);
+                    }
+                    return response.bodyToMono(ValidarAccesoResponse.class);
+                })
+                .doOnNext(r -> {
+                    if (r == null) {
+                        log.error("[CoreService] validarAccesoPorCliente respuesta NULL idCliente={} idCompania={}", idCliente, idCompania);
+                    } else if (r.isPermitido()) {
+                        log.info("[CoreService] acceso PERMITIDO idCliente={} idMembresia={} modo={} fechaFin={} accesosRestantes={}",
+                                idCliente, r.getIdMembresia(), r.getModoControl(), r.getFechaFin(), r.getDiasAccesoRestantes());
+                    } else {
+                        log.warn("[CoreService] acceso DENEGADO razon='{}' idCliente={} idCompania={} idMembresia={} fechaFin={}",
+                                r.getRazon(), idCliente, idCompania, r.getIdMembresia(), r.getFechaFin());
+                    }
+                })
+                .onErrorResume(e -> {
+                    log.error("[CoreService] validarAccesoPorCliente FALLÓ idCliente={} idCompania={} causa='{}'",
+                            idCliente, idCompania, e.getMessage());
+                    return Mono.error(new RuntimeException("Error consultando Core Service: " + e.getMessage()));
+                });
+    }
+
     public Mono<SucursalQrResponse> buscarSucursalPorQr(String qrToken, String bearerToken) {
         log.debug("[CoreService] buscarSucursalPorQr → qrToken={}...", truncate(qrToken));
         return coreWebClient.get()

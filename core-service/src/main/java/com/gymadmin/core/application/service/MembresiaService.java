@@ -224,6 +224,18 @@ public class MembresiaService implements MembresiaUseCase {
                 }));
     }
 
+    @Override
+    public Mono<ValidarAccesoResult> validarAccesoPorCliente(Long idCliente, Long idCompania) {
+        log.info("[validarAccesoPorCliente] INICIO idCliente={} idCompania={}", idCliente, idCompania);
+        return clienteRepository.findByIdAndIdCompania(idCliente, idCompania)
+                .doOnNext(c -> log.info("[validarAccesoPorCliente] cliente encontrado idCliente={} idCompania={}", c.getId(), idCompania))
+                .flatMap(cliente -> resolverAcceso(cliente.getId(), idCompania))
+                .switchIfEmpty(Mono.defer(() -> {
+                    log.warn("[validarAccesoPorCliente] cliente NO encontrado idCliente={} idCompania={}", idCliente, idCompania);
+                    return Mono.just(buildDenegado(null, null, "sin_membresia", null, null, null, null));
+                }));
+    }
+
     private Mono<ValidarAccesoResult> resolverAcceso(Long idCliente, Long idCompania) {
         // Orden de evaluación (§4.5): pago_pendiente y membresia_rechazada ANTES de sin_membresia/vencida.
         return membresiaRepository.findPendienteVivaByIdCliente(idCliente, idCompania)
