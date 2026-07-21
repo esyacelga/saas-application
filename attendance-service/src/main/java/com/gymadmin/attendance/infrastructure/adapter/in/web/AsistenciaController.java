@@ -112,7 +112,7 @@ public class AsistenciaController {
                                 request.fecha(),
                                 request.horaEntrada(),
                                 principal.getIdCompania().intValue(),
-                                null,
+                                principal.getIdSucursal() != null ? principal.getIdSucursal().intValue() : 1,
                                 principal.getUserId()
                         )))
                         .map(a -> ResponseEntity.status(HttpStatus.CREATED).body(a)));

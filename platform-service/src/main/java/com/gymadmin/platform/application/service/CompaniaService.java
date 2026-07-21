@@ -63,12 +63,22 @@ public class CompaniaService implements CompaniaUseCase {
     }
 
     @Override
-    public Flux<Compania> listarCompanias(JwtPrincipal jwtContext) {
-        if (jwtContext.isAdminCompania() && jwtContext.getIdCompania() != null) {
-            return companiaRepository.findById(jwtContext.getIdCompania())
-                    .flux();
-        }
-        return companiaRepository.findAll();
+    public Flux<CompaniaConPlan> listarCompanias(JwtPrincipal jwtContext) {
+        Flux<Compania> companias =
+                (jwtContext.isAdminCompania() && jwtContext.getIdCompania() != null)
+                        ? companiaRepository.findById(jwtContext.getIdCompania()).flux()
+                        : companiaRepository.findAll();
+        return companias.flatMap(this::conPlanActivo);
+    }
+
+    private Mono<CompaniaConPlan> conPlanActivo(Compania compania) {
+        return companiaPlanRepository.findActivoByIdCompania(compania.getId())
+                .flatMap(cp -> planRepository.findById(cp.getIdPlan())
+                        .map(plan -> new CompaniaConPlan(compania,
+                                new CompaniaConPlan.PlanActivo(plan.getNombre(), cp.getEstado(), cp.getFechaFin())))
+                        .defaultIfEmpty(new CompaniaConPlan(compania,
+                                new CompaniaConPlan.PlanActivo(null, cp.getEstado(), cp.getFechaFin()))))
+                .defaultIfEmpty(CompaniaConPlan.sinPlan(compania));
     }
 
     @Override

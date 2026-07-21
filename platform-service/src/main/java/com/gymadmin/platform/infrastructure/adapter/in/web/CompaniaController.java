@@ -3,6 +3,7 @@ package com.gymadmin.platform.infrastructure.adapter.in.web;
 import com.gymadmin.platform.application.service.AccessControlService;
 import com.gymadmin.platform.application.service.CloudinaryService;
 import com.gymadmin.platform.domain.model.Compania;
+import com.gymadmin.platform.domain.model.CompaniaConPlan;
 import com.gymadmin.platform.domain.port.in.ActividadPlataformaUseCase;
 import com.gymadmin.platform.domain.port.in.CompaniaUseCase;
 import com.gymadmin.platform.infrastructure.adapter.in.web.dto.*;
@@ -25,6 +26,8 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @RestController
@@ -295,6 +298,22 @@ public class CompaniaController {
     }
 
     private CompaniaResponse toResponse(Compania c) {
+        return toResponse(c, null);
+    }
+
+    private CompaniaResponse toResponse(CompaniaConPlan cp) {
+        CompaniaConPlan.PlanActivo plan = cp.planActivo();
+        CompaniaResponse.PlanActivoDto planDto = plan == null ? null
+                : new CompaniaResponse.PlanActivoDto(
+                        plan.nombre(),
+                        plan.estado() != null ? plan.estado().name() : null,
+                        plan.fechaFin(),
+                        plan.fechaFin() != null ? ChronoUnit.DAYS.between(LocalDate.now(), plan.fechaFin()) : null
+                );
+        return toResponse(cp.compania(), planDto);
+    }
+
+    private CompaniaResponse toResponse(Compania c, CompaniaResponse.PlanActivoDto planActivo) {
         return new CompaniaResponse(
                 c.getId(),
                 c.getNombre(),
@@ -304,7 +323,7 @@ public class CompaniaController {
                 c.getCorreo(),
                 c.getLogoUrl(),
                 c.getActivo(),
-                null
+                planActivo
         );
     }
 }

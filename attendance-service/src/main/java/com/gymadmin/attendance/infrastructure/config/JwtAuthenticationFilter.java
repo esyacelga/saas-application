@@ -66,7 +66,13 @@ public class JwtAuthenticationFilter implements WebFilter {
                 idPersona = number.longValue();
             }
 
-            JwtPrincipal principal = new JwtPrincipal(userId, tipo, rolPlataforma, idCompania, rolGym, idPersona);
+            Long idSucursal = null;
+            Object idSucursalObj = claims.get("id_sucursal");
+            if (idSucursalObj instanceof Number number) {
+                idSucursal = number.longValue();
+            }
+
+            JwtPrincipal principal = new JwtPrincipal(userId, tipo, rolPlataforma, idCompania, rolGym, idPersona, idSucursal);
 
             String role = rolPlataforma != null ? rolPlataforma : (rolGym != null ? rolGym : "user");
             UsernamePasswordAuthenticationToken authentication =

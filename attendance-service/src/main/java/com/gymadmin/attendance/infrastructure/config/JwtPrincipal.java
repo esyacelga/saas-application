@@ -10,14 +10,16 @@ public class JwtPrincipal implements Principal {
     private final Long idCompania;
     private final String rolGym;
     private final Long idPersona;
+    private final Long idSucursal;
 
-    public JwtPrincipal(String userId, String tipo, String rolPlataforma, Long idCompania, String rolGym, Long idPersona) {
+    public JwtPrincipal(String userId, String tipo, String rolPlataforma, Long idCompania, String rolGym, Long idPersona, Long idSucursal) {
         this.userId = userId;
         this.tipo = tipo;
         this.rolPlataforma = rolPlataforma;
         this.idCompania = idCompania;
         this.rolGym = rolGym;
         this.idPersona = idPersona;
+        this.idSucursal = idSucursal;
     }
 
     @Override
@@ -31,6 +33,7 @@ public class JwtPrincipal implements Principal {
     public Long getIdCompania()      { return idCompania; }
     public String getRolGym()        { return rolGym; }
     public Long getIdPersona()       { return idPersona; }
+    public Long getIdSucursal()      { return idSucursal; }
 
     public boolean isCliente()       { return "cliente".equals(tipo); }
     public boolean isStaff()         { return "staff".equals(tipo); }

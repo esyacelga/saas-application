@@ -147,7 +147,7 @@ Key enums: `CompaniaPlan.Estado` (ACTIVO, EN_GRACIA, VENCIDO, SUSPENDIDO, CANCEL
 Port **8081**. All endpoints under `/api/v1/`. Public: `/api/v1/modulos/check`, `/actuator/health`. All others require `Authorization: Bearer <jwt>`.
 
 Key route groups:
-- `CompaniaController` → `/api/v1/companias` — CRUD + wizard registration (`POST /wizard`) + auto-registro + logo upload (`POST /{id}/logo`) + suspend (`PUT /{id}/suspender`)
+- `CompaniaController` → `/api/v1/companias` — CRUD + wizard registration (`POST /wizard`) + auto-registro + logo upload (`POST /{id}/logo`) + suspend (`PUT /{id}/suspender`). El listado (`GET /api/v1/companias`) enriquece cada compañía con su suscripción vigente: `planActivo: { nombre, estado (MAYÚSCULA, igual que `SuscripcionResponse` — vía `Estado.name()`), fechaFin, diasRestantes }` o `null` si no hay suscripción activa. El use case `listarCompanias` devuelve `Flux<CompaniaConPlan>` (VO de dominio que agrupa `Compania` + plan activo); el enriquecimiento vive en `CompaniaService` (por compañía: `findActivoByIdCompania` + `PlanRepository.findById` para el nombre). Los endpoints de una sola compañía (`GET/PUT /{id}`, logo) devuelven `planActivo: null` (sin contexto de plan).
 - `MiEmpresaController` → `/api/v1/mi-empresa` — staff self-service (logo upload, sucursal, QR renewal)
 - `SuscripcionController` → `/api/v1/companias/{id}/suscripcion` — get active, historial, renovar, upgrade, downgrade
 - `PagoController` → `/api/v1/companias/{id}/pagos` + `POST /api/v1/pagos` + `PUT /api/v1/pagos/{id}/confirmar`

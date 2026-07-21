@@ -17,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DuplicateKeyException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -137,7 +138,7 @@ class AsistenciaServiceTest {
         }
 
         @Test
-        @DisplayName("lanza ConflictException cuando ya existe asistencia hoy (violación de restricción única)")
+        @DisplayName("lanza ConflictException cuando ya existe asistencia hoy (DuplicateKeyException)")
         void lanzaConflictCuandoYaRegistradoHoy() {
             RegistrarManualCommand cmd = new RegistrarManualCommand(
                     10, LocalDate.now(), null, 1, 1, "recepcion-user"
@@ -145,11 +146,35 @@ class AsistenciaServiceTest {
             ValidarAccesoResponse acceso = mockAccesoPermitido(10, 5);
             when(coreServiceClient.validarAccesoPorCliente(10, 1)).thenReturn(Mono.just(acceso));
             when(asistenciaRepository.save(any())).thenReturn(
-                    Mono.error(new RuntimeException("unique constraint violation"))
+                    Mono.error(new DuplicateKeyException(
+                            "duplicate key value violates unique constraint \"asistencias_id_membresia_fecha_key\""))
             );
 
             StepVerifier.create(service.registrarManual(cmd))
-                    .expectError(ConflictException.class)
+                    .expectErrorSatisfies(e -> {
+                        assertThat(e).isInstanceOf(ConflictException.class);
+                        assertThat(((ConflictException) e).getCodigo()).isEqualTo("ya_registrado_hoy");
+                    })
+                    .verify();
+        }
+
+        @Test
+        @DisplayName("propaga el error original (NO lo mapea a ya_registrado_hoy) cuando no es una violación de restricción única")
+        void propagaErrorNoDuplicadoSinMapear() {
+            RegistrarManualCommand cmd = new RegistrarManualCommand(
+                    10, LocalDate.now(), null, 1, 1, "recepcion-user"
+            );
+            ValidarAccesoResponse acceso = mockAccesoPermitido(10, 5);
+            when(coreServiceClient.validarAccesoPorCliente(10, 1)).thenReturn(Mono.just(acceso));
+            RuntimeException noNulo = new RuntimeException(
+                    "null value in column \"id_sucursal\" of relation \"asistencias\" violates not-null constraint");
+            when(asistenciaRepository.save(any())).thenReturn(Mono.error(noNulo));
+
+            StepVerifier.create(service.registrarManual(cmd))
+                    .expectErrorSatisfies(e -> {
+                        assertThat(e).isNotInstanceOf(ConflictException.class);
+                        assertThat(e).isSameAs(noNulo);
+                    })
                     .verify();
         }
     }

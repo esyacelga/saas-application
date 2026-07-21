@@ -1,6 +1,7 @@
 package com.gymadmin.platform.domain.port.in;
 
 import com.gymadmin.platform.domain.model.Compania;
+import com.gymadmin.platform.domain.model.CompaniaConPlan;
 import com.gymadmin.platform.infrastructure.config.JwtPrincipal;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -9,7 +10,7 @@ import java.util.List;
 
 public interface CompaniaUseCase {
 
-    Flux<Compania> listarCompanias(JwtPrincipal jwtContext);
+    Flux<CompaniaConPlan> listarCompanias(JwtPrincipal jwtContext);
 
     Mono<Compania> getCompania(Long id);
 

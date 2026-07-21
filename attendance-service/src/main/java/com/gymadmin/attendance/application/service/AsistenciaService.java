@@ -11,6 +11,7 @@ import com.gymadmin.attendance.infrastructure.exception.GoneException;
 import com.gymadmin.attendance.infrastructure.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -176,13 +177,23 @@ public class AsistenciaService implements AsistenciaUseCase {
 
                     return asistenciaRepository.save(asistencia)
                             .onErrorMap(e -> {
-                                if (e.getMessage() != null && e.getMessage().contains("unique")) {
+                                log.error("[registrarManual] error al guardar idCliente={} fecha={} causa='{}'",
+                                        command.idCliente(), asistencia.getFecha(), e.getMessage());
+                                if (esViolacionUnica(e)) {
                                     return new ConflictException("ya_registrado_hoy",
                                             "Ya existe una entrada registrada para este cliente hoy");
                                 }
                                 return e;
                             });
                 });
+    }
+
+    private boolean esViolacionUnica(Throwable e) {
+        if (e instanceof DuplicateKeyException) {
+            return true;
+        }
+        String msg = e.getMessage();
+        return msg != null && (msg.contains("duplicate key") || msg.contains("asistencias_id_membresia_fecha_key"));
     }
 
     @Override
