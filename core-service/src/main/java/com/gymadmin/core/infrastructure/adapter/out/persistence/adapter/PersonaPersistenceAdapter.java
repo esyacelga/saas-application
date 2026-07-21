@@ -1,6 +1,7 @@
 package com.gymadmin.core.infrastructure.adapter.out.persistence.adapter;
 
 import com.gymadmin.core.domain.port.out.PersonaRepository;
+import com.gymadmin.core.domain.validation.CedulaEcuatoriana;
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
@@ -41,15 +42,22 @@ public class PersonaPersistenceAdapter implements PersonaRepository {
 
     @Override
     public Mono<PersonaResult> create(CreatePersonaCommand command) {
+        // ci_validada: true solo si el documento pasa el algoritmo del dígito verificador
+        // ecuatoriano (módulo 10). Documentos no-EC (pasaporte, RUC, extranjero) → false. Nunca
+        // rechaza el registro. Réplica del cálculo que ya hacen platform-service y auth-service al
+        // crear persona; aquí cubre la ruta admin (registro de cliente desde el panel).
+        boolean ciValidada = CedulaEcuatoriana.esValida(command.ci());
+
         var spec = databaseClient.sql("""
-                INSERT INTO identidad.personas (ci, nombre, telefono, correo, fecha_nacimiento, foto_url)
-                VALUES (:ci, :nombre, :telefono, :correo, :fechaNacimiento, :fotoUrl)
+                INSERT INTO identidad.personas (ci, nombre, telefono, correo, fecha_nacimiento, foto_url, ci_validada)
+                VALUES (:ci, :nombre, :telefono, :correo, :fechaNacimiento, :fotoUrl, :ciValidada)
                 RETURNING id, ci, nombre, telefono, correo, foto_url
                 """)
                 .bind("ci", command.ci())
                 .bind("nombre", command.nombre())
                 .bind("telefono", command.telefono() != null ? command.telefono() : "")
-                .bind("correo", command.correo() != null ? command.correo() : "");
+                .bind("correo", command.correo() != null ? command.correo() : "")
+                .bind("ciValidada", ciValidada);
 
         spec = command.fechaNacimiento() != null
                 ? spec.bind("fechaNacimiento", command.fechaNacimiento())

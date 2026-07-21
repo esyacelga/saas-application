@@ -1,6 +1,6 @@
 # PERSONAS API
 
-> **ESTADO:** ✅ Refleja el código actual (verificado 2026-07-08 contra `ApiRouter.java`). Ver [../../STATUS.md](../../STATUS.md).
+> **ESTADO:** ✅ Refleja el código actual (verificado 2026-07-08 contra `ApiRouter.java`; comportamiento ci_validada recalc-on-update verificado 2026-07-21 contra `PersonaMapper.java`). Ver [../../STATUS.md](../../STATUS.md).
 
 Base URL: `/api/v1/personas`
 
@@ -231,7 +231,7 @@ Content-Type: application/json
 
 Actualiza los datos de una persona. Todos los campos son opcionales; solo se actualizan los que se envían.
 
-La `ci` puede enviarse — si es diferente a la actual, se valida unicidad. El campo `ciValidada` se preserva en la actualización (el recálculo al editar `ci` está pendiente de implementación).
+La `ci` puede enviarse — si es diferente a la actual, se valida unicidad. El servidor recalcula automáticamente `ciValidada` aplicando el algoritmo de módulo 10 sobre la `ci` actual, de la misma manera que en la creación.
 
 **Seguridad:** público (o token autenticado, según configuración de SecurityConfig).
 
@@ -256,7 +256,7 @@ Todos los campos son opcionales. No enviar un campo equivale a no actualizarlo.
 
 ### Response 200
 
-Objeto `PersonaResponse` con los datos actualizados. El campo `ciValidada` se retorna sin cambios.
+Objeto `PersonaResponse` con los datos actualizados. El campo `ciValidada` refleja el recálculo desde la `ci` actual (si se corrigió la cédula a una válida, `ciValidada` pasa a `true`; si se edita a un documento inválido, pasa a `false`).
 
 ### Errores
 

@@ -4,6 +4,14 @@ server:
 spring:
   application:
     name: platform-service
+  # NOTA: platform-service NO usa property-naming-strategy SNAKE_CASE (sus DTOs serializan en
+  # camelCase — logoUrl, planActivo, fechaFin — y el frontend admin depende de esos nombres exactos).
+  # No añadir SNAKE_CASE aquí sin migrar el contrato JSON. Solo se fija la zona horaria y el formato
+  # de fechas para uniformar con el resto de microservicios (2026-07-21).
+  jackson:
+    time-zone: America/Guayaquil
+    serialization:
+      write-dates-as-timestamps: false
   r2dbc:
     url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:gym_administrator}${DB_SSL_OPTIONS:}
     username: ${DB_USER:gym_user}

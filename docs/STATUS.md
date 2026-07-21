@@ -2,7 +2,27 @@
 
 > **Propósito:** Fuente única de verdad sobre **qué está construido hoy** vs. **qué es solo diseño**. Antes de implementar o de confiar en un documento como referencia, consulta aquí su estado.
 >
-> Última verificación contra el código: **2026-07-10** (general) · **2026-07-14** (billing-service, tras cierre de Fase 3 SRI 2026) · **2026-07-19** (reestructuración de docs + contrato de errores) · **2026-07-21** (bootstrap de métodos de pago en wizard de compañía · asistencias manuales desde heatmap · estado inicial de cliente `vencido`).
+> Última verificación contra el código: **2026-07-10** (general) · **2026-07-14** (billing-service, tras cierre de Fase 3 SRI 2026) · **2026-07-19** (reestructuración de docs + contrato de errores) · **2026-07-21** (bootstrap de métodos de pago en wizard de compañía · asistencias manuales desde heatmap · estado inicial de cliente `vencido` · zona horaria Ecuador uniforme en los 6 microservicios).
+
+## ✅ Actualización 2026-07-21 (`ci_validada` en registro de cliente admin + recálculo al editar CI)
+
+- **Registro de cliente desde el panel admin** (`core-service`): ahora calcula el dígito verificador ecuatoriano (módulo 10) y puebla `identidad.personas.ci_validada` al crear la persona. Antes esta ruta dejaba el flag en `FALSE` (default BD) aun para cédulas EC válidas. Nueva copia idéntica del algoritmo `core-service/.../domain/validation/CedulaEcuatoriana.java` (4ª copia: front + platform + auth + core, deben mantenerse iguales). Wiring en `PersonaPersistenceAdapter.create`.
+- **Recálculo al editar CI** (`auth-service`): `PersonaMapper.toEntity` ahora calcula `ci_validada` **siempre** desde el `ci` actual (INSERT y UPDATE), no solo al crear. El panel admin permite editar el CI (`PUT /personas`); corregirlo a una cédula válida actualiza el flag. Idempotente (`esValida` es función pura del `ci`).
+- **Pendiente restante**: backfill de personas previas + exposición REST del flag. ⚠️ No retroactivo; requiere reiniciar core (8083) y auth (8080).
+- **Detalle**: [_changesets/2026-07-21-ci-validada-registro-admin.md](_changesets/2026-07-21-ci-validada-registro-admin.md) · [pendientes/validacion-cedula-persona.md](gym-administrator/pendientes/validacion-cedula-persona.md).
+
+---
+
+## ✅ Actualización 2026-07-21 (zona horaria Ecuador uniforme en los 6 microservicios)
+
+- **Zona horaria uniformada a `America/Guayaquil` (UTC-5)** en los 6 servicios. Antes había 3 formas distintas: attendance/finance fijaban zona JVM + Jackson; core/billing solo el `Clock` de negocio; platform usaba `Clock.systemUTC()` (**bug**); auth nada.
+- **Bug corregido en `platform-service`**: `ClockConfig` pasó de `Clock.systemUTC()` a `Clock.system(America/Guayaquil)`. De noche (19:00–24:00 Ecuador) el "hoy" de negocio (`LocalDate.now(clock)`) se adelantaba un día en jobs de suscripción/vencimiento/buckets. Los `Instant.now(clock)` no se afectan (instante absoluto). **224 unit tests verdes** tras el cambio.
+- **JVM default zone**: se añadió `TimeZone.setDefault("America/Guayaquil")` en `main()` de core, platform, billing y auth (attendance/finance ya lo tenían).
+- **Jackson**: se añadió `spring.jackson.time-zone: America/Guayaquil` (+ `write-dates-as-timestamps: false`) en core, billing, auth y platform. ⚠️ **platform NO** usa `SNAKE_CASE` (sus DTOs son camelCase y el frontend depende de ello) — no se tocó su naming strategy.
+- **Sin migración de datos**: las columnas de auditoría son `TIMESTAMPTZ` (instante absoluto), nunca se corrompieron. ⚠️ Requiere **reiniciar** los servicios para tomar la zona (se fija al arranque).
+- **Detalle**: [_changesets/2026-07-21-zona-horaria-ecuador-uniforme.md](_changesets/2026-07-21-zona-horaria-ecuador-uniforme.md).
+
+---
 
 ## ✅ Actualización 2026-07-21 (asistencias manuales desde heatmap + estado inicial de cliente)
 

@@ -6,6 +6,9 @@ spring:
     name: core-service
   jackson:
     property-naming-strategy: SNAKE_CASE
+    time-zone: America/Guayaquil
+    serialization:
+      write-dates-as-timestamps: false
   r2dbc:
     url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:gym_administrator}${DB_SSL_OPTIONS:}
     username: ${DB_USER:gym_user}

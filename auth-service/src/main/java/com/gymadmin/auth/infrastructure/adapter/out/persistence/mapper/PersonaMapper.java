@@ -24,14 +24,13 @@ public final class PersonaMapper {
     public static PersonaEntity toEntity(Persona d) {
         OffsetDateTime now = OffsetDateTime.now();
         boolean isNew = d.getId() == null;
-        // Al crear la persona, el flag lo calcula el servidor con el algoritmo del dígito
-        // verificador ecuatoriano — TRUE solo si `ci` es una cédula EC válida; FALSE para
-        // pasaportes, RUC, documentos extranjeros o cédulas inválidas. Nunca se confía en el
-        // cliente. Al actualizar se preserva el valor de dominio (recálculo al editar `ci`
-        // pendiente — ver docs/gym-administrator/pendientes/validacion-cedula-persona.md).
-        boolean ciValidada = isNew
-                ? CedulaEcuatoriana.esValida(d.getCi())
-                : Boolean.TRUE.equals(d.getCiValidada());
+        // El flag SIEMPRE lo calcula el servidor con el algoritmo del dígito verificador
+        // ecuatoriano (módulo 10) a partir del `ci` actual — TRUE solo si es una cédula EC
+        // válida; FALSE para pasaportes, RUC, documentos extranjeros o cédulas inválidas. Nunca
+        // se confía en el cliente. Se recalcula también en UPDATE porque el panel admin permite
+        // editar el `ci` (PUT /personas): si se corrige a una cédula válida, el flag debe
+        // reflejarlo. `esValida` es función pura del `ci`, así que recalcular es idempotente.
+        boolean ciValidada = CedulaEcuatoriana.esValida(d.getCi());
         return PersonaEntity.builder()
                 .id(d.getId()).ci(d.getCi()).ciValidada(ciValidada).nombre(d.getNombre())
                 .telefono(d.getTelefono()).correo(d.getCorreo())

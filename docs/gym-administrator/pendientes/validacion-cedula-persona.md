@@ -1,12 +1,15 @@
 # Pendiente — Validación de cédula de `identidad.personas` (`ci_validada`)
 
 > **Estado:** 🟡 **Parcial** — escritura al crear persona **ya implementada** en platform-service
-> (auto-register wizard) **y en auth-service** (registro OAuth PWA + `POST /personas`, vía
-> `PersonaMapper`); falta el **backfill** de personas existentes, recálculo al editar `ci`, y
-> exposición REST.
+> (auto-register wizard), auth-service (registro OAuth PWA + `POST /personas`, vía `PersonaMapper`)
+> **y core-service** (registro de cliente desde el panel admin). El **recálculo al editar `ci`** ya
+> está implementado en auth-service (UPDATE de `PUT /personas`). Falta el **backfill** de personas
+> existentes y la **exposición REST** del flag.
 > **Fecha:** 2026-07-14 (creado) · 2026-07-14 (escritura platform) · 2026-07-16 (verificado scope)
-> · 2026-07-17 (escritura auth-service — registro OAuth PWA).
-> **Área:** identidad / core (personas) — la escritura vive en **platform-service** y **auth-service**.
+> · 2026-07-17 (escritura auth-service — registro OAuth PWA) · 2026-07-21 (core-service registro
+> admin + recálculo en UPDATE de auth-service).
+> **Área:** identidad / core (personas) — la escritura vive en **platform-service**, **auth-service**
+> y **core-service**.
 
 ## Requerimiento
 
@@ -66,19 +69,36 @@ correo, `POST /personas`):
   cualquier documento numérico (`\d+`, mín. 3) para soportar socios extranjeros. La validación del
   dígito verificador es del lado servidor; el flag refleja si el documento es una cédula EC válida.
 
+## Lo que YA está hecho (escritura al crear persona — core-service, ruta admin) ✅
+
+El **2026-07-21** se extendió el cálculo a **core-service**, cubriendo el **registro de cliente
+desde el panel admin** (`ClienteService.registrar` → `PersonaPersistenceAdapter.create`), que antes
+dejaba `ci_validada` en el default de BD (`FALSE`) incluso para cédulas EC válidas:
+
+- **Algoritmo replicado:** `core-service/.../domain/validation/CedulaEcuatoriana.java` — **cuarta**
+  copia idéntica (front `validarCedula.ts` + platform + auth + core). Las cuatro deben permanecer iguales.
+- **Se puebla en el INSERT:** `PersonaPersistenceAdapter.create(...)` calcula
+  `ciValidada = CedulaEcuatoriana.esValida(ci)` y lo enlaza a la columna `ci_validada`. → `TRUE` solo
+  si `ci` pasa el módulo 10; `FALSE` para documentos no-EC o cédulas inválidas. Nunca rechaza el registro.
+
+## Lo que YA está hecho (recálculo al editar `ci` — auth-service UPDATE) ✅
+
+El **2026-07-21** se implementó el **recálculo en UPDATE** en `auth-service` `PersonaMapper.toEntity`:
+el flag ahora se calcula **siempre** desde el `ci` actual (INSERT y UPDATE), no solo al crear. El panel
+admin permite editar el `ci` del cliente (`EditarClienteModal` → `PUT /personas` con `ci`); si se corrige
+a una cédula EC válida, `ci_validada` pasa a `TRUE` (y viceversa). `esValida` es función pura del `ci`,
+así que recalcular en UPDATE es idempotente y siempre deja el flag consistente con el documento guardado.
+
 ## Lo que falta (implementación) 📋
 
-1. **Extensión a rutas restantes** (admin-created vía core-service, importación desde otros
-   servicios). platform-service y auth-service ya calculan el flag.
-
-2. **UPDATE path — recálculo al editar `ci`.** Si se permite **editar** el `ci` de una
-   persona existente (no hay endpoint hoy), hay que recalcular `ci_validada` en esa ruta.
-
-3. **Backfill de personas existentes.** Recorrer personas ya guardadas (antes de 2026-07-14)
+1. **Backfill de personas existentes.** Recorrer personas ya guardadas (antes de 2026-07-14)
    y recalcular `ci_validada` (migración de datos, no de esquema). Pendiente porque la
-   escritura nueva solo aplica a personas creadas de aquí en adelante.
+   escritura nueva solo aplica a personas creadas/editadas de aquí en adelante.
 
-4. **Exposición REST del flag.** Hoy `ci_validada` no se retorna en:
+2. **Extensión a rutas restantes** (importación desde otros servicios, si las hubiera).
+   platform-service, auth-service y core-service ya calculan el flag en sus rutas de creación.
+
+3. **Exposición REST del flag.** Hoy `ci_validada` no se retorna en:
    - `core-service` → `ClienteDetalleResponse` (no incluye el campo)
    - `auth-service` → ningún endpoint de personas lo expone
    - `platform-service` → idem
@@ -86,9 +106,10 @@ correo, `POST /personas`):
 
 ### Notas de implementación
 
-- El algoritmo canónico vive ahora en **tres** lugares que deben permanecer idénticos:
-  frontend `src/lib/sri/validarCedula.ts`, `platform-service/.../domain/validation/CedulaEcuatoriana.java`
-  y `auth-service/.../domain/validation/CedulaEcuatoriana.java`. Cualquier cambio debe aplicarse a los tres.
+- El algoritmo canónico vive ahora en **cuatro** lugares que deben permanecer idénticos:
+  frontend `src/lib/sri/validarCedula.ts`, `platform-service/.../domain/validation/CedulaEcuatoriana.java`,
+  `auth-service/.../domain/validation/CedulaEcuatoriana.java` y
+  `core-service/.../domain/validation/CedulaEcuatoriana.java`. Cualquier cambio debe aplicarse a los cuatro.
 - El flag se calcula **en el servidor**; no se confía en el cliente.
 
 ## Relacionado
