@@ -2,7 +2,15 @@
 
 > **Propósito:** Fuente única de verdad sobre **qué está construido hoy** vs. **qué es solo diseño**. Antes de implementar o de confiar en un documento como referencia, consulta aquí su estado.
 >
-> Última verificación contra el código: **2026-07-10** (general) · **2026-07-14** (billing-service, tras cierre de Fase 3 SRI 2026) · **2026-07-19** (reestructuración de docs + contrato de errores).
+> Última verificación contra el código: **2026-07-10** (general) · **2026-07-14** (billing-service, tras cierre de Fase 3 SRI 2026) · **2026-07-19** (reestructuración de docs + contrato de errores) · **2026-07-21** (bootstrap de métodos de pago en wizard de compañía).
+
+## ✅ Actualización 2026-07-21 (documentación: bootstrap de métodos de pago en wizard)
+
+- **Bootstrap automático de métodos de pago**: ✅ implementado en `platform-service` (`CompaniaService.registrarGymWizard`, `MetodoPagoPersistenceAdapter`). Al registrar una compañía nueva, se crean automáticamente 3 métodos de pago por defecto (Efectivo, Tarjeta, Transferencia) en `config.metodos_pago`, idempotente por nombre.
+- **Documento creado**: [platform-service/wizard-bootstrap.md](platform-service/wizard-bootstrap.md) — especificación completa del flujo de bootstrap de compañía (7 pasos), incluyendo la creación de métodos de pago, consumidores (core-service `GET /metodos-pago`), arquitectura cross-schema, y consideraciones de operación.
+- **Índice actualizado**: [platform-service/INDEX.md](platform-service/INDEX.md) — enlace al nuevo documento de wizard/bootstrap.
+
+---
 
 ## ✅ Actualización 2026-07-19 (reestructuración de documentación + contrato de errores)
 
@@ -175,6 +183,7 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 |-----------|--------|
 | CLAUDE.md "Endpoints" | ✅ Refleja el código actual — los 10 route groups y sus paths existen. (Salvedad: la lista de rutas "públicas" omite `/planes/publicos` y `/companias/auto-registro`, que también son públicas.) |
 | README.md | ✅ Corregido 2026-07-08 — se arregló el error de que "no hay `/health`" (sí existe `/actuator/health`) y la lista de schemas (solo posee `tenant` + `saas`). |
+| wizard-bootstrap.md | ✅ Creado 2026-07-21 — Flujo de bootstrap de compañía (`POST /companias/wizard`): 7 pasos secuenciales, auto-seed de 3 métodos de pago (Efectivo, Tarjeta, Transferencia) en `config.metodos_pago`, idempotencia por nombre, consumidores (core-service), arquitectura cross-schema. |
 
 ### docs/attendance-service/ y attendance-service/{README,CLAUDE}.md
 | Documento | Estado |

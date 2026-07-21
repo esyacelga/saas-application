@@ -120,7 +120,7 @@ export function VentasPendientesPage() {
 
   const [loadingRowId, setLoadingRowId] = useState<number | null>(null)
   const [rechazarData, setRechazarData] = useState<{ id: number; nombreCliente: string | null } | null>(null)
-  const [completarData, setCompletarData] = useState<{ idMembresia: number; nombreCliente: string | null; tipoNombre: string } | null>(null)
+  const [completarData, setCompletarData] = useState<{ idMembresia: number; nombreCliente: string | null; tipoNombre: string; idTipoMembresia: number } | null>(null)
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), 300)
@@ -273,6 +273,7 @@ export function VentasPendientesPage() {
                   idMembresia: item.id,
                   nombreCliente: item.nombreCliente,
                   tipoNombre: item.tipoNombre,
+                  idTipoMembresia: item.idTipoMembresia,
                 })
               } else {
                 handleConfirmar(item)
@@ -475,6 +476,7 @@ export function VentasPendientesPage() {
           idMembresia={completarData.idMembresia}
           nombreCliente={completarData.nombreCliente}
           tipoNombre={completarData.tipoNombre}
+          idTipoMembresia={completarData.idTipoMembresia}
           onClose={() => setCompletarData(null)}
           onCompletada={handleCompletada}
         />

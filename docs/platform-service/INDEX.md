@@ -6,6 +6,7 @@ Gestión del SaaS: empresas, sucursales, planes y suscripciones. Este servicio n
 |-----------|-----------|
 | [platform-service/README.md](../../platform-service/README.md) | Requisitos, variables de entorno, Docker (3 formas de levantar), esquema de BD, tests |
 | [platform-service/CLAUDE.md](../../platform-service/CLAUDE.md) | Convenciones de código: seguridad (`JwtPrincipal`, `AccessControlService`), patrones de uso de comandos, Cloudinary, caché Redis, job de suscripciones, entidades de dominio, endpoints |
+| [wizard-bootstrap.md](wizard-bootstrap.md) | Flujo de bootstrap de compañía nueva: registro completo, métodos de pago por defecto (Efectivo, Tarjeta, Transferencia), idempotencia, consumidores (core-service) |
 
 ---
 

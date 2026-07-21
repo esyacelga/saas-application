@@ -75,6 +75,7 @@ public class RolGymPersistenceAdapter implements RolGymRepository {
 
                 new P("clientes:leer", "Registrar y editar clientes", "core"),
                 new P("membresias:leer", "Crear y editar tipos de membresía", "core"),
+                new P("membresias:confirmar_pago", "Confirmar el pago de membresías pendientes", "core"),
                 new P("GESTIONAR_MEMBRESIAS", "Asignar y gestionar membresías", "core"),
                 new P("GESTIONAR_CONGELAMIENTOS", "Registrar congelamientos", "core"),
                 new P("REGISTRAR_ASISTENCIA", "Registrar entradas y salidas", "asistencia"),

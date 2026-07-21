@@ -35,6 +35,7 @@ public class CompaniaService implements CompaniaUseCase {
     private final RolGymRepository rolGymRepository;
     private final UsuarioGymRepository usuarioGymRepository;
     private final PersonaRepository personaRepository;
+    private final MetodoPagoRepository metodoPagoRepository;
     private final PasswordEncoder passwordEncoder;
 
     public CompaniaService(CompaniaRepository companiaRepository,
@@ -46,6 +47,7 @@ public class CompaniaService implements CompaniaUseCase {
                            RolGymRepository rolGymRepository,
                            UsuarioGymRepository usuarioGymRepository,
                            PersonaRepository personaRepository,
+                           MetodoPagoRepository metodoPagoRepository,
                            PasswordEncoder passwordEncoder) {
         this.companiaRepository = companiaRepository;
         this.companiaPlanRepository = companiaPlanRepository;
@@ -56,6 +58,7 @@ public class CompaniaService implements CompaniaUseCase {
         this.rolGymRepository = rolGymRepository;
         this.usuarioGymRepository = usuarioGymRepository;
         this.personaRepository = personaRepository;
+        this.metodoPagoRepository = metodoPagoRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -191,6 +194,7 @@ public class CompaniaService implements CompaniaUseCase {
                         .flatMap(savedCp -> guardarSucursalConQr(savedCompania, command)
                                 .flatMap(savedSucursal ->
                                         guardarConfiguracionesNotificacion(savedCompania.getId())
+                                                .then(metodoPagoRepository.crearPorDefecto(savedCompania.getId(), savedSucursal.getId()))
                                                 .then(crearRolConPermisos(savedCompania.getId(), savedSucursal.getId()))
                                                 .flatMap(idRol -> crearTodosLosUsuarios(savedCompania, savedSucursal, idRol, command, adicionales)
                                                         .map(r -> new RegistrarGymWizardResult(

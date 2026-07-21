@@ -112,9 +112,12 @@ public class MembresiaService implements MembresiaUseCase {
                 .flatMap(mem -> tipoMembresiaRepository.findById(mem.getIdTipoMembresia())
                         .flatMap(tipo -> {
                             if (TipoMembresia.ModoControl.accesos.equals(tipo.getModoControl())) {
+                                Integer total = mem.getDiasAccesoTotal() != null
+                                        ? mem.getDiasAccesoTotal() : tipo.getDiasAcceso();
                                 return membresiaRepository.countAsistenciasByIdMembresia(id)
                                         .map(usados -> {
-                                            int restantes = mem.getDiasAccesoTotal() - usados.intValue();
+                                            Integer restantes = total != null
+                                                    ? total - usados.intValue() : null;
                                             return new MembresiaDetalleResult(mem, tipo.getNombre(),
                                                     tipo.getModoControl().name(), usados.intValue(), restantes);
                                         });
@@ -253,17 +256,19 @@ public class MembresiaService implements MembresiaUseCase {
         return tipoMembresiaRepository.findById(mem.getIdTipoMembresia())
                 .flatMap(tipo -> {
                     if (TipoMembresia.ModoControl.accesos.equals(tipo.getModoControl())) {
+                        Integer total = mem.getDiasAccesoTotal() != null
+                                ? mem.getDiasAccesoTotal() : tipo.getDiasAcceso();
                         return membresiaRepository.countAsistenciasByIdMembresia(mem.getId())
                                 .map(usados -> {
-                                    if (usados >= mem.getDiasAccesoTotal()) {
+                                    if (total != null && usados >= total) {
                                         return new ValidarAccesoResult(false, idCliente, null,
                                                 tipo.getModoControl().name(), tipo.getNombre(), null, mem.getFechaFin(),
-                                                "accesos_agotados", usados.intValue(), mem.getDiasAccesoTotal());
+                                                "accesos_agotados", usados.intValue(), total);
                                     }
-                                    int restantes = mem.getDiasAccesoTotal() - usados.intValue();
+                                    Integer restantes = total != null ? total - usados.intValue() : null;
                                     return new ValidarAccesoResult(true, idCliente, mem.getId(),
                                             tipo.getModoControl().name(), tipo.getNombre(), restantes, mem.getFechaFin(),
-                                            null, usados.intValue(), mem.getDiasAccesoTotal());
+                                            null, usados.intValue(), total);
                                 });
                     }
                     long diasRestantes = ChronoUnit.DAYS.between(LocalDate.now(), mem.getFechaFin());

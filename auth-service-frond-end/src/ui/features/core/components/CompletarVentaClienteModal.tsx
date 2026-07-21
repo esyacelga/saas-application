@@ -25,12 +25,13 @@ interface Props {
   idMembresia: number
   nombreCliente: string | null
   tipoNombre: string
+  idTipoMembresia: number
   open: boolean
   onClose: () => void
   onCompletada: () => void
 }
 
-export function CompletarVentaClienteModal({ idMembresia, nombreCliente, tipoNombre, open, onClose, onCompletada }: Props) {
+export function CompletarVentaClienteModal({ idMembresia, nombreCliente, tipoNombre, idTipoMembresia, open, onClose, onCompletada }: Props) {
   const { t } = useTranslation()
   const [metodosPago, setMetodosPago] = useState<MetodoPago[]>([])
   const [loadingMetodos, setLoadingMetodos] = useState(false)
@@ -64,11 +65,20 @@ export function CompletarVentaClienteModal({ idMembresia, nombreCliente, tipoNom
     }
 
     setLoadingMetodos(true)
-    coreRepository.getMetodosPago()
-      .then(data => setMetodosPago(data))
+    Promise.all([coreRepository.getMetodosPago(), coreRepository.getTiposMembresia()])
+      .then(([metodos, tipos]) => {
+        setMetodosPago(metodos)
+        const tipo = tipos.find(tp => tp.id === idTipoMembresia)
+        reset({
+          precio_pagado: tipo?.precio ?? 0,
+          id_metodo_pago: 0,
+          fecha_inicio: new Date().toISOString().split('T')[0],
+          descuento_aplicado: 0,
+        })
+      })
       .catch(err => toast.error(getApiErrorMessage(err)))
       .finally(() => setLoadingMetodos(false))
-  }, [open, reset])
+  }, [open, reset, idTipoMembresia])
 
   const onSubmit = async (values: FormValues) => {
     const body: CompletarVentaClienteDto = {
