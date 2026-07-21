@@ -35,7 +35,12 @@ public enum ErrorCode {
     PAGO_DUPLICADO(HttpStatus.CONFLICT, "pago_duplicado"),
     PAGO_YA_PROCESADO(HttpStatus.CONFLICT, "pago_ya_procesado"),
     TRANSICION_INVALIDA(HttpStatus.BAD_REQUEST, "transicion_invalida"),
-    RATE_LIMIT_EXCEDIDO(HttpStatus.TOO_MANY_REQUESTS, "rate_limit_excedido");
+    RATE_LIMIT_EXCEDIDO(HttpStatus.TOO_MANY_REQUESTS, "rate_limit_excedido"),
+
+    // --- Recordatorio de vencimiento manual por WhatsApp (GYM-002) ---
+    NO_CONSENTIMIENTO(HttpStatus.UNPROCESSABLE_ENTITY, "no_consentimiento"),
+    TELEFONO_INVALIDO(HttpStatus.UNPROCESSABLE_ENTITY, "telefono_invalido"),
+    SIN_SUSCRIPCION(HttpStatus.UNPROCESSABLE_ENTITY, "sin_suscripcion");
 
     private final HttpStatus status;
     private final String codigo;

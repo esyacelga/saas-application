@@ -16,6 +16,7 @@ import com.gymadmin.platform.infrastructure.exception.ErrorCode;
 import com.gymadmin.platform.infrastructure.exception.ForbiddenException;
 import com.gymadmin.platform.infrastructure.exception.NotFoundException;
 import com.gymadmin.platform.infrastructure.exception.ProblemDetailFactory;
+import com.gymadmin.platform.infrastructure.exception.RecordatorioNoEnviableException;
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -119,6 +120,9 @@ public class GlobalExceptionHandler implements ErrorWebExceptionHandler {
         }
         if (ex instanceof AccessDeniedException) {
             return ProblemDetailFactory.create(ErrorCode.ACCESO_DENEGADO, ex.getMessage(), exchange);
+        }
+        if (ex instanceof RecordatorioNoEnviableException rne) {
+            return ProblemDetailFactory.create(rne.getErrorCode(), ex.getMessage(), exchange);
         }
         if (ex instanceof BusinessException) {
             return ProblemDetailFactory.create(ErrorCode.REGLA_NEGOCIO, ex.getMessage(), exchange);

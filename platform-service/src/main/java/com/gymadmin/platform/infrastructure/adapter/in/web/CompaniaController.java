@@ -6,6 +6,7 @@ import com.gymadmin.platform.domain.model.Compania;
 import com.gymadmin.platform.domain.model.CompaniaConPlan;
 import com.gymadmin.platform.domain.port.in.ActividadPlataformaUseCase;
 import com.gymadmin.platform.domain.port.in.CompaniaUseCase;
+import com.gymadmin.platform.domain.port.in.EnviarRecordatorioVencimientoUseCase;
 import com.gymadmin.platform.infrastructure.adapter.in.web.dto.*;
 import com.gymadmin.platform.infrastructure.config.JwtPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,15 +40,18 @@ public class CompaniaController {
     private final AccessControlService accessControl;
     private final ActividadPlataformaUseCase actividadUseCase;
     private final CloudinaryService cloudinaryService;
+    private final EnviarRecordatorioVencimientoUseCase enviarRecordatorioUseCase;
 
     public CompaniaController(CompaniaUseCase companiaUseCase,
                                AccessControlService accessControl,
                                ActividadPlataformaUseCase actividadUseCase,
-                               CloudinaryService cloudinaryService) {
+                               CloudinaryService cloudinaryService,
+                               EnviarRecordatorioVencimientoUseCase enviarRecordatorioUseCase) {
         this.companiaUseCase = companiaUseCase;
         this.accessControl = accessControl;
         this.actividadUseCase = actividadUseCase;
         this.cloudinaryService = cloudinaryService;
+        this.enviarRecordatorioUseCase = enviarRecordatorioUseCase;
     }
 
     @Operation(summary = "Listar todas las compañías", security = @SecurityRequirement(name = "bearerAuth"))
@@ -288,6 +292,26 @@ public class CompaniaController {
                                 new CompaniaUseCase.ActualizarCompaniaCommand(null, logoUrl, null, null, null),
                                 principal))
                         .map(c -> ResponseEntity.ok(toResponse(c))));
+    }
+
+    @Operation(summary = "Enviar recordatorio de vencimiento por WhatsApp (envío directo)",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Recordatorio enviado"),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado"),
+        @ApiResponse(responseCode = "404", description = "Compañía no encontrada"),
+        @ApiResponse(responseCode = "422", description = "No enviable (no_consentimiento / telefono_invalido / sin_suscripcion)")
+    })
+    @PostMapping("/{id}/recordatorio-vencimiento")
+    public Mono<ResponseEntity<RecordatorioVencimientoResponse>> enviarRecordatorioVencimiento(@PathVariable Long id) {
+        return getJwtPrincipal()
+                .flatMap(principal -> accessControl.requirePlataforma(principal)
+                        .then(enviarRecordatorioUseCase.enviar(id))
+                        .flatMap(resultado -> actividadUseCase.registrar(new ActividadPlataformaUseCase.RegistrarCommand(
+                                "RECORDATORIO_VENCIMIENTO_ENVIADO", "companias", id, null, resultado.template(), principal.getName()
+                        )).onErrorResume(e -> Mono.empty()).thenReturn(resultado))
+                        .map(resultado -> ResponseEntity.ok(new RecordatorioVencimientoResponse(
+                                resultado.enviado(), resultado.telefono(), resultado.template()))));
     }
 
     private Mono<JwtPrincipal> getJwtPrincipal() {

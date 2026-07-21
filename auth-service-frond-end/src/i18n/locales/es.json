@@ -561,6 +561,14 @@
         "pagos": "Pagos",
         "sucursales": "Sucursales",
         "notificaciones": "Notificaciones"
+      },
+      "recordatorio": {
+        "tooltip": "Enviar recordatorio de vencimiento por WhatsApp",
+        "success": "Recordatorio enviado por WhatsApp a {{nombre}}",
+        "errorNoConsentimiento": "El gimnasio no habilitó WhatsApp para recibir avisos",
+        "errorTelefono": "El teléfono del gimnasio no es válido para WhatsApp",
+        "errorSinSuscripcion": "La compañía no tiene una suscripción activa",
+        "errorGenerico": "No se pudo enviar el recordatorio"
       }
     },
     "suscripcion": {

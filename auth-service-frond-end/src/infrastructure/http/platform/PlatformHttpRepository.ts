@@ -525,6 +525,13 @@ class PlatformHttpRepositoryImpl implements PlatformRepository {
       fechaConsentimientoWa: (data.fecha_consentimiento_wa ?? data.fechaConsentimientoWa ?? null) as string | null,
     }
   }
+
+  async enviarRecordatorioVencimiento(idCompania: number): Promise<{ enviado: boolean; telefono: string; template: string }> {
+    const { data } = await api.post<{ enviado: boolean; telefono: string; template: string }>(
+      `/companias/${idCompania}/recordatorio-vencimiento`,
+    )
+    return data
+  }
 }
 
 export const platformRepository = new PlatformHttpRepositoryImpl()

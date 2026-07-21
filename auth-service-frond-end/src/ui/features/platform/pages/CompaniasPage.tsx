@@ -15,6 +15,7 @@ import type { Compania } from '@/domain/platform/entities/Plan.entity'
 import type { JwtPayloadPlataforma } from '@/domain/auth/entities/User.entity'
 import { RegistrarGymWizard } from './RegistrarGymWizard/RegistrarGymWizard'
 import { SuspenderCompaniaDialog } from './CompaniasPage/SuspenderCompaniaDialog'
+import { getApiErrorCode, getApiErrorMessage } from '@/lib/api-error'
 
 const usecase = new GestionarCompaniaUseCase(platformRepository)
 
@@ -39,6 +40,7 @@ export function CompaniasPage() {
   const [search, setSearch] = useState('')
   const [registrarOpen, setRegistrarOpen] = useState(false)
   const [suspenderTarget, setSuspenderTarget] = useState<Compania | null>(null)
+  const [enviandoId, setEnviandoId] = useState<number | null>(null)
 
   const load = () => {
     setLoading(true)
@@ -49,6 +51,27 @@ export function CompaniasPage() {
   }
 
   useEffect(() => { load() }, [])
+
+  const handleEnviarRecordatorio = async (compania: Compania) => {
+    setEnviandoId(compania.id)
+    try {
+      await platformRepository.enviarRecordatorioVencimiento(compania.id)
+      toast.success(t('platform.companias.recordatorio.success', { nombre: compania.nombre }))
+    } catch (err) {
+      const codigo = getApiErrorCode(err)
+      if (codigo === 'no_consentimiento') {
+        toast.error(t('platform.companias.recordatorio.errorNoConsentimiento'))
+      } else if (codigo === 'telefono_invalido') {
+        toast.error(t('platform.companias.recordatorio.errorTelefono'))
+      } else if (codigo === 'sin_suscripcion') {
+        toast.error(t('platform.companias.recordatorio.errorSinSuscripcion'))
+      } else {
+        toast.error(getApiErrorMessage(err) || t('platform.companias.recordatorio.errorGenerico'))
+      }
+    } finally {
+      setEnviandoId(null)
+    }
+  }
 
   const filtered = companias.filter(c =>
     c.nombre.toLowerCase().includes(search.toLowerCase()) ||
@@ -181,6 +204,16 @@ export function CompaniasPage() {
                           tooltipOptions={{ position: 'top' }}
                           onClick={() => navigate(`/platform/companias/${c.id}`)}
                           pt={{ root: { className: 'text-orange-500 hover:text-orange-400' } }}
+                        />
+                        <Button
+                          icon={enviandoId === c.id ? 'pi pi-spin pi-spinner' : 'pi pi-whatsapp'}
+                          text
+                          size="small"
+                          tooltip={t('platform.companias.recordatorio.tooltip')}
+                          tooltipOptions={{ position: 'top' }}
+                          disabled={enviandoId === c.id}
+                          onClick={() => handleEnviarRecordatorio(c)}
+                          pt={{ root: { className: 'text-green-600 hover:text-green-500' } }}
                         />
                         {isSuperAdmin && c.activo && (
                           <Button

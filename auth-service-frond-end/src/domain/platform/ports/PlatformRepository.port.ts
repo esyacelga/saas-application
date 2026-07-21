@@ -94,4 +94,7 @@ export interface PlatformRepository {
 
   // WhatsApp opt-in (compania owner)
   patchConsentimientoWaCompania(idCompania: number, acepta: boolean): Promise<ConsentimientoWaResponse>
+
+  // Recordatorio de vencimiento por WhatsApp (plataforma → dueño del gym)
+  enviarRecordatorioVencimiento(idCompania: number): Promise<{ enviado: boolean; telefono: string; template: string }>
 }

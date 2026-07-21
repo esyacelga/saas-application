@@ -561,6 +561,14 @@
         "pagos": "Payments",
         "sucursales": "Branches",
         "notificaciones": "Notifications"
+      },
+      "recordatorio": {
+        "tooltip": "Send expiry reminder via WhatsApp",
+        "success": "WhatsApp reminder sent to {{nombre}}",
+        "errorNoConsentimiento": "The gym has not enabled WhatsApp to receive alerts",
+        "errorTelefono": "The gym's phone number is not valid for WhatsApp",
+        "errorSinSuscripcion": "The company does not have an active subscription",
+        "errorGenerico": "Could not send the reminder"
       }
     },
     "suscripcion": {

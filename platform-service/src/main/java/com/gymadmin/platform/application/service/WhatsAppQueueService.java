@@ -136,6 +136,16 @@ public class WhatsAppQueueService implements ProcesarColaWhatsAppUseCase {
         });
     }
 
+    /**
+     * GYM-002: envío directo de una plantilla HSM a una compañía dado su {@code e164} ya normalizado.
+     * Punto único de invocación del {@link WhatsAppSender} — el flujo directo (botón del panel) lo
+     * reutiliza para no duplicar sender ni idioma. NO toca la cola: el error del sender se propaga tal
+     * cual para que el llamador decida (aquí, devolver éxito/fallo real al endpoint).
+     */
+    Mono<Void> enviarPlantilla(String e164, String template, List<String> params) {
+        return whatsAppSender.enviarPlantilla(e164, template, IDIOMA, params);
+    }
+
     /** R3: carga la fecha de vencimiento del CompaniaPlan formateada; "" si no está disponible. */
     private Mono<String> cargarFechaVencimiento(NotificacionSuscripcion notif) {
         if (notif.getIdCompaniaPlan() == null) {
@@ -157,7 +167,7 @@ public class WhatsAppQueueService implements ProcesarColaWhatsAppUseCase {
      *   <li>{@code venc_suscripcion_hoy}: [nombre, plan] → {{1}}, {{2}}.</li>
      * </ul>
      */
-    private List<String> construirParams(String template, String ownerNombre, String plan,
+    static List<String> construirParams(String template, String ownerNombre, String plan,
                                           String fechaVenc, Integer diasAntes) {
         List<String> params = new ArrayList<>();
         params.add(ownerNombre);
@@ -171,6 +181,11 @@ public class WhatsAppQueueService implements ProcesarColaWhatsAppUseCase {
 
     static String templatePorDias(Integer diasAntes) {
         return (diasAntes != null && diasAntes == 0) ? TEMPLATE_HOY : TEMPLATE_PREVIO;
+    }
+
+    /** GYM-002: formatea una fecha de vencimiento con el mismo patrón {@code dd/MM/yyyy} de la cola. */
+    static String formatearFecha(LocalDate fecha) {
+        return fecha != null ? fecha.format(FECHA_ES) : "";
     }
 
     private static String planActualDeTipo(String tipo) {
