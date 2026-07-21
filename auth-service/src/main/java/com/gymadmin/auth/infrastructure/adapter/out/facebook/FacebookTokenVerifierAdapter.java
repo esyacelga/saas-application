@@ -33,7 +33,8 @@ public class FacebookTokenVerifierAdapter implements FacebookTokenVerifierPort {
         return webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/me")
-                        .queryParam("fields", "id,email,name")
+                        // picture.width(200) devuelve una URL de mayor calidad que el default 50x50.
+                        .queryParam("fields", "id,email,name,picture.width(200).height(200)")
                         .queryParam("access_token", accessToken)
                         .build())
                 .retrieve()
@@ -47,7 +48,20 @@ public class FacebookTokenVerifierAdapter implements FacebookTokenVerifierPort {
                                 "No se pudo obtener el email de Facebook; verifica que hayas concedido el permiso de email"));
                     }
                     String nombre = (String) map.get("name");
-                    return Mono.just(new OAuthProfile(email, nombre));
+                    String fotoUrl = extractPictureUrl(map.get("picture"));
+                    return Mono.just(new OAuthProfile(email, nombre, fotoUrl));
                 });
+    }
+
+    // Graph API devuelve picture como { data: { url, width, height, is_silhouette } }.
+    // is_silhouette=true es el avatar por defecto de FB — lo tratamos como "sin foto".
+    @SuppressWarnings("unchecked")
+    private String extractPictureUrl(Object pictureNode) {
+        if (!(pictureNode instanceof Map<?, ?> picture)) return null;
+        Object dataObj = picture.get("data");
+        if (!(dataObj instanceof Map<?, ?> data)) return null;
+        if (Boolean.TRUE.equals(data.get("is_silhouette"))) return null;
+        Object url = data.get("url");
+        return url instanceof String s ? s : null;
     }
 }

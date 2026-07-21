@@ -99,7 +99,7 @@ class AuthApplicationServiceTest {
         void devuelveLoggedInCuandoUsuarioExiste() {
             UsuarioApp existing = existingActiveUser();
             when(googleTokenVerifier.verifyAndGetProfile("id-token"))
-                    .thenReturn(Mono.just(new OAuthProfile(EMAIL, NOMBRE_GOOGLE)));
+                    .thenReturn(Mono.just(new OAuthProfile(EMAIL, NOMBRE_GOOGLE, null)));
             when(appPort.findByLoginAndIdCompania(EMAIL, ID_COMPANIA))
                     .thenReturn(Mono.just(existing));
             when(appPort.save(any(UsuarioApp.class))).thenReturn(Mono.just(existing));
@@ -119,7 +119,7 @@ class AuthApplicationServiceTest {
         @DisplayName("devuelve status=registro_pendiente cuando el usuario no existe, con email y nombre del proveedor")
         void devuelveRegistroPendienteCuandoNoExiste() {
             when(googleTokenVerifier.verifyAndGetProfile("id-token"))
-                    .thenReturn(Mono.just(new OAuthProfile(EMAIL, NOMBRE_GOOGLE)));
+                    .thenReturn(Mono.just(new OAuthProfile(EMAIL, NOMBRE_GOOGLE, null)));
             when(appPort.findByLoginAndIdCompania(EMAIL, ID_COMPANIA))
                     .thenReturn(Mono.empty());
 
@@ -140,7 +140,7 @@ class AuthApplicationServiceTest {
             UsuarioApp inactive = existingActiveUser();
             inactive.setActivo(false);
             when(googleTokenVerifier.verifyAndGetProfile("id-token"))
-                    .thenReturn(Mono.just(new OAuthProfile(EMAIL, NOMBRE_GOOGLE)));
+                    .thenReturn(Mono.just(new OAuthProfile(EMAIL, NOMBRE_GOOGLE, null)));
             when(appPort.findByLoginAndIdCompania(EMAIL, ID_COMPANIA))
                     .thenReturn(Mono.just(inactive));
 
@@ -169,7 +169,7 @@ class AuthApplicationServiceTest {
         @DisplayName("devuelve status=registro_pendiente cuando el usuario no existe")
         void devuelveRegistroPendienteCuandoNoExiste() {
             when(facebookTokenVerifier.verifyAndGetProfile("access-token"))
-                    .thenReturn(Mono.just(new OAuthProfile(EMAIL, NOMBRE_GOOGLE)));
+                    .thenReturn(Mono.just(new OAuthProfile(EMAIL, NOMBRE_GOOGLE, null)));
             when(appPort.findByLoginAndIdCompania(EMAIL, ID_COMPANIA))
                     .thenReturn(Mono.empty());
 
@@ -183,6 +183,15 @@ class AuthApplicationServiceTest {
     @Nested
     @DisplayName("completarRegistroOauth")
     class CompletarRegistroOauth {
+
+        @BeforeEach
+        void stubOauthDefaults() {
+            // Estos ports se consultan siempre dentro del flujo OAuth; por defecto
+            // devuelven vacio para que cada test solo tenga que redefinir lo especifico.
+            lenient().when(appPort.findByPersonaCiAndIdCompania(anyString(), anyInt()))
+                    .thenReturn(Mono.empty());
+            lenient().when(personaPort.findByCi(anyString())).thenReturn(Mono.empty());
+        }
 
         private CompletarRegistroOauthRequest requestGoogle() {
             return new CompletarRegistroOauthRequest(
@@ -209,7 +218,7 @@ class AuthApplicationServiceTest {
         @DisplayName("happy path Google: crea persona + usuario_app y devuelve LoginAppResponse")
         void happyPathGoogle() {
             when(googleTokenVerifier.verifyAndGetProfile("id-token"))
-                    .thenReturn(Mono.just(new OAuthProfile(EMAIL, NOMBRE_GOOGLE)));
+                    .thenReturn(Mono.just(new OAuthProfile(EMAIL, NOMBRE_GOOGLE, null)));
             when(appPort.findByLoginAndIdCompania(EMAIL, ID_COMPANIA)).thenReturn(Mono.empty());
             when(personaPort.findByCorreo(EMAIL)).thenReturn(Mono.empty());
             when(personaPort.save(any(Persona.class))).thenReturn(Mono.just(personaGuardada()));
@@ -231,7 +240,7 @@ class AuthApplicationServiceTest {
         @DisplayName("happy path Facebook: reusa persona existente por correo y crea usuario_app")
         void happyPathFacebookReusandoPersona() {
             when(facebookTokenVerifier.verifyAndGetProfile("fb-token"))
-                    .thenReturn(Mono.just(new OAuthProfile(EMAIL, NOMBRE_GOOGLE)));
+                    .thenReturn(Mono.just(new OAuthProfile(EMAIL, NOMBRE_GOOGLE, null)));
             when(appPort.findByLoginAndIdCompania(EMAIL, ID_COMPANIA)).thenReturn(Mono.empty());
             when(personaPort.findByCorreo(EMAIL)).thenReturn(Mono.just(personaGuardada()));
             when(appPort.existsByIdPersonaAndIdCompania(10, ID_COMPANIA)).thenReturn(Mono.just(false));
@@ -248,7 +257,7 @@ class AuthApplicationServiceTest {
         @DisplayName("propaga ConflictException cuando ya existe usuario_app para ese correo en la compania")
         void conflictoCuandoUsuarioYaExiste() {
             when(googleTokenVerifier.verifyAndGetProfile("id-token"))
-                    .thenReturn(Mono.just(new OAuthProfile(EMAIL, NOMBRE_GOOGLE)));
+                    .thenReturn(Mono.just(new OAuthProfile(EMAIL, NOMBRE_GOOGLE, null)));
             when(appPort.findByLoginAndIdCompania(EMAIL, ID_COMPANIA))
                     .thenReturn(Mono.just(existingActiveUser()));
 
@@ -261,7 +270,7 @@ class AuthApplicationServiceTest {
         @DisplayName("propaga ConflictException cuando la persona ya tiene cuenta en el gimnasio")
         void conflictoCuandoPersonaYaTieneCuenta() {
             when(googleTokenVerifier.verifyAndGetProfile("id-token"))
-                    .thenReturn(Mono.just(new OAuthProfile(EMAIL, NOMBRE_GOOGLE)));
+                    .thenReturn(Mono.just(new OAuthProfile(EMAIL, NOMBRE_GOOGLE, null)));
             when(appPort.findByLoginAndIdCompania(EMAIL, ID_COMPANIA)).thenReturn(Mono.empty());
             when(personaPort.findByCorreo(EMAIL)).thenReturn(Mono.just(personaGuardada()));
             when(appPort.existsByIdPersonaAndIdCompania(10, ID_COMPANIA)).thenReturn(Mono.just(true));

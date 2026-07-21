@@ -316,11 +316,15 @@ public class AuthApplicationService implements AuthUseCase {
                                             + ". Ingresa con ese método (Google, Facebook o correo/contraseña).")))
                             .switchIfEmpty(Mono.defer(() -> personaPort.findByCi(req.ci())
                                     .switchIfEmpty(Mono.defer(() -> personaPort.findByCorreo(email)))
+                                    // Si la Persona ya existe (por CI o correo) NO se toca su foto_url:
+                                    // respetamos lo que el admin o el propio usuario ya haya cargado.
+                                    // La foto del proveedor OAuth solo se persiste al crear una Persona nueva.
                                     .switchIfEmpty(Mono.defer(() -> personaPort.save(Persona.builder()
                                             .ci(req.ci())
                                             .nombre(req.nombre())
                                             .correo(email)
                                             .telefono(req.telefono())
+                                            .fotoUrl(truncateFotoUrl(profile.fotoUrl()))
                                             .creacionUsuario("oauth:" + req.provider())
                                             .build())
                                             .onErrorMap(DataIntegrityViolationException.class, e -> {
@@ -430,5 +434,13 @@ public class AuthApplicationService implements AuthUseCase {
         int at = email.indexOf('@');
         if (at <= 1) return email;
         return email.charAt(0) + "***" + email.substring(at);
+    }
+
+    // identidad.personas.foto_url es VARCHAR(255). Las URLs de proveedores OAuth
+    // (sobre todo Facebook Graph con tokens firmados) suelen superarlo — en ese caso
+    // preferimos no guardar nada antes que persistir una URL truncada e invalida.
+    private static String truncateFotoUrl(String url) {
+        if (url == null || url.isBlank()) return null;
+        return url.length() > 255 ? null : url;
     }
 }

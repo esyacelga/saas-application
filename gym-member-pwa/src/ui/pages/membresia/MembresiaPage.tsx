@@ -22,6 +22,16 @@ const STATUS_CLS: Record<string, string> = {
   riesgo_abandono: 'bg-orange-900/30 border-orange-700 text-orange-300',
 }
 
+// El backend (enum core-service DuracionTipo) envía 'dias' | 'semanas' | 'meses' | 'años'
+// en minúsculas y con ñ; las claves i18n están en MAYÚSCULAS. Mapeo explícito para
+// evitar mostrar la clave cruda (p. ej. 'años' → 'ANIOS').
+const DURACION_KEY: Record<string, string> = {
+  dias: 'DIAS',
+  semanas: 'SEMANAS',
+  meses: 'MESES',
+  años: 'ANIOS',
+}
+
 export function MembresiaPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -359,7 +369,7 @@ function CatalogoMembresias({
           const esAccesos = tipo.modo_control === 'accesos'
           const duracionLabel = esAccesos
             ? t('membresia.solicitud.duracion.accesos', { count: tipo.dias_acceso ?? 0 })
-            : t(`membresia.solicitud.duracion.${tipo.duracion_tipo}`, { count: tipo.duracion_valor })
+            : t(`membresia.solicitud.duracion.${DURACION_KEY[tipo.duracion_tipo] ?? 'DIAS'}`, { count: tipo.duracion_valor ?? 0 })
 
           return (
             <div

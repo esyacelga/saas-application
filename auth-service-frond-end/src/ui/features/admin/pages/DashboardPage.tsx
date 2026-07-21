@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useState} from 'react'
-import {Link, useNavigate} from 'react-router-dom'
+// useNavigate: lo usaba la tarjeta "Ventas pendientes" (oculta 2026-07-21). Reañadir al restaurarla.
+import {Link} from 'react-router-dom'
 import {useTranslation} from 'react-i18next'
 import {toast} from 'sonner'
 import {
@@ -674,7 +675,8 @@ function OnboardingChecklist() {
 export function DashboardPage() {
     const {t} = useTranslation()
     const user = useAuthStore(s => s.user)
-    const navigate = useNavigate()
+    // navigate: lo usaba la tarjeta "Ventas pendientes" (oculta 2026-07-21). Reactivar al restaurarla.
+    // const navigate = useNavigate()
     const [loading, setLoading] = useState(true)
     const [state, setState] = useState<DashboardState>({
         empresa: null, hoy: null, stats: null,
@@ -733,7 +735,9 @@ export function DashboardPage() {
         }))
     }, [])
 
-    const {empresa, hoy, stats: _stats, totalClientesActivos, sinSuscripcionTotal, proximosVencerTotal, contadorPendientes} = state
+    // contadorPendientes se sigue cargando al estado, pero su tarjeta está oculta (2026-07-21);
+    // por eso ya no se desestructura aquí. Reañadir al restaurar la tarjeta "Ventas pendientes".
+    const {empresa, hoy, stats: _stats, totalClientesActivos, sinSuscripcionTotal, proximosVencerTotal} = state
     const planNombre = empresa?.planActivo?.nombre ?? t('dashboard.noPlan')
 
     const metodLabel = (m: string) =>
@@ -802,13 +806,17 @@ export function DashboardPage() {
                     loading={loading}
                     onClick={() => setShowProximosPanel(true)}
                 />
-                <AlertKpiCard
+                {/* OCULTO TEMPORALMENTE (2026-07-21): tarjeta "Ventas pendientes" retirada del
+                    dashboard a pedido. La ruta /admin/ventas-pendientes sigue registrada y el
+                    contador se sigue cargando al estado. Para restaurar, descomentar esta tarjeta
+                    (y reactivar `navigate` + `contadorPendientes` en la desestructuración de arriba). */}
+                {/* <AlertKpiCard
                     label={t('dashboard.kpi.ventasPendientes')}
                     value={contadorPendientes?.total ?? 0}
                     sub={t('dashboard.kpi.ventasPendientesSub', { cliente: contadorPendientes?.porOrigenCliente ?? 0 })}
                     loading={loading}
                     onClick={() => navigate('/admin/ventas-pendientes')}
-                />
+                /> */}
             </div>
 
             {/* ── Bottom row ─────────────────────────────────────────────────────── */}

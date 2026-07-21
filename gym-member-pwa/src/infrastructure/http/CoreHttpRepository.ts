@@ -4,7 +4,9 @@ export interface TipoMembresia {
   id: number
   nombre: string
   modo_control: 'calendario' | 'accesos'
-  duracion_tipo: 'DIAS' | 'SEMANAS' | 'MESES' | 'ANIOS'
+  // El backend (core-service enum DuracionTipo) envía estos valores en minúsculas
+  // y "años" con ñ. Ver normalizarDuracionTipo() en MembresiaPage para el mapeo a i18n.
+  duracion_tipo: 'dias' | 'semanas' | 'meses' | 'años'
   duracion_valor: number
   dias_acceso: number | null
   precio: number

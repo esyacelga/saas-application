@@ -45,10 +45,11 @@ public class GoogleTokenVerifierAdapter implements GoogleTokenVerifierPort {
                     if (email == null || !"true".equals(emailVerified)) {
                         return Mono.error(new AuthException("Token de Google invalido o email no verificado"));
                     }
-                    // El endpoint tokeninfo de Google incluye el claim "name" cuando el usuario
-                    // otorgo el scope "profile" al iniciar sesion; puede venir null.
+                    // El endpoint tokeninfo de Google incluye "name" y "picture" cuando el usuario
+                    // otorgo el scope "profile" al iniciar sesion; ambos pueden venir null.
                     String nombre = (String) map.get("name");
-                    return Mono.just(new OAuthProfile(email, nombre));
+                    String fotoUrl = (String) map.get("picture");
+                    return Mono.just(new OAuthProfile(email, nombre, fotoUrl));
                 });
     }
 }
