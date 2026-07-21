@@ -2,7 +2,25 @@
 
 > **Propósito:** Fuente única de verdad sobre **qué está construido hoy** vs. **qué es solo diseño**. Antes de implementar o de confiar en un documento como referencia, consulta aquí su estado.
 >
-> Última verificación contra el código: **2026-07-10** (general) · **2026-07-14** (billing-service, tras cierre de Fase 3 SRI 2026) · **2026-07-19** (reestructuración de docs + contrato de errores) · **2026-07-21** (bootstrap de métodos de pago en wizard de compañía).
+> Última verificación contra el código: **2026-07-10** (general) · **2026-07-14** (billing-service, tras cierre de Fase 3 SRI 2026) · **2026-07-19** (reestructuración de docs + contrato de errores) · **2026-07-21** (bootstrap de métodos de pago en wizard de compañía · asistencias manuales desde heatmap · estado inicial de cliente `vencido`).
+
+## ✅ Actualización 2026-07-21 (asistencias manuales desde heatmap + estado inicial de cliente)
+
+- **Cliente sin membresía nace `vencido`** (`core-service`): `ClienteService.registrar` y `registrarDesdeApp` fijan `estado = vencido` (antes `activo`). Un cliente recién creado no tiene membresía; la venta lo pasa a `activo` (`MembresiaService`). Unit tests actualizados. ⚠️ Requiere reiniciar core-service (8083) para aplicar a clientes nuevos; no es retroactivo.
+- **Registro manual de asistencia desde el calendario** (panel admin, detalle de cliente → pestaña Asistencias): clic en una celda del heatmap (día del mes, sin asistencia y no futuro) abre un `confirmDialog` que registra la asistencia en esa fecha **a las 06:00** (hora fija, no mostrada). Usa `POST /asistencias/manual` (que ya aceptaba `fecha`/`hora_entrada` opcionales); `attendanceRepository.registrarManual` se extendió para enviarlos.
+- **Heatmap solo del mes actual con número de día**: el calendario dibuja solo el mes en curso, con el número de día centrado y encabezado localizado; fechas en hora local para evitar desfase UTC. Limitación: el backend `ultimos30Dias` solo trae 30 días.
+- **Tope de asistencias previas** (`CargarAsistenciasModal`): valida que la cantidad no supere el total de días de acceso del pack (nueva prop `diasAccesoTotal`, hint "(máx N)").
+- **Método de pago por defecto** en `CompletarVentaClienteModal`: preselecciona "Efectivo" (o el primero disponible).
+- **Detalle**: [_changesets/2026-07-21-asistencias-manual-y-estado-inicial.md](_changesets/2026-07-21-asistencias-manual-y-estado-inicial.md).
+
+---
+
+## ✅ Actualización 2026-07-21 (panel admin: opción "Cuentas App" oculta)
+
+- **"Cuentas App" oculta del menú**: en el panel admin se retiró temporalmente el ítem de navegación "Cuentas App" (`nav.appAccounts` → `/admin/clientes/app`). Solo se comentó el NavItem en `AdminLayout.tsx`; la ruta, la página `ClientesAppPage.tsx` y las traducciones `appAccounts.*` siguen intactas — el módulo es accesible por URL directa y la reversión es de una línea.
+- **Documento creado**: [auth-service-frond-end/features-ocultas.md](auth-service-frond-end/features-ocultas.md) — registro de opciones ocultas a propósito y cómo restaurarlas.
+
+---
 
 ## ✅ Actualización 2026-07-21 (documentación: bootstrap de métodos de pago en wizard)
 
@@ -210,6 +228,7 @@ Cada documento en `docs/` lleva un encabezado con uno de estos marcadores. Su si
 | Documento | Estado |
 |-----------|--------|
 | design-guidelines.md, INDEX-api.md | 🟡 Referencia — verificar contra código si el detalle importa |
+| features-ocultas.md | ✅ Creado 2026-07-21 — opciones del panel ocultas a propósito en la navegación (con cómo restaurarlas). Hoy: "Cuentas App" (`/admin/clientes/app`). |
 | pendientes-backlog.md, spec-solicitudes-membresia.md, facturacion-diseno.md | 📋 Planeado — sin implementar |
 | impl/, backend-prompts/, preguntas/, member-portal-decisiones, registro-* | 📜 **Archivados** en [`_archive/auth-service-frond-end/`](_archive/README.md) (2026-07-19) |
 

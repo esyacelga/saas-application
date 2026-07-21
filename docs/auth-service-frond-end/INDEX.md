@@ -12,6 +12,7 @@ Panel de administración y staff (web). Ver [auth-service-frond-end/README.md](.
 |-----------|--------|-----------|
 | [INDEX-api.md](INDEX-api.md) | 🟡 Referencia | Índice de endpoints que este frontend consume del auth-service (verificar contra código si el detalle importa). |
 | [design-guidelines.md](design-guidelines.md) | 🟡 Referencia | Directrices de diseño: sistema de 6 temas, tipografía, tokens, 17 variables CSS por tema. |
+| [features-ocultas.md](features-ocultas.md) | ✅ Vigente | Opciones del panel ocultas a propósito en la navegación (con cómo restaurarlas). Hoy: "Cuentas App". |
 
 ## Planeado (spec definida, sin implementar)
 

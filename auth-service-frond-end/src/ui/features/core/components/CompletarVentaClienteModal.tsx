@@ -69,9 +69,11 @@ export function CompletarVentaClienteModal({ idMembresia, nombreCliente, tipoNom
       .then(([metodos, tipos]) => {
         setMetodosPago(metodos)
         const tipo = tipos.find(tp => tp.id === idTipoMembresia)
+        const metodoPorDefecto =
+          metodos.find(m => m.nombre.trim().toLowerCase() === 'efectivo') ?? metodos[0]
         reset({
           precio_pagado: tipo?.precio ?? 0,
-          id_metodo_pago: 0,
+          id_metodo_pago: metodoPorDefecto?.id ?? 0,
           fecha_inicio: new Date().toISOString().split('T')[0],
           descuento_aplicado: 0,
         })

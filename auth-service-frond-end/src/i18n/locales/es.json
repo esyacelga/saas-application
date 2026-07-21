@@ -823,6 +823,7 @@
     "colTelefono": "Teléfono",
     "colEstado": "Estado",
     "colMembresia": "Membresía activa",
+    "badgeSolicitudPendiente": "Pendiente",
     "tabLista": "Lista",
     "tabDetallePlaceholder": "Selecciona un cliente",
     "subTabPerfil": "Perfil",
@@ -905,7 +906,9 @@
     "asistPreviasSubmit": "Guardar",
     "asistPreviasSuccess": "Asistencias históricas actualizadas.",
     "asistPreviasError": "Error al guardar. Intenta de nuevo.",
-    "asistPreviasInvalid": "Ingresa un número válido (0 o más)."
+    "asistPreviasInvalid": "Ingresa un número válido (0 o más).",
+    "asistPreviasMaxError": "No puede superar el total del pack ({{max}}).",
+    "asistPreviasMaxHint": "(máx {{max}})"
   },
   "congelamientos": {
     "historialTitle": "Congelamientos",
@@ -938,9 +941,14 @@
     "diasAsistidos": "Días asistidos (30d)",
     "rachaActual": "Racha actual",
     "rachaMejor": "Mejor racha",
+    "leyendaAsistio": "Asistió",
+    "leyendaAusente": "Ausente",
     "registrarManual": "Registrar manual",
     "registrarSubmit": "Registrar",
     "registrarManualConfirmMsg": "¿Registrar asistencia manual para {{nombre}} hoy?",
+    "agregarManualCeldaTitle": "Agregar asistencia el {{fecha}}",
+    "agregarManualCeldaHeader": "Agregar asistencia",
+    "agregarManualCeldaMsg": "¿Agregar una asistencia para {{nombre}} el {{fecha}}?",
     "registradoSuccess": "Asistencia registrada correctamente.",
     "registradoError": "Error al registrar asistencia. Intenta de nuevo.",
     "sinRegistros": "Sin registros de asistencia",

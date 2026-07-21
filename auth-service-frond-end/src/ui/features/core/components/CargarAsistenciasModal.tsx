@@ -14,10 +14,11 @@ interface Props {
   onClose: () => void
   idMembresia: number
   valorActual: number
+  diasAccesoTotal: number
   onActualizado: (nuevaCantidad: number) => void
 }
 
-export function CargarAsistenciasModal({ open, onClose, idMembresia, valorActual, onActualizado }: Props) {
+export function CargarAsistenciasModal({ open, onClose, idMembresia, valorActual, diasAccesoTotal, onActualizado }: Props) {
   const { t } = useTranslation()
   const [cantidad, setCantidad] = useState(String(valorActual))
   const [submitting, setSubmitting] = useState(false)
@@ -30,6 +31,10 @@ export function CargarAsistenciasModal({ open, onClose, idMembresia, valorActual
     const parsed = parseInt(cantidad, 10)
     if (isNaN(parsed) || parsed < 0) {
       toast.error(t('membresias.asistPreviasInvalid'))
+      return
+    }
+    if (parsed > diasAccesoTotal) {
+      toast.error(t('membresias.asistPreviasMaxError', { max: diasAccesoTotal }))
       return
     }
     setSubmitting(true)
@@ -58,10 +63,14 @@ export function CargarAsistenciasModal({ open, onClose, idMembresia, valorActual
         <div className="py-2">
           <label className="block text-xs font-semibold uppercase mb-1.5" style={{ color: 'var(--page-muted)' }}>
             {t('membresias.asistPreviasLabel')}
+            <span className="ml-1 normal-case font-normal" style={{ color: 'var(--page-muted)' }}>
+              {t('membresias.asistPreviasMaxHint', { max: diasAccesoTotal })}
+            </span>
           </label>
           <input
             type="number"
             min={0}
+            max={diasAccesoTotal}
             value={cantidad}
             onChange={e => setCantidad(e.target.value)}
             className="w-full px-3 py-2 rounded-lg text-sm font-sans focus:outline-none focus:ring-2 focus:ring-orange-500"

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { Clock, CreditCard, Dumbbell, LayoutDashboard, LogOut, Menu, Palette, Printer, ScrollText, Settings, Shield, Smartphone, Sparkles, Tag, Users, X } from 'lucide-react'
+// Smartphone: se retirará junto con el ítem "Cuentas App" oculto (ver ALL_NAV_ITEMS). Reañadir al restaurar.
+import { Clock, CreditCard, Dumbbell, LayoutDashboard, LogOut, Menu, Palette, Printer, ScrollText, Settings, Shield, Sparkles, Tag, Users, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { LanguageSwitcher } from '@/ui/components/LanguageSwitcher'
@@ -28,7 +29,10 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { to: '/admin/ventas-pendientes', labelKey: 'nav.ventasPendientes', icon: <Clock size={20} />,        permiso: 'membresias:confirmar_pago' },
   { to: '/admin/usuarios',         labelKey: 'nav.users',            icon: <CreditCard size={20} />,   permiso: 'usuarios:leer' },
   { to: '/admin/roles',            labelKey: 'nav.rolesPermissions', icon: <Shield size={20} />,       permiso: 'roles:leer' },
-  { to: '/admin/clientes/app',     labelKey: 'nav.appAccounts',      icon: <Smartphone size={20} /> },
+  // OCULTO TEMPORALMENTE (2026-07-21): "Cuentas App" retirado del menú a pedido.
+  // La ruta /admin/clientes/app sigue registrada en el router — solo se ocultó el
+  // acceso desde la navegación. Para restaurar, descomentar esta línea.
+  // { to: '/admin/clientes/app',     labelKey: 'nav.appAccounts',      icon: <Smartphone size={20} /> },
   { to: '/admin/bitacora',         labelKey: 'nav.activityLog',      icon: <ScrollText size={20} />,   permiso: 'usuarios:leer' },
   { to: '/admin/mi-suscripcion',   labelKey: 'nav.miSuscripcion',    icon: <Sparkles size={20} /> },
   { to: '/admin/configuracion',   labelKey: 'nav.configuracion',    icon: <Settings size={20} /> },

@@ -97,8 +97,15 @@ async function getRachaPerfecta(idCliente: number): Promise<RachaPerfectaResult>
   return data
 }
 
-async function registrarManual(idCliente: number): Promise<void> {
-  await attendanceApi.post('/asistencias/manual', { id_cliente: idCliente })
+async function registrarManual(
+  idCliente: number,
+  opts?: { fecha?: string; horaEntrada?: string },
+): Promise<void> {
+  await attendanceApi.post('/asistencias/manual', {
+    id_cliente: idCliente,
+    ...(opts?.fecha ? { fecha: opts.fecha } : {}),
+    ...(opts?.horaEntrada ? { hora_entrada: opts.horaEntrada } : {}),
+  })
 }
 
 export const attendanceRepository = {

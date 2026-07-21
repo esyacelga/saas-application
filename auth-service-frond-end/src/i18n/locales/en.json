@@ -823,6 +823,7 @@
     "colTelefono": "Phone",
     "colEstado": "Status",
     "colMembresia": "Active membership",
+    "badgeSolicitudPendiente": "Pending",
     "tabLista": "List",
     "tabDetallePlaceholder": "Select a member",
     "subTabPerfil": "Profile",
@@ -905,7 +906,9 @@
     "asistPreviasSubmit": "Save",
     "asistPreviasSuccess": "Historical attendances updated.",
     "asistPreviasError": "Error saving. Try again.",
-    "asistPreviasInvalid": "Enter a valid number (0 or more)."
+    "asistPreviasInvalid": "Enter a valid number (0 or more).",
+    "asistPreviasMaxError": "Cannot exceed the pack total ({{max}}).",
+    "asistPreviasMaxHint": "(max {{max}})"
   },
   "congelamientos": {
     "historialTitle": "Freezes",
@@ -938,9 +941,14 @@
     "diasAsistidos": "Days attended (30d)",
     "rachaActual": "Current streak",
     "rachaMejor": "Best streak",
+    "leyendaAsistio": "Attended",
+    "leyendaAusente": "Absent",
     "registrarManual": "Manual entry",
     "registrarSubmit": "Register",
     "registrarManualConfirmMsg": "Register manual attendance for {{nombre}} today?",
+    "agregarManualCeldaTitle": "Add attendance on {{fecha}}",
+    "agregarManualCeldaHeader": "Add attendance",
+    "agregarManualCeldaMsg": "Add an attendance for {{nombre}} on {{fecha}}?",
     "registradoSuccess": "Attendance registered successfully.",
     "registradoError": "Error registering attendance. Try again.",
     "sinRegistros": "No attendance records",

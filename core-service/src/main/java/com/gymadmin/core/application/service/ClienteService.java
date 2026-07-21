@@ -121,7 +121,9 @@ public class ClienteService implements ClienteUseCase {
                     cliente.setAlturaCm(command.alturaCm());
                     cliente.setObjetivos(command.objetivos());
                     cliente.setLesiones(command.lesiones());
-                    cliente.setEstado(Cliente.Estado.activo);
+                    // Un cliente recién creado aún no tiene membresía → 'vencido'.
+                    // La venta de una membresía lo pasa a 'activo' (MembresiaService).
+                    cliente.setEstado(Cliente.Estado.vencido);
                     cliente.setFechaIngreso(LocalDate.now());
                     if (command.sexo() != null) cliente.setSexo(Cliente.Sexo.valueOf(command.sexo()));
                     return clienteRepository.save(cliente)
@@ -142,7 +144,9 @@ public class ClienteService implements ClienteUseCase {
                     cliente.setIdPersona(idPersona);
                     cliente.setIdCompania(idCompania);
                     cliente.setIdSucursal(idSucursal);
-                    cliente.setEstado(Cliente.Estado.activo);
+                    // Un cliente recién creado aún no tiene membresía → 'vencido'.
+                    // La venta de una membresía lo pasa a 'activo' (MembresiaService).
+                    cliente.setEstado(Cliente.Estado.vencido);
                     cliente.setFechaIngreso(LocalDate.now());
                     return clienteRepository.save(cliente)
                             .flatMap(saved -> {

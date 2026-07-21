@@ -178,7 +178,6 @@ class ClienteServiceTest {
         @DisplayName("crea un nuevo cliente cuando la persona no existe aún")
         void creaClienteConNuevaPersona() {
             PersonaRepository.PersonaResult nuevaPersona = buildPersona(200L, "0987654321", "Ana García");
-            Cliente clienteSaved = buildCliente(5L, 200L, 1L, Cliente.Estado.activo);
 
             when(platformServiceClient.requireLimite(eq(1L), eq("clientes_activos"))).thenReturn(Mono.empty());
             when(personaRepository.findByCi("0987654321")).thenReturn(Mono.empty());
@@ -192,7 +191,8 @@ class ClienteServiceTest {
             StepVerifier.create(service.registrar(1L, buildCmd()))
                     .assertNext(c -> {
                         assertThat(c.getId()).isEqualTo(5L);
-                        assertThat(c.getEstado()).isEqualTo(Cliente.Estado.activo);
+                        // Cliente sin membresía nace 'vencido' (se vuelve 'activo' al vender membresía)
+                        assertThat(c.getEstado()).isEqualTo(Cliente.Estado.vencido);
                         assertThat(c.getCodigoCarnet()).contains("GYM");
                     })
                     .verifyComplete();
@@ -237,6 +237,8 @@ class ClienteServiceTest {
             StepVerifier.create(service.registrarDesdeApp(100L, 1L, 1L))
                     .assertNext(c -> {
                         assertThat(c.getId()).isEqualTo(7L);
+                        // Cliente sin membresía nace 'vencido' (se vuelve 'activo' al vender membresía)
+                        assertThat(c.getEstado()).isEqualTo(Cliente.Estado.vencido);
                         assertThat(c.getCodigoCarnet()).contains("GYM");
                     })
                     .verifyComplete();

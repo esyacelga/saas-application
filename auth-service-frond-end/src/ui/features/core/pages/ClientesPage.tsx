@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, type ReactElement } from 'react'
 import { toast } from 'sonner'
 import { isAxiosError } from 'axios'
-import { Users, Search, User, CreditCard, Snowflake, History, RefreshCw, Activity, CalendarCheck, Flame, TrendingUp, Smartphone, Eye, EyeOff, Loader2, Pencil } from 'lucide-react'
+import { Users, Search, User, CreditCard, Snowflake, History, RefreshCw, Activity, CalendarCheck, Flame, TrendingUp, Smartphone, Eye, EyeOff, Loader2, Pencil, Clock } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column'
@@ -19,6 +19,7 @@ import type {
 import { attendanceRepository } from '@/infrastructure/http/attendance/AttendanceHttpRepository'
 import type { Ultimos30DiasAdminResult, AsistenciaAdminItem } from '@/infrastructure/http/attendance/AttendanceHttpRepository'
 import { getAvatarUrl } from '@/lib/avatar'
+import { getApiErrorMessage, getApiErrorStatus } from '@/lib/api-error'
 import { useAuthStore, useHasPermission } from '@/infrastructure/store/auth/auth.store'
 import { useOnboardingStore } from '@/infrastructure/store/onboarding/onboarding.store'
 import type { JwtPayloadStaff } from '@/domain/auth/entities/User.entity'
@@ -45,6 +46,20 @@ function BadgeEstado({ estado }: { estado: EstadoCliente }) {
     <span className="inline-flex items-center font-medium px-2 py-0.5 rounded-full"
       style={{ fontSize: '0.55rem', background: c.bg, color: c.text }}>
       {estado.replace('_', ' ')}
+    </span>
+  )
+}
+
+// Chip complementario: el cliente tiene una solicitud de membresía pendiente de cobro
+// (membresía con estado_pago=PENDIENTE, típicamente originada en la PWA). No es un
+// estado del cliente — es una señal para el staff de que hay una venta por completar.
+function BadgeSolicitudPendiente({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center gap-0.5 font-medium px-2 py-0.5 rounded-full"
+      style={{ fontSize: '0.55rem', background: 'rgba(234,179,8,0.15)', color: '#eab308' }}
+      title={label}>
+      <Clock size={9} />
+      {label}
     </span>
   )
 }
@@ -118,9 +133,11 @@ function MembresiaActivaCard({
               onClick={onReactivar}
               pt={{ root: { className: 'text-green-400 hover:text-green-300 !text-[0.6rem] !px-1.5 !py-0.5' } }} />
           )}
-          <Button label={t('membresias.asistPreviasBtn')} icon="pi pi-history" size="small" text
-            onClick={onCargarHistorial}
-            pt={{ root: { className: '!text-[0.6rem] !px-1.5 !py-0.5' } }} />
+          {isAccesos && (
+            <Button label={t('membresias.asistPreviasBtn')} icon="pi pi-history" size="small" text
+              onClick={onCargarHistorial}
+              pt={{ root: { className: '!text-[0.6rem] !px-1.5 !py-0.5' } }} />
+          )}
           <Button label={t('membresias.anularTitle')} icon="pi pi-times" size="small" text severity="danger"
             onClick={onAnular}
             pt={{ root: { className: '!text-[0.6rem] !px-1.5 !py-0.5' } }} />
@@ -245,51 +262,110 @@ function formatAsistDate(iso: string) {
   })
 }
 
-function heatmapCellStyle(asistio: boolean | null, isToday: boolean): React.CSSProperties {
+// asistio: true=asistió, false=ausente (día con dato), null=sin dato en la ventana.
+// outOfMonth: celda de relleno de otro mes → transparente y sin número.
+function heatmapCellStyle(asistio: boolean | null, isToday: boolean, outOfMonth: boolean): React.CSSProperties {
+  if (outOfMonth) return { background: 'transparent' }
   if (isToday) return { background: asistio ? '#4ade80' : 'rgba(99,102,241,0.25)', outline: '1px solid rgba(99,102,241,0.5)' }
   if (asistio === true) return { background: '#22c55e' }
   if (asistio === false) return { background: 'var(--page-border)' }
-  return { background: 'transparent' }
+  return { background: 'var(--input-bg)' } // día del mes aún sin dato (futuro / fuera de ventana)
 }
 
-function AsistenciasHeatmap({ detalle }: { detalle: Ultimos30DiasAdminResult['detalle'] }) {
-  const sorted = [...detalle].sort((a, b) => a.fecha.localeCompare(b.fecha))
-  const today = new Date().toISOString().slice(0, 10)
-  const firstDay = new Date(sorted[0]?.fecha ?? today)
-  const dayOffset = (firstDay.getDay() + 6) % 7
-  const gridStart = new Date(firstDay)
-  gridStart.setDate(gridStart.getDate() - dayOffset)
+// Color del número dentro de la celda: legible sobre cada fondo posible.
+function heatmapTextColor(asistio: boolean | null, isToday: boolean): string {
+  if (isToday || asistio === true) return '#052e16' // verde oscuro sobre celda verde/hoy
+  return 'var(--page-muted)'
+}
+
+// Formatea 'YYYY-MM-DD' en hora LOCAL. Evitamos toISOString(), que emite la fecha
+// en UTC y desplaza el día en zonas con offset (ej. UTC-5).
+function formatLocalDate(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function AsistenciasHeatmap({
+  detalle,
+  onSelectDia,
+}: {
+  detalle: Ultimos30DiasAdminResult['detalle']
+  onSelectDia?: (fecha: string) => void
+}) {
+  const { t, i18n } = useTranslation()
+  const today = formatLocalDate(new Date())
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = now.getMonth() // 0-based
+
+  // Solo el mes actual: del día 1 al último día del mes.
+  const monthStart = new Date(year, month, 1)
+  const monthEnd = new Date(year, month + 1, 0) // día 0 del mes siguiente = último de este
+
+  // Alineamos el grid a semanas (lunes-domingo): rellenamos con días de otros meses.
+  const leadOffset = (monthStart.getDay() + 6) % 7 // 0 = lunes … 6 = domingo
+  const gridStart = new Date(monthStart)
+  gridStart.setDate(gridStart.getDate() - leadOffset)
+  const spanDays = Math.round((monthEnd.getTime() - gridStart.getTime()) / 86400000) + 1
+  const totalCells = Math.ceil(spanDays / 7) * 7
 
   const byDate: Record<string, boolean> = {}
   for (const d of detalle) byDate[d.fecha] = d.asistio
 
-  const cells: Array<{ date: string; asistio: boolean | null; isToday: boolean }> = []
-  for (let i = 0; i < 35; i++) {
+  const cells: Array<{ date: string; day: number; asistio: boolean | null; isToday: boolean; outOfMonth: boolean }> = []
+  for (let i = 0; i < totalCells; i++) {
     const d = new Date(gridStart)
     d.setDate(d.getDate() + i)
-    const iso = d.toISOString().slice(0, 10)
-    cells.push({ date: iso, asistio: byDate[iso] ?? null, isToday: iso === today })
+    const iso = formatLocalDate(d)
+    cells.push({
+      date: iso,
+      day: d.getDate(),
+      asistio: byDate[iso] ?? null,
+      isToday: iso === today,
+      outOfMonth: d.getMonth() !== month,
+    })
   }
 
   const DOW = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+  const tituloMes = monthStart.toLocaleDateString(i18n.language, { month: 'long', year: 'numeric' })
 
   return (
     <div className="rounded-lg p-3" style={{ background: 'var(--page-surface)', border: '1px solid var(--page-border)' }}>
+      <p className="text-xs font-semibold capitalize mb-2 text-center" style={{ color: 'var(--page-text)' }}>{tituloMes}</p>
       <div className="grid grid-cols-7 gap-0.5 mb-0.5">
         {DOW.map((d, i) => (
           <div key={i} style={{ fontSize: '0.6rem', color: 'var(--page-muted)', textAlign: 'center' }}>{d}</div>
         ))}
       </div>
       <div className="grid grid-cols-7 gap-0.5">
-        {cells.map(({ date, asistio, isToday }) => (
-          <div key={date} title={date} className="rounded-sm aspect-square"
-            style={heatmapCellStyle(asistio, isToday)} />
-        ))}
+        {cells.map(({ date, day, asistio, isToday, outOfMonth }) => {
+          // Registrable: día del mes, sin asistencia y no futuro.
+          const registrable = !outOfMonth && asistio !== true && date <= today
+          const clickable = registrable && !!onSelectDia
+          return (
+            <div key={date}
+              title={outOfMonth ? undefined : clickable ? t('asistencias.agregarManualCeldaTitle', { fecha: date }) : date}
+              role={clickable ? 'button' : undefined}
+              tabIndex={clickable ? 0 : undefined}
+              onClick={clickable ? () => onSelectDia!(date) : undefined}
+              onKeyDown={clickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectDia!(date) } } : undefined}
+              className="rounded-sm aspect-square flex items-center justify-center transition-transform"
+              style={{ ...heatmapCellStyle(asistio, isToday, outOfMonth), cursor: clickable ? 'pointer' : 'default' }}>
+              {!outOfMonth && (
+                <span style={{ fontSize: '0.55rem', fontWeight: isToday ? 700 : 400, color: heatmapTextColor(asistio, isToday) }}>
+                  {day}
+                </span>
+              )}
+            </div>
+          )
+        })}
       </div>
       <div className="flex items-center gap-3 mt-2 justify-end">
         {[
-          { color: '#22c55e', label: 'Asistió' },
-          { color: 'var(--page-border)', label: 'Ausente' },
+          { color: '#22c55e', label: t('asistencias.leyendaAsistio') },
+          { color: 'var(--page-border)', label: t('asistencias.leyendaAusente') },
         ].map(({ color, label }) => (
           <div key={label} className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-sm" style={{ background: color }} />
@@ -307,12 +383,14 @@ function AsistenciasClienteTab({
   totalHistorial,
   loading,
   onRegistrarManual,
+  onSelectDia,
 }: {
   data30: Ultimos30DiasAdminResult | null
   historial: AsistenciaAdminItem[]
   totalHistorial: number
   loading: boolean
   onRegistrarManual: () => void
+  onSelectDia: (fecha: string) => void
 }) {
   const { t } = useTranslation()
 
@@ -359,7 +437,7 @@ function AsistenciasClienteTab({
       )}
 
       {/* Heatmap */}
-      {data30 && <AsistenciasHeatmap detalle={data30.detalle} />}
+      {data30 && <AsistenciasHeatmap detalle={data30.detalle} onSelectDia={onSelectDia} />}
 
       {/* Lista */}
       {historial.length === 0 ? (
@@ -612,13 +690,15 @@ function UsuarioAppTab({ ci }: { ci: string }) {
 type DetTab = 'perfil' | 'datos_personales' | 'membresia' | 'historial_mem' | 'congelamientos' | 'asistencias' | 'usuario_app'
 
 export function ClientesPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const user = useAuthStore(s => s.user)
 
   // Lista
   const [clientes, setClientes] = useState<ClienteListItem[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  // IDs de clientes con una solicitud de membresía pendiente de cobro (para el chip).
+  const [pendientesIds, setPendientesIds] = useState<Set<number>>(new Set())
   const [globalFilter, setGlobalFilter] = useState('')
   const [filtroEstado, setFiltroEstado] = useState('')
 
@@ -660,11 +740,22 @@ export function ClientesPage() {
 
   const cargarLista = useCallback(async () => {
     setLoading(true)
+    const idCompania = user && user.tipo === 'staff' ? (user as JwtPayloadStaff).id_compania : null
     try {
-      const res = await coreRepository.getClientes({
-        buscar: globalFilter || undefined,
-        estado: filtroEstado || undefined,
-      })
+      // Clientes y solicitudes pendientes en paralelo. Las pendientes son información
+      // complementaria (chip): si fallan, se resuelven a un set vacío y la lista sigue.
+      const [res, pendientes] = await Promise.all([
+        coreRepository.getClientes({
+          buscar: globalFilter || undefined,
+          estado: filtroEstado || undefined,
+        }),
+        idCompania != null
+          ? coreRepository.getPendientes(idCompania).catch(() => [])
+          : Promise.resolve([]),
+      ])
+      // setPendientesIds primero: así cuando el DataTable repinta por el nuevo `value`
+      // (setClientes) ya tiene el set actualizado y el chip sale en el primer render.
+      setPendientesIds(new Set(pendientes.map(p => p.idCliente)))
       setClientes(res.datos)
       setTotal(res.total)
     } catch {
@@ -672,7 +763,7 @@ export function ClientesPage() {
     } finally {
       setLoading(false)
     }
-  }, [globalFilter, filtroEstado, t])
+  }, [globalFilter, filtroEstado, t, user])
 
   useEffect(() => { cargarLista() }, [cargarLista])
 
@@ -775,6 +866,35 @@ export function ClientesPage() {
           cargarAsistencias(seleccionado.id)
         } catch {
           toast.error(t('asistencias.registradoError'))
+        }
+      },
+    })
+  }
+
+  const handleSelectDiaHeatmap = (fecha: string) => {
+    if (!seleccionado) return
+    // fecha viene como 'YYYY-MM-DD' (hora local). La mostramos de forma legible sin
+    // reconstruir un Date (evita el desfase UTC de new Date('YYYY-MM-DD')).
+    const [y, m, d] = fecha.split('-')
+    const fechaLegible = new Date(Number(y), Number(m) - 1, Number(d))
+      .toLocaleDateString(i18n.language, { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
+    confirmDialog({
+      message: t('asistencias.agregarManualCeldaMsg', { nombre: seleccionado.nombre, fecha: fechaLegible }),
+      header: t('asistencias.agregarManualCeldaHeader'),
+      icon: 'pi pi-calendar-plus',
+      acceptLabel: t('asistencias.registrarSubmit'),
+      rejectLabel: t('common.cancel'),
+      acceptClassName: 'p-button-warning p-button-sm',
+      rejectClassName: 'p-button-outlined p-button-secondary p-button-sm',
+      defaultFocus: 'reject',
+      accept: async () => {
+        try {
+          await attendanceRepository.registrarManual(seleccionado.id, { fecha, horaEntrada: '06:00:00' })
+          toast.success(t('asistencias.registradoSuccess'))
+          cargarAsistencias(seleccionado.id)
+        } catch (e) {
+          const msg = getApiErrorStatus(e) ? getApiErrorMessage(e) : t('asistencias.registradoError')
+          toast.error(msg)
         }
       },
     })
@@ -993,7 +1113,14 @@ export function ClientesPage() {
             <Column field="ci" header={t('clientes.colCi')} style={{ color: 'var(--page-muted)' }} />
             <Column field="telefono" header={t('clientes.colTelefono')} style={{ color: 'var(--page-muted)' }} />
             <Column field="estado" header={t('clientes.colEstado')}
-              body={c => <BadgeEstado estado={c.estado} />} />
+              body={c => (
+                <div className="flex flex-wrap items-center gap-1">
+                  <BadgeEstado estado={c.estado} />
+                  {pendientesIds.has(c.id) && (
+                    <BadgeSolicitudPendiente label={t('clientes.badgeSolicitudPendiente')} />
+                  )}
+                </div>
+              )} />
             <Column header={t('clientes.colMembresia')} body={membresiaTemplate} />
           </DataTable>
         </div>
@@ -1195,6 +1322,7 @@ export function ClientesPage() {
                     totalHistorial={totalAsist}
                     loading={loadingAsist}
                     onRegistrarManual={handleRegistrarManual}
+                    onSelectDia={handleSelectDiaHeatmap}
                   />
                 )}
 
@@ -1253,12 +1381,13 @@ export function ClientesPage() {
             />
           )}
 
-          {membresiaActiva && (
+          {membresiaActiva && membresiaActiva.modo_control === 'accesos' && (
             <CargarAsistenciasModal
               open={cargarAsistOpen}
               onClose={() => setCargarAsistOpen(false)}
               idMembresia={membresiaActiva.id}
               valorActual={membresiaActiva.asistencias_previas ?? 0}
+              diasAccesoTotal={membresiaActiva.dias_acceso_total ?? 0}
               onActualizado={nuevaCantidad => {
                 setMembresiaActiva(prev => prev ? { ...prev, asistencias_previas: nuevaCantidad } : prev)
                 setCargarAsistOpen(false)
