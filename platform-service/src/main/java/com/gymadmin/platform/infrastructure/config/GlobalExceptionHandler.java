@@ -122,7 +122,11 @@ public class GlobalExceptionHandler implements ErrorWebExceptionHandler {
             return ProblemDetailFactory.create(ErrorCode.ACCESO_DENEGADO, ex.getMessage(), exchange);
         }
         if (ex instanceof RecordatorioNoEnviableException rne) {
-            return ProblemDetailFactory.create(rne.getErrorCode(), ex.getMessage(), exchange);
+            ProblemDetail pd = ProblemDetailFactory.create(rne.getErrorCode(), ex.getMessage(), exchange);
+            if (rne.getFechaEnvioPrevio() != null) {
+                pd.setProperty("fecha_envio_previo", rne.getFechaEnvioPrevio().toString());
+            }
+            return pd;
         }
         if (ex instanceof BusinessException) {
             return ProblemDetailFactory.create(ErrorCode.REGLA_NEGOCIO, ex.getMessage(), exchange);

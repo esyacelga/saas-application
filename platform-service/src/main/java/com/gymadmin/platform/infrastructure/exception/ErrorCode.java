@@ -40,7 +40,9 @@ public enum ErrorCode {
     // --- Recordatorio de vencimiento manual por WhatsApp (GYM-002) ---
     NO_CONSENTIMIENTO(HttpStatus.UNPROCESSABLE_ENTITY, "no_consentimiento"),
     TELEFONO_INVALIDO(HttpStatus.UNPROCESSABLE_ENTITY, "telefono_invalido"),
-    SIN_SUSCRIPCION(HttpStatus.UNPROCESSABLE_ENTITY, "sin_suscripcion");
+    SIN_SUSCRIPCION(HttpStatus.UNPROCESSABLE_ENTITY, "sin_suscripcion"),
+    // 409 (no 422): el estado actual lo bloquea, pero es reintentable con ?forzar=true.
+    NOTIFICACION_YA_ENVIADA(HttpStatus.CONFLICT, "notificacion_ya_enviada");
 
     private final HttpStatus status;
     private final String codigo;

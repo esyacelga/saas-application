@@ -568,7 +568,10 @@
         "errorNoConsentimiento": "The gym has not enabled WhatsApp to receive alerts",
         "errorTelefono": "The gym's phone number is not valid for WhatsApp",
         "errorSinSuscripcion": "The company does not have an active subscription",
-        "errorGenerico": "Could not send the reminder"
+        "errorGenerico": "Could not send the reminder",
+        "yaEnviadoTitle": "This reminder was already sent",
+        "yaEnviadoDesc": "An expiry alert was already sent on {{fecha}}. Each WhatsApp message has a cost. Send it anyway?",
+        "yaEnviadoDescSinFecha": "An expiry alert was already sent for this subscription. Each WhatsApp message has a cost. Send it anyway?"
       }
     },
     "suscripcion": {

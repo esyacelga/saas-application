@@ -61,6 +61,29 @@ public class NotificacionPersistenceAdapter implements NotificacionRepository {
     }
 
     @Override
+    public Mono<LocalDateTime> fechaEnvioPrevio(Long idCompaniaPlan, String tipo, String canal, Integer diasAntes) {
+        // Mismo predicado que existsIdempotente (dias_antes >= : un bucket mayor ya cubre al menor),
+        // pero devolviendo la fecha del envío más reciente para informarla al usuario.
+        return databaseClient.sql("""
+                SELECT COALESCE(fecha_envio, creacion_fecha) AS fecha
+                FROM tenant.notificaciones_suscripcion
+                WHERE id_compania_plan = :idCompaniaPlan
+                  AND tipo = :tipo
+                  AND canal = :canal
+                  AND dias_antes >= :diasAntes
+                  AND estado <> 'fallido'
+                ORDER BY COALESCE(fecha_envio, creacion_fecha) DESC
+                LIMIT 1
+                """)
+                .bind("idCompaniaPlan", idCompaniaPlan)
+                .bind("tipo", tipo)
+                .bind("canal", canal)
+                .bind("diasAntes", diasAntes)
+                .map((row, meta) -> row.get("fecha", LocalDateTime.class))
+                .one();
+    }
+
+    @Override
     public Flux<NotificacionSuscripcion> findBannersActivosHoy(Long idCompania) {
         return databaseClient.sql("""
                 SELECT * FROM tenant.notificaciones_suscripcion

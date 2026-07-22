@@ -4,6 +4,7 @@ import com.gymadmin.platform.application.service.EnviarRecordatorioVencimientoSe
 import com.gymadmin.platform.application.service.WhatsAppQueueService;
 import com.gymadmin.platform.domain.model.Compania;
 import com.gymadmin.platform.domain.model.CompaniaPlan;
+import com.gymadmin.platform.domain.model.NotificacionSuscripcion;
 import com.gymadmin.platform.domain.model.Plan;
 import com.gymadmin.platform.domain.port.in.EnviarRecordatorioVencimientoUseCase;
 import com.gymadmin.platform.domain.port.out.CompaniaPlanRepository;
@@ -24,6 +25,7 @@ import reactor.test.StepVerifier;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -56,7 +58,14 @@ class EnviarRecordatorioVencimientoServiceTest {
                 notificacionRepository, companiaRepository, companiaPlanRepository,
                 whatsAppSender, Clock.systemUTC());
         service = new EnviarRecordatorioVencimientoService(
-                companiaRepository, companiaPlanRepository, planRepository, cola);
+                companiaRepository, companiaPlanRepository, planRepository, cola, notificacionRepository);
+    }
+
+    /** Por defecto no hay envío previo: la guarda de idempotencia deja pasar. */
+    private void sinEnvioPrevio() {
+        when(notificacionRepository.fechaEnvioPrevio(eq(50L), anyString(), eq("whatsapp"), any()))
+                .thenReturn(Mono.empty());
+        when(notificacionRepository.save(any())).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
     }
 
     private Compania compania(boolean optIn, String whatsapp) {
@@ -92,8 +101,9 @@ class EnviarRecordatorioVencimientoServiceTest {
         when(companiaPlanRepository.findActivoByIdCompania(1L)).thenReturn(Mono.just(companiaPlan(fin)));
         when(planRepository.findById(9L)).thenReturn(Mono.just(plan("Premium")));
         when(whatsAppSender.enviarPlantilla(anyString(), anyString(), anyString(), any())).thenReturn(Mono.empty());
+        sinEnvioPrevio();
 
-        StepVerifier.create(service.enviar(1L))
+        StepVerifier.create(service.enviar(1L, false))
                 .assertNext(r -> {
                     assertThat(r.enviado()).isTrue();
                     assertThat(r.telefono()).isEqualTo("+593987654321");
@@ -117,8 +127,9 @@ class EnviarRecordatorioVencimientoServiceTest {
         when(companiaPlanRepository.findActivoByIdCompania(1L)).thenReturn(Mono.just(companiaPlan(LocalDate.now())));
         when(planRepository.findById(9L)).thenReturn(Mono.just(plan("Premium")));
         when(whatsAppSender.enviarPlantilla(anyString(), anyString(), anyString(), any())).thenReturn(Mono.empty());
+        sinEnvioPrevio();
 
-        StepVerifier.create(service.enviar(1L))
+        StepVerifier.create(service.enviar(1L, false))
                 .assertNext(r -> assertThat(r.template()).isEqualTo("venc_suscripcion_hoy"))
                 .verifyComplete();
 
@@ -130,7 +141,7 @@ class EnviarRecordatorioVencimientoServiceTest {
     void falla_noConsentimiento() {
         when(companiaRepository.findById(1L)).thenReturn(Mono.just(compania(false, "0987654321")));
 
-        StepVerifier.create(service.enviar(1L))
+        StepVerifier.create(service.enviar(1L, false))
                 .expectErrorSatisfies(e -> assertThat(e)
                         .isInstanceOf(RecordatorioNoEnviableException.class)
                         .satisfies(ex -> assertThat(((RecordatorioNoEnviableException) ex).getErrorCode().codigo())
@@ -147,7 +158,7 @@ class EnviarRecordatorioVencimientoServiceTest {
         c.setTelefono("022555000"); // fijo, no celular
         when(companiaRepository.findById(1L)).thenReturn(Mono.just(c));
 
-        StepVerifier.create(service.enviar(1L))
+        StepVerifier.create(service.enviar(1L, false))
                 .expectErrorSatisfies(e -> assertThat(((RecordatorioNoEnviableException) e).getErrorCode().codigo())
                         .isEqualTo("telefono_invalido"))
                 .verify();
@@ -161,7 +172,7 @@ class EnviarRecordatorioVencimientoServiceTest {
         when(companiaRepository.findById(1L)).thenReturn(Mono.just(compania(true, "0987654321")));
         when(companiaPlanRepository.findActivoByIdCompania(1L)).thenReturn(Mono.empty());
 
-        StepVerifier.create(service.enviar(1L))
+        StepVerifier.create(service.enviar(1L, false))
                 .expectErrorSatisfies(e -> assertThat(((RecordatorioNoEnviableException) e).getErrorCode().codigo())
                         .isEqualTo("sin_suscripcion"))
                 .verify();
@@ -177,8 +188,9 @@ class EnviarRecordatorioVencimientoServiceTest {
         when(companiaPlanRepository.findActivoByIdCompania(1L)).thenReturn(Mono.just(companiaPlan(fin)));
         when(planRepository.findById(9L)).thenReturn(Mono.just(plan("Premium")));
         when(whatsAppSender.enviarPlantilla(anyString(), anyString(), anyString(), any())).thenReturn(Mono.empty());
+        sinEnvioPrevio();
 
-        StepVerifier.create(service.enviar(1L))
+        StepVerifier.create(service.enviar(1L, false))
                 .assertNext(r -> assertThat(r.template()).isEqualTo("recordatorio_vencimiento_suscripcion"))
                 .verifyComplete();
 
@@ -186,6 +198,113 @@ class EnviarRecordatorioVencimientoServiceTest {
         ArgumentCaptor<List<String>> params = ArgumentCaptor.forClass(List.class);
         verify(whatsAppSender).enviarPlantilla(anyString(), anyString(), anyString(), params.capture());
         assertThat(params.getValue().get(3)).isEqualTo("-4");
+    }
+
+    // ── Idempotencia: cada mensaje cuesta, un doble click no debe cobrarse dos veces ──────────
+
+    @Test
+    @DisplayName("ya enviado para el bucket → 409 notificacion_ya_enviada con la fecha previa, NO envía")
+    void falla_yaEnviado() {
+        LocalDateTime previo = LocalDateTime.now().minusHours(3);
+        when(companiaRepository.findById(1L)).thenReturn(Mono.just(compania(true, "0987654321")));
+        when(companiaPlanRepository.findActivoByIdCompania(1L))
+                .thenReturn(Mono.just(companiaPlan(LocalDate.now().plusDays(5))));
+        when(planRepository.findById(9L)).thenReturn(Mono.just(plan("Premium")));
+        when(notificacionRepository.fechaEnvioPrevio(eq(50L), eq("VENCIMIENTO_PREMIUM"), eq("whatsapp"), eq(5)))
+                .thenReturn(Mono.just(previo));
+
+        StepVerifier.create(service.enviar(1L, false))
+                .expectErrorSatisfies(e -> {
+                    RecordatorioNoEnviableException ex = (RecordatorioNoEnviableException) e;
+                    assertThat(ex.getErrorCode().codigo()).isEqualTo("notificacion_ya_enviada");
+                    assertThat(ex.getFechaEnvioPrevio()).isEqualTo(previo);
+                })
+                .verify();
+
+        verify(whatsAppSender, never()).enviarPlantilla(anyString(), anyString(), anyString(), any());
+        verify(notificacionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("forzar=true → ignora el envío previo, envía y registra otra fila (costo auditable)")
+    void forzar_reenvia() {
+        when(companiaRepository.findById(1L)).thenReturn(Mono.just(compania(true, "0987654321")));
+        when(companiaPlanRepository.findActivoByIdCompania(1L))
+                .thenReturn(Mono.just(companiaPlan(LocalDate.now().plusDays(5))));
+        when(planRepository.findById(9L)).thenReturn(Mono.just(plan("Premium")));
+        when(whatsAppSender.enviarPlantilla(anyString(), anyString(), anyString(), any())).thenReturn(Mono.empty());
+        when(notificacionRepository.save(any())).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
+
+        StepVerifier.create(service.enviar(1L, true))
+                .assertNext(r -> assertThat(r.enviado()).isTrue())
+                .verifyComplete();
+
+        // Con forzar no se consulta la guarda, pero SÍ se registra el envío.
+        verify(notificacionRepository, never()).fechaEnvioPrevio(any(), anyString(), anyString(), any());
+        verify(notificacionRepository).save(any());
+    }
+
+    @Test
+    @DisplayName("envío OK → registra fila enviado/whatsapp con el bucket y tipo del plan")
+    void registra_envio() {
+        when(companiaRepository.findById(1L)).thenReturn(Mono.just(compania(true, "0987654321")));
+        when(companiaPlanRepository.findActivoByIdCompania(1L))
+                .thenReturn(Mono.just(companiaPlan(LocalDate.now().plusDays(3))));
+        Plan trial = plan("Trial");
+        trial.setCodigo("TRIAL");
+        when(planRepository.findById(9L)).thenReturn(Mono.just(trial));
+        when(whatsAppSender.enviarPlantilla(anyString(), anyString(), anyString(), any())).thenReturn(Mono.empty());
+        sinEnvioPrevio();
+
+        StepVerifier.create(service.enviar(1L, false)).expectNextCount(1).verifyComplete();
+
+        ArgumentCaptor<NotificacionSuscripcion> captor =
+                ArgumentCaptor.forClass(NotificacionSuscripcion.class);
+        verify(notificacionRepository).save(captor.capture());
+        NotificacionSuscripcion n = captor.getValue();
+        assertThat(n.getIdCompaniaPlan()).isEqualTo(50L);
+        assertThat(n.getIdCompania()).isEqualTo(1L);
+        assertThat(n.getTipo()).isEqualTo("VENCIMIENTO_TRIAL");
+        assertThat(n.getCanal()).isEqualTo("whatsapp");
+        assertThat(n.getEstado()).isEqualTo("enviado");
+        assertThat(n.getDiasAntes()).isEqualTo(3);
+        assertThat(n.getFechaEnvio()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("sender falla → NO registra la fila (no se cobró, debe poder reintentarse sin forzar)")
+    void senderFalla_noRegistra() {
+        when(companiaRepository.findById(1L)).thenReturn(Mono.just(compania(true, "0987654321")));
+        when(companiaPlanRepository.findActivoByIdCompania(1L))
+                .thenReturn(Mono.just(companiaPlan(LocalDate.now().plusDays(5))));
+        when(planRepository.findById(9L)).thenReturn(Mono.just(plan("Premium")));
+        when(notificacionRepository.fechaEnvioPrevio(eq(50L), anyString(), eq("whatsapp"), any()))
+                .thenReturn(Mono.empty());
+        when(whatsAppSender.enviarPlantilla(anyString(), anyString(), anyString(), any()))
+                .thenReturn(Mono.error(new RuntimeException("meta 500")));
+
+        StepVerifier.create(service.enviar(1L, false)).expectError().verify();
+
+        verify(notificacionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("día 0 → bucket 0 (los días negativos no producen bucket negativo)")
+    void bucket_diasNegativos_seClampeaACero() {
+        when(companiaRepository.findById(1L)).thenReturn(Mono.just(compania(true, "0987654321")));
+        when(companiaPlanRepository.findActivoByIdCompania(1L))
+                .thenReturn(Mono.just(companiaPlan(LocalDate.now().minusDays(4))));
+        when(planRepository.findById(9L)).thenReturn(Mono.just(plan("Premium")));
+        when(whatsAppSender.enviarPlantilla(anyString(), anyString(), anyString(), any())).thenReturn(Mono.empty());
+        sinEnvioPrevio();
+
+        StepVerifier.create(service.enviar(1L, false)).expectNextCount(1).verifyComplete();
+
+        verify(notificacionRepository).fechaEnvioPrevio(eq(50L), anyString(), eq("whatsapp"), eq(0));
+        ArgumentCaptor<NotificacionSuscripcion> captor =
+                ArgumentCaptor.forClass(NotificacionSuscripcion.class);
+        verify(notificacionRepository).save(captor.capture());
+        assertThat(captor.getValue().getDiasAntes()).isZero();
     }
 
     @Test

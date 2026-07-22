@@ -22,6 +22,19 @@ public interface NotificacionRepository {
     Mono<Boolean> existsIdempotente(Long idCompaniaPlan, String tipo, String canal, Integer diasAntes);
 
     /**
+     * GYM-002: variante de {@link #existsIdempotente} para el disparo manual. Mismo predicado,
+     * pero devuelve <b>cuándo</b> se envió el aviso previo para poder informarlo en el 409
+     * ("ya se envió el {fecha}") en vez de un booleano ciego.
+     *
+     * <p>Cada mensaje de WhatsApp tiene costo, así que el botón consulta esto antes de enviar.
+     * Devuelve {@code Mono.empty()} si no hay envío previo que bloquee.
+     *
+     * <p>La fila más reciente puede tener {@code fecha_envio} nula (encolada, aún no procesada);
+     * en ese caso se cae a {@code creacion_fecha}, que siempre está poblada.
+     */
+    Mono<java.time.LocalDateTime> fechaEnvioPrevio(Long idCompaniaPlan, String tipo, String canal, Integer diasAntes);
+
+    /**
      * REQ-SAAS-001 (Sub-fase 1.5): banners activos del tenant en el día actual.
      * Excluye los descartados hoy mismo (los descartados en días previos vuelven a
      * aparecer para que el owner los vea de nuevo).

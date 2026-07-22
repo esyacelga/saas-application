@@ -568,7 +568,10 @@
         "errorNoConsentimiento": "El gimnasio no habilitó WhatsApp para recibir avisos",
         "errorTelefono": "El teléfono del gimnasio no es válido para WhatsApp",
         "errorSinSuscripcion": "La compañía no tiene una suscripción activa",
-        "errorGenerico": "No se pudo enviar el recordatorio"
+        "errorGenerico": "No se pudo enviar el recordatorio",
+        "yaEnviadoTitle": "Este recordatorio ya fue enviado",
+        "yaEnviadoDesc": "Ya se envió un aviso de vencimiento el {{fecha}}. Cada mensaje de WhatsApp tiene costo. ¿Enviarlo de todos modos?",
+        "yaEnviadoDescSinFecha": "Ya se envió un aviso de vencimiento para esta suscripción. Cada mensaje de WhatsApp tiene costo. ¿Enviarlo de todos modos?"
       }
     },
     "suscripcion": {

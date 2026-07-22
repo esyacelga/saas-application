@@ -304,13 +304,16 @@ public class CompaniaController {
         @ApiResponse(responseCode = "200", description = "Recordatorio enviado"),
         @ApiResponse(responseCode = "403", description = "Acceso denegado"),
         @ApiResponse(responseCode = "404", description = "Compañía no encontrada"),
+        @ApiResponse(responseCode = "409", description = "Ya enviado para este bucket (notificacion_ya_enviada); reintentar con forzar=true"),
         @ApiResponse(responseCode = "422", description = "No enviable (no_consentimiento / telefono_invalido / sin_suscripcion)")
     })
     @PostMapping("/{id}/recordatorio-vencimiento")
-    public Mono<ResponseEntity<RecordatorioVencimientoResponse>> enviarRecordatorioVencimiento(@PathVariable Long id) {
+    public Mono<ResponseEntity<RecordatorioVencimientoResponse>> enviarRecordatorioVencimiento(
+            @PathVariable Long id,
+            @RequestParam(name = "forzar", defaultValue = "false") boolean forzar) {
         return getJwtPrincipal()
                 .flatMap(principal -> accessControl.requirePlataforma(principal)
-                        .then(enviarRecordatorioUseCase.enviar(id))
+                        .then(enviarRecordatorioUseCase.enviar(id, forzar))
                         .flatMap(resultado -> actividadUseCase.registrar(new ActividadPlataformaUseCase.RegistrarCommand(
                                 "RECORDATORIO_VENCIMIENTO_ENVIADO", "companias", id, null, resultado.template(), principal.getName()
                         )).onErrorResume(e -> Mono.empty()).thenReturn(resultado))

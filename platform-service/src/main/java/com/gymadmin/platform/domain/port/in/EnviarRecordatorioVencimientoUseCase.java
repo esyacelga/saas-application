@@ -12,7 +12,12 @@ import reactor.core.publisher.Mono;
  */
 public interface EnviarRecordatorioVencimientoUseCase {
 
-    Mono<Resultado> enviar(Long idCompania);
+    /**
+     * @param forzar reenvía aunque ya exista un aviso registrado para ese bucket. Sin él, un aviso
+     *               ya enviado corta el flujo con {@code notificacion_ya_enviada} (409): cada
+     *               mensaje de WhatsApp tiene costo y el doble click no debe pagarse dos veces.
+     */
+    Mono<Resultado> enviar(Long idCompania, boolean forzar);
 
     /**
      * @param enviado  siempre {@code true} cuando el {@link Mono} completa (los fallos se propagan

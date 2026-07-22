@@ -15,7 +15,8 @@ import type { Compania } from '@/domain/platform/entities/Plan.entity'
 import type { JwtPayloadPlataforma } from '@/domain/auth/entities/User.entity'
 import { RegistrarGymWizard } from './RegistrarGymWizard/RegistrarGymWizard'
 import { SuspenderCompaniaDialog } from './CompaniasPage/SuspenderCompaniaDialog'
-import { getApiErrorCode, getApiErrorMessage } from '@/lib/api-error'
+import { ConfirmDialog } from '@/ui/components/ConfirmDialog'
+import { getApiErrorCode, getApiErrorExtension, getApiErrorMessage } from '@/lib/api-error'
 
 const usecase = new GestionarCompaniaUseCase(platformRepository)
 
@@ -41,6 +42,7 @@ export function CompaniasPage() {
   const [registrarOpen, setRegistrarOpen] = useState(false)
   const [suspenderTarget, setSuspenderTarget] = useState<Compania | null>(null)
   const [enviandoId, setEnviandoId] = useState<number | null>(null)
+  const [reenviarTarget, setReenviarTarget] = useState<{ compania: Compania; fecha: string | null } | null>(null)
 
   const load = () => {
     setLoading(true)
@@ -52,14 +54,22 @@ export function CompaniasPage() {
 
   useEffect(() => { load() }, [])
 
-  const handleEnviarRecordatorio = async (compania: Compania) => {
+  const handleEnviarRecordatorio = async (compania: Compania, forzar = false) => {
     setEnviandoId(compania.id)
     try {
-      await platformRepository.enviarRecordatorioVencimiento(compania.id)
+      await platformRepository.enviarRecordatorioVencimiento(compania.id, forzar)
       toast.success(t('platform.companias.recordatorio.success', { nombre: compania.nombre }))
     } catch (err) {
       const codigo = getApiErrorCode(err)
-      if (codigo === 'no_consentimiento') {
+      if (codigo === 'notificacion_ya_enviada') {
+        // Cada mensaje cuesta: en vez de reenviar a ciegas, se pide confirmación mostrando cuándo
+        // se envió el anterior. El reenvío explícito va con forzar=true.
+        const previo = getApiErrorExtension(err, 'fecha_envio_previo')
+        setReenviarTarget({
+          compania,
+          fecha: typeof previo === 'string' ? new Date(previo).toLocaleString() : null,
+        })
+      } else if (codigo === 'no_consentimiento') {
         toast.error(t('platform.companias.recordatorio.errorNoConsentimiento'))
       } else if (codigo === 'telefono_invalido') {
         toast.error(t('platform.companias.recordatorio.errorTelefono'))
@@ -246,6 +256,21 @@ export function CompaniasPage() {
         compania={suspenderTarget}
         onClose={() => setSuspenderTarget(null)}
         onSuspended={load}
+      />
+
+      <ConfirmDialog
+        open={reenviarTarget !== null}
+        title={t('platform.companias.recordatorio.yaEnviadoTitle')}
+        description={reenviarTarget?.fecha
+          ? t('platform.companias.recordatorio.yaEnviadoDesc', { fecha: reenviarTarget.fecha })
+          : t('platform.companias.recordatorio.yaEnviadoDescSinFecha')}
+        destructive={false}
+        onConfirm={() => {
+          const target = reenviarTarget
+          setReenviarTarget(null)
+          if (target) void handleEnviarRecordatorio(target.compania, true)
+        }}
+        onCancel={() => setReenviarTarget(null)}
       />
     </div>
   )

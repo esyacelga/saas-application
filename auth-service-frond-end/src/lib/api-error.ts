@@ -44,3 +44,16 @@ export function getApiErrorCode(err: unknown): string | null {
   }
   return null
 }
+
+/**
+ * Extensión arbitraria del sobre RFC 7807 (los campos snake_case que cada error
+ * añade además de los 5 estándar — p. ej. `fecha_envio_previo`, `plan_actual`).
+ * Devuelve `null` si la respuesta no la trae.
+ */
+export function getApiErrorExtension(err: unknown, campo: string): unknown {
+  if (isAxiosError(err)) {
+    const data = err.response?.data as Record<string, unknown> | undefined
+    return data?.[campo] ?? null
+  }
+  return null
+}

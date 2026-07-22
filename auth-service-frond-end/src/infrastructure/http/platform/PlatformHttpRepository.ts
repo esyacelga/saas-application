@@ -529,9 +529,16 @@ class PlatformHttpRepositoryImpl implements PlatformRepository {
     }
   }
 
-  async enviarRecordatorioVencimiento(idCompania: number): Promise<{ enviado: boolean; telefono: string; template: string }> {
+  // `forzar` reenvía aunque el backend ya tenga registrado el aviso de este bucket. Sin él,
+  // un aviso ya enviado responde 409 codigo=notificacion_ya_enviada + fecha_envio_previo.
+  async enviarRecordatorioVencimiento(
+    idCompania: number,
+    forzar = false,
+  ): Promise<{ enviado: boolean; telefono: string; template: string }> {
     const { data } = await api.post<{ enviado: boolean; telefono: string; template: string }>(
       `/companias/${idCompania}/recordatorio-vencimiento`,
+      undefined,
+      { params: forzar ? { forzar: true } : undefined },
     )
     return data
   }
