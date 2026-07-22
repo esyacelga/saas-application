@@ -18,6 +18,7 @@ import { authRepository } from '@/infrastructure/http/auth/AuthHttpRepository'
 import type { Persona } from '@/infrastructure/http/auth/auth.dto'
 import { createOperadorSchema, type CrearOperadorFormData } from '../schemas/operador.schema'
 import { createPersonaSchema, type CrearPersonaFormData } from '../schemas/persona.schema'
+import { PhoneInputE164Controller } from '@/ui/components/PhoneInputE164'
 
 interface Props {
   open: boolean
@@ -389,13 +390,15 @@ export function CrearOperadorModal({ open, onClose, onCreado }: Props) {
                     <label className="block text-sm font-medium" style={{ color: 'var(--page-text)' }}>
                       {t('appAccounts.phoneLabel')} {t('common.optional')}
                     </label>
-                    <input
-                      type="tel"
-                      placeholder="0991234567"
-                      {...personaForm.register('telefono')}
-                      className={inputCls}
-                      style={inputStyle}
+                    <PhoneInputE164Controller
+                      name="telefono"
+                      control={personaForm.control}
+                      defaultCountry="EC"
+                      placeholder={t('phoneInput.placeholder')}
                     />
+                    {personaForm.formState.errors.telefono && (
+                      <p className="text-xs text-red-500 mt-1">{personaForm.formState.errors.telefono.message ?? t('phoneInput.invalid')}</p>
+                    )}
                   </div>
                 </div>
 

@@ -13,6 +13,7 @@ import type { ClienteDetalle } from '@/infrastructure/http/core/core.dto'
 import { getAvatarUrl } from '@/lib/avatar'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { validarCedula } from '@/lib/sri/validarCedula'
+import { PhoneInputE164Controller, parsePhoneToE164 } from '@/ui/components/PhoneInputE164'
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
@@ -20,7 +21,7 @@ const schema = z.object({
   // Persona
   ci: z.string().trim().min(5, 'Mínimo 5 caracteres').max(20, 'Máximo 20 caracteres').optional(),
   nombre: z.string().min(2, 'Mínimo 2 caracteres').max(120),
-  telefono: z.string().max(20).optional(),
+  telefono: z.string().optional().refine((v) => !v || /^\+[1-9]\d{6,14}$/.test(v), 'Número de teléfono inválido'),
   correo: z.string().email('Correo no válido').optional().or(z.literal('')),
   sexo: z.enum(['M', 'F']).optional(),
   fecha_nacimiento: z.string().optional(),
@@ -65,9 +66,12 @@ export function EditarClienteModal({ open, detalle, onClose, onGuardado, seccion
 
   const ciEsEcuatorianaValida = validarCedula(detalle.persona.ci)
 
+  const [telefonoLegacy, setTelefonoLegacy] = useState(false)
+
   const {
     register,
     handleSubmit,
+    control,
     setValue,
     watch,
     reset,
@@ -82,7 +86,12 @@ export function EditarClienteModal({ open, detalle, onClose, onGuardado, seccion
   // Reset form when modal opens with fresh detalle
   useEffect(() => {
     if (open) {
-      reset(buildDefaults(detalle))
+      const telefonoParsed = parsePhoneToE164(detalle.persona.telefono)
+      setTelefonoLegacy(!telefonoParsed.parsedOk)
+      reset({
+        ...buildDefaults(detalle),
+        telefono: telefonoParsed.value,
+      })
       setFotoFile(null)
       setPreviewUrl(null)
       setFotoError('')
@@ -291,7 +300,18 @@ export function EditarClienteModal({ open, detalle, onClose, onGuardado, seccion
                     </div>
                     <div>
                       <label className={labelCls} style={labelStyle}>{t('clientes.fieldTelefono')}</label>
-                      <input {...register('telefono')} className={inputCls} style={inputStyle} placeholder="099..." />
+                      <PhoneInputE164Controller
+                        name="telefono"
+                        control={control}
+                        defaultCountry="EC"
+                        placeholder={t('phoneInput.placeholder')}
+                      />
+                      {telefonoLegacy && (
+                        <p className="text-xs text-amber-500 mt-1">{t('phoneInput.legacyFormat')}</p>
+                      )}
+                      {errors.telefono && (
+                        <p className="text-xs text-red-500 mt-1">{errors.telefono.message ?? t('phoneInput.invalid')}</p>
+                      )}
                     </div>
                     <div>
                       <label className={labelCls} style={labelStyle}>{t('clientes.fieldCorreo')}</label>

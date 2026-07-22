@@ -6,6 +6,7 @@ import { ArrowLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { CrearPersonaRequest } from '@/infrastructure/http/auth/auth.dto'
 import { createPersonaSchema, type CrearPersonaFormData } from '../schemas/persona.schema'
+import { PhoneInputE164Controller } from '@/ui/components/PhoneInputE164'
 
 const AVATAR_HOMBRE = import.meta.env.VITE_AVATAR_HOMBRE_URL as string
 const AVATAR_MUJER  = import.meta.env.VITE_AVATAR_MUJER_URL as string
@@ -31,6 +32,7 @@ export function CrearPersonaStep({ ci, onDatosPersona, onVolver }: Props) {
   const {
     register,
     handleSubmit,
+    control,
     setValue,
     watch,
     formState: { errors },
@@ -140,12 +142,15 @@ export function CrearPersonaStep({ ci, onDatosPersona, onVolver }: Props) {
           <label className="block text-sm font-medium text-slate-700">
             {t('appAccounts.phoneLabel')} <span className="text-slate-400 font-normal">{t('common.optional')}</span>
           </label>
-          <input
-            type="tel"
-            placeholder={t('appAccounts.registerPhonePlaceholder')}
-            {...register('telefono')}
-            className={inputClass}
+          <PhoneInputE164Controller
+            name="telefono"
+            control={control}
+            defaultCountry="EC"
+            placeholder={t('phoneInput.placeholder')}
           />
+          {errors.telefono && (
+            <p className="text-xs text-red-600 mt-1">{errors.telefono.message ?? t('phoneInput.invalid')}</p>
+          )}
         </div>
 
         <div className="space-y-1.5">

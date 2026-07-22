@@ -10,6 +10,7 @@ import { CheckCircle, Search } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { coreRepository } from '@/infrastructure/http/core/CoreRepository'
 import type { BuscarPorCiResponse } from '@/infrastructure/http/core/core.dto'
+import { PhoneInputE164Controller } from '@/ui/components/PhoneInputE164'
 
 const AVATAR_HOMBRE = import.meta.env.VITE_AVATAR_HOMBRE_URL as string
 const AVATAR_MUJER  = import.meta.env.VITE_AVATAR_MUJER_URL as string
@@ -23,7 +24,7 @@ const SEXO_OPTIONS = [
 const schema = z.object({
   ci: z.string().min(4, 'Mínimo 4 caracteres'),
   nombre: z.string().min(2),
-  telefono: z.string().optional(),
+  telefono: z.string().optional().refine((v) => !v || /^\+[1-9]\d{6,14}$/.test(v), 'Número de teléfono inválido'),
   correo: z.string().email().optional().or(z.literal('')),
   peso_kg: z.coerce.number().min(1).optional().or(z.literal('')),
   altura_cm: z.coerce.number().min(1).optional().or(z.literal('')),
@@ -31,6 +32,9 @@ const schema = z.object({
   lesiones: z.string().optional(),
   id_sucursal: z.coerce.number().int().min(1),
   sexo: z.enum(['M', 'F', 'O']).optional(),
+  // Sin `.default()`: haría diferir los tipos input/output de Zod y rompería el
+  // zodResolver. El valor inicial va en `defaultValues` del useForm.
+  acepta_whatsapp: z.boolean(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -49,7 +53,7 @@ export function RegistrarClienteModal({ open, idSucursal, onClose, onRegistrado 
   const [ciResult, setCiResult] = useState<BuscarPorCiResponse | null>(null)
   const [step, setStep] = useState<'search' | 'form'>('search')
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<z.input<typeof schema>, unknown, FormValues>({
+  const { register, handleSubmit, control, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<z.input<typeof schema>, unknown, FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { id_sucursal: idSucursal },
   })
@@ -211,7 +215,15 @@ export function RegistrarClienteModal({ open, idSucursal, onClose, onRegistrado 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelCls} style={labelStyle}>{t('clientes.fieldTelefono')}</label>
-                <input {...register('telefono')} className={inputCls} style={inputStyle} placeholder="099..." />
+                <PhoneInputE164Controller
+                  name="telefono"
+                  control={control}
+                  defaultCountry="EC"
+                  placeholder={t('phoneInput.placeholder')}
+                />
+                {errors.telefono && (
+                  <p className="text-xs text-red-500 mt-1">{errors.telefono.message ?? t('phoneInput.invalid')}</p>
+                )}
               </div>
               <div>
                 <label className={labelCls} style={labelStyle}>{t('clientes.fieldCorreo')}</label>

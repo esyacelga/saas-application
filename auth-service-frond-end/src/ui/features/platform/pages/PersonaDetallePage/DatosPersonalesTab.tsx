@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -7,6 +7,8 @@ import { Button } from 'primereact/button'
 import { authRepository } from '@/infrastructure/http/auth/AuthHttpRepository'
 import type { Persona } from '@/infrastructure/http/auth/auth.dto'
 import { getApiErrorMessage } from '@/lib/api-error'
+import { useTranslation } from 'react-i18next'
+import { PhoneInputE164Controller, parsePhoneToE164 } from '@/ui/components/PhoneInputE164'
 
 const AVATAR_HOMBRE = import.meta.env.VITE_AVATAR_HOMBRE_URL as string
 const AVATAR_MUJER  = import.meta.env.VITE_AVATAR_MUJER_URL as string
@@ -21,7 +23,7 @@ const schema = z.object({
   ci:               z.string().min(5, 'CI requerida'),
   nombre:           z.string().min(2, 'Nombre requerido'),
   sexo:             z.enum(['M', 'F', 'O']).optional(),
-  telefono:         z.string().optional(),
+  telefono:         z.string().optional().refine((v) => !v || /^\+[1-9]\d{6,14}$/.test(v), 'Número de teléfono inválido'),
   correo:           z.string().email('Correo inválido').optional().or(z.literal('')),
   fecha_nacimiento: z.string().optional(),
 })
@@ -38,19 +40,34 @@ interface Props {
 }
 
 export function DatosPersonalesTab({ persona, readonly, onActualizada }: Props) {
+  const { t } = useTranslation()
   const [saving, setSaving] = useState(false)
+  const [telefonoLegacy, setTelefonoLegacy] = useState(false)
 
-  const { register, handleSubmit, setValue, watch, formState: { errors, isDirty } } = useForm<FormData>({
+  const { register, handleSubmit, control, setValue, watch, reset, formState: { errors, isDirty } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       ci:               persona.ci,
       nombre:           persona.nombre,
       sexo:             persona.sexo,
-      telefono:         persona.telefono ?? '',
+      telefono:         undefined,
       correo:           persona.correo ?? '',
       fecha_nacimiento: persona.fecha_nacimiento ?? '',
     },
   })
+
+  useEffect(() => {
+    const telefonoParsed = parsePhoneToE164(persona.telefono)
+    setTelefonoLegacy(!telefonoParsed.parsedOk)
+    reset({
+      ci:               persona.ci,
+      nombre:           persona.nombre,
+      sexo:             persona.sexo,
+      telefono:         telefonoParsed.value,
+      correo:           persona.correo ?? '',
+      fecha_nacimiento: persona.fecha_nacimiento ?? '',
+    })
+  }, [persona, reset])
 
   const selectedSexo = watch('sexo')
 
@@ -156,7 +173,18 @@ export function DatosPersonalesTab({ persona, readonly, onActualizada }: Props) 
         <label className="block text-sm font-medium" style={{ color: 'var(--page-text)' }}>
           Teléfono
         </label>
-        <input type="tel" {...register('telefono')} className={inputClass} />
+        <PhoneInputE164Controller
+          name="telefono"
+          control={control}
+          defaultCountry="EC"
+          placeholder={t('phoneInput.placeholder')}
+        />
+        {telefonoLegacy && (
+          <p className="text-xs text-amber-500 mt-1">{t('phoneInput.legacyFormat')}</p>
+        )}
+        {errors.telefono && (
+          <p className="text-xs text-red-500 mt-1">{errors.telefono.message ?? t('phoneInput.invalid')}</p>
+        )}
       </div>
 
       {/* Correo */}

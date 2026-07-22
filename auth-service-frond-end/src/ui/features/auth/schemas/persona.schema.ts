@@ -11,7 +11,7 @@ export const createPersonaSchema = (t: TFunction) =>
       .string()
       .min(2, t('validation.nameMin2'))
       .max(150, t('validation.nameTooLong')),
-    telefono: z.string().max(20).optional().or(z.literal('')),
+    telefono: z.string().optional().refine((v) => !v || /^\+[1-9]\d{6,14}$/.test(v), 'Número de teléfono inválido'),
     correo: z.string().email(t('validation.emailInvalid2')).optional().or(z.literal('')),
     fecha_nacimiento: z.string().optional().or(z.literal('')),
     sexo: z.enum(['M', 'F']).optional(),
