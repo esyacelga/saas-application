@@ -12,6 +12,8 @@ import com.gymadmin.platform.domain.port.out.WhatsAppSender;
 import com.gymadmin.platform.domain.validation.PhoneNumberE164Normalizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -47,7 +49,14 @@ public class WhatsAppQueueService implements ProcesarColaWhatsAppUseCase {
     private static final Logger log = LoggerFactory.getLogger(WhatsAppQueueService.class);
 
     private static final DateTimeFormatter FECHA_ES = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final String IDIOMA = "es";
+
+    /**
+     * Código de idioma con el que Meta tiene registradas las traducciones de las plantillas HSM.
+     * Meta indexa las plantillas por el par {@code (nombre, idioma)}: pedir {@code es} cuando la
+     * traducción aprobada es {@code es_EC} devuelve 404 con {@code code=132001} ("Template name does
+     * not exist in the translation"). Debe coincidir EXACTO con el idioma del Business Manager.
+     */
+    public static final String IDIOMA_DEFAULT = "es_EC";
 
     /** Plantillas HSM del dueño (Meta). Ver docs/gym-administrator/pendientes/whatsapp-avisos-vencimiento.md. */
     static final String TEMPLATE_PREVIO = "recordatorio_vencimiento_suscripcion";
@@ -70,17 +79,32 @@ public class WhatsAppQueueService implements ProcesarColaWhatsAppUseCase {
     private final CompaniaPlanRepository companiaPlanRepository;
     private final WhatsAppSender whatsAppSender;
     private final Clock clock;
+    private final String idioma;
 
+    @Autowired
     public WhatsAppQueueService(NotificacionRepository notificacionRepository,
                                  CompaniaRepository companiaRepository,
                                  CompaniaPlanRepository companiaPlanRepository,
                                  WhatsAppSender whatsAppSender,
-                                 Clock clock) {
+                                 Clock clock,
+                                 @Value("${whatsapp.meta.template-language:${WHATSAPP_TEMPLATE_LANG:" + IDIOMA_DEFAULT + "}}")
+                                 String idioma) {
         this.notificacionRepository = notificacionRepository;
         this.companiaRepository = companiaRepository;
         this.companiaPlanRepository = companiaPlanRepository;
         this.whatsAppSender = whatsAppSender;
         this.clock = clock;
+        this.idioma = (idioma != null && !idioma.isBlank()) ? idioma : IDIOMA_DEFAULT;
+    }
+
+    /** Conveniencia para tests: usa {@link #IDIOMA_DEFAULT} como idioma de plantilla. */
+    public WhatsAppQueueService(NotificacionRepository notificacionRepository,
+                                CompaniaRepository companiaRepository,
+                                CompaniaPlanRepository companiaPlanRepository,
+                                WhatsAppSender whatsAppSender,
+                                Clock clock) {
+        this(notificacionRepository, companiaRepository, companiaPlanRepository,
+                whatsAppSender, clock, IDIOMA_DEFAULT);
     }
 
     @Override
@@ -130,7 +154,7 @@ public class WhatsAppQueueService implements ProcesarColaWhatsAppUseCase {
 
         return fechaVencMono.flatMap(fechaVenc -> {
             List<String> params = construirParams(template, ownerNombre, plan, fechaVenc, notif.getDiasAntes());
-            return whatsAppSender.enviarPlantilla(e164.get(), template, IDIOMA, params)
+            return whatsAppSender.enviarPlantilla(e164.get(), template, idioma, params)
                     .then(Mono.defer(() -> notificacionRepository.marcarEnviado(notif.getId())))
                     .onErrorResume(err -> manejarError(notif, err));
         });
@@ -143,7 +167,7 @@ public class WhatsAppQueueService implements ProcesarColaWhatsAppUseCase {
      * cual para que el llamador decida (aquí, devolver éxito/fallo real al endpoint).
      */
     Mono<Void> enviarPlantilla(String e164, String template, List<String> params) {
-        return whatsAppSender.enviarPlantilla(e164, template, IDIOMA, params);
+        return whatsAppSender.enviarPlantilla(e164, template, idioma, params);
     }
 
     /** R3: carga la fecha de vencimiento del CompaniaPlan formateada; "" si no está disponible. */

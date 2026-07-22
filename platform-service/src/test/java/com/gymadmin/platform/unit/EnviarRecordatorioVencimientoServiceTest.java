@@ -114,7 +114,7 @@ class EnviarRecordatorioVencimientoServiceTest {
         ArgumentCaptor<String> tpl = ArgumentCaptor.forClass(String.class);
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<String>> params = ArgumentCaptor.forClass(List.class);
-        verify(whatsAppSender).enviarPlantilla(eq("+593987654321"), tpl.capture(), eq("es"), params.capture());
+        verify(whatsAppSender).enviarPlantilla(eq("+593987654321"), tpl.capture(), eq(WhatsAppQueueService.IDIOMA_DEFAULT), params.capture());
         assertThat(tpl.getValue()).isEqualTo("recordatorio_vencimiento_suscripcion");
         assertThat(params.getValue()).containsExactly(
                 "Carlos", "Premium", fin.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")), "5");
@@ -133,7 +133,7 @@ class EnviarRecordatorioVencimientoServiceTest {
                 .assertNext(r -> assertThat(r.template()).isEqualTo("venc_suscripcion_hoy"))
                 .verifyComplete();
 
-        verify(whatsAppSender).enviarPlantilla(eq("+593987654321"), eq("venc_suscripcion_hoy"), eq("es"), any());
+        verify(whatsAppSender).enviarPlantilla(eq("+593987654321"), eq("venc_suscripcion_hoy"), eq(WhatsAppQueueService.IDIOMA_DEFAULT), any());
     }
 
     @Test

@@ -59,6 +59,13 @@ notificacion:
       fixed-delay-ms: ${NOTIF_WHATSAPP_QUEUE_DELAY_MS:30000}
       batch-size: ${NOTIF_WHATSAPP_QUEUE_BATCH:50}
 
+# Meta WhatsApp Cloud API. `template-language` debe coincidir EXACTO con el idioma con el que las
+# plantillas HSM están aprobadas en Business Manager: Meta las indexa por el par (nombre, idioma) y
+# devuelve 404 code=132001 si el par no existe (p. ej. pedir `es` cuando está aprobada en `es_EC`).
+whatsapp:
+  meta:
+    template-language: ${WHATSAPP_TEMPLATE_LANG:es_EC}
+
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}

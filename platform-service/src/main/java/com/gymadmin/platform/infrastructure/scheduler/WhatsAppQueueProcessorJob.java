@@ -4,6 +4,7 @@ import com.gymadmin.platform.domain.port.in.ProcesarColaWhatsAppUseCase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -11,8 +12,13 @@ import org.springframework.stereotype.Component;
  * REQ-SAAS-001 (Fase 3): worker periódico que procesa la cola de WhatsApp del dueño.
  * Hermano de {@link EmailQueueProcessorJob}: mismo patrón, cola distinta ({@code canal='whatsapp'}).
  * Corre cada {@code notificacion.whatsapp.queue.fixed-delay-ms} (default 30s).
+ *
+ * <p>Opt-out por env var: seteando {@code JOBS_PROCESSORS_ENABLED=false}
+ * ({@code jobs.processors.enabled=false}) el bean no se crea y el job no corre
+ * (útil en Cloud Run cuando el procesamiento lo dispara un endpoint interno).
  */
 @Component
+@ConditionalOnProperty(name = "jobs.processors.enabled", havingValue = "true", matchIfMissing = true)
 public class WhatsAppQueueProcessorJob {
 
     private static final Logger log = LoggerFactory.getLogger(WhatsAppQueueProcessorJob.class);

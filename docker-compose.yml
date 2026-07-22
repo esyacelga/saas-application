@@ -133,6 +133,9 @@ services:
       META_ACCESS_TOKEN: ${META_ACCESS_TOKEN:-}
       META_API_VERSION: ${META_API_VERSION:-v21.0}
       META_API_BASE_URL: ${META_API_BASE_URL:-https://graph.facebook.com}
+      # Idioma de las plantillas HSM: debe coincidir EXACTO con el aprobado en Business Manager
+      # (Meta indexa por el par (nombre, idioma) → 404 code=132001 si el par no existe).
+      WHATSAPP_TEMPLATE_LANG: ${WHATSAPP_TEMPLATE_LANG:-es_EC}
       # Secreto compartido de los endpoints /internal/v1/ (mismo valor en core/platform/attendance).
       INTERNAL_SECRET: ${INTERNAL_SECRET:-platform-secret-dev}
     depends_on:
@@ -218,6 +221,9 @@ services:
       META_ACCESS_TOKEN: ${META_ACCESS_TOKEN:-}
       META_API_VERSION: ${META_API_VERSION:-v21.0}
       META_API_BASE_URL: ${META_API_BASE_URL:-https://graph.facebook.com}
+      # Idioma de las plantillas HSM: debe coincidir EXACTO con el aprobado en Business Manager
+      # (Meta indexa por el par (nombre, idioma) → 404 code=132001 si el par no existe).
+      WHATSAPP_TEMPLATE_LANG: ${WHATSAPP_TEMPLATE_LANG:-es_EC}
       # Secreto compartido de los endpoints /internal/v1/ (mismo valor en core/platform/attendance).
       INTERNAL_SECRET: ${INTERNAL_SECRET:-platform-secret-dev}
       CORS_ALLOW_ALL: ${CORS_ALLOW_ALL:-false}

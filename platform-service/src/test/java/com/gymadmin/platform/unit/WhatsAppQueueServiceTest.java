@@ -111,7 +111,7 @@ class WhatsAppQueueServiceTest {
         ArgumentCaptor<String> tpl = ArgumentCaptor.forClass(String.class);
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<String>> params = ArgumentCaptor.forClass(List.class);
-        verify(whatsAppSender).enviarPlantilla(tel.capture(), tpl.capture(), eq("es"), params.capture());
+        verify(whatsAppSender).enviarPlantilla(tel.capture(), tpl.capture(), eq(WhatsAppQueueService.IDIOMA_DEFAULT), params.capture());
 
         assertThat(tel.getValue()).isEqualTo("+593987654321");
         assertThat(tpl.getValue()).isEqualTo("recordatorio_vencimiento_suscripcion");
@@ -132,7 +132,7 @@ class WhatsAppQueueServiceTest {
         ArgumentCaptor<String> tpl = ArgumentCaptor.forClass(String.class);
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<String>> params = ArgumentCaptor.forClass(List.class);
-        verify(whatsAppSender).enviarPlantilla(anyString(), tpl.capture(), eq("es"), params.capture());
+        verify(whatsAppSender).enviarPlantilla(anyString(), tpl.capture(), eq(WhatsAppQueueService.IDIOMA_DEFAULT), params.capture());
         assertThat(tpl.getValue()).isEqualTo("venc_suscripcion_hoy");
         assertThat(params.getValue()).containsExactly("Carlos", "Premium");
         // dia 0 no debe consultar el CompaniaPlan (no arma fecha)
