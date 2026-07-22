@@ -10,6 +10,7 @@ App móvil Progressive Web App para miembros del gym. Ver [gym-member-pwa/CLAUDE
 | [spec-solicitud-membresia.md](spec-solicitud-membresia.md) | Especificación UX detallada del feature de solicitud de membresía: componentes, flujos de error, i18n keys, testing. Spec definida, implementación pendiente |
 | [pendientes-checkin-qr.md](pendientes-checkin-qr.md) | Pendientes específicos del flujo de auto check-in después de login vía QR escaneado desde `auth-service-frond-end` |
 | [historial-pagos-membresia.md](historial-pagos-membresia.md) | ✅ Implementado — Página `/membresia/historial`: lista todas las membresías con estado de pago, saldo pendiente, accesos (si aplica). Ver GYM-003. |
+| [consentimiento-whatsapp.md](consentimiento-whatsapp.md) | ✅ Implementado — Opt-in/opt-out de WhatsApp en ProfilePage. Diferencia con consentimiento del dueño, tres puntos de captura, regla de opt-in afirmativo. 2026-07-21 |
 
 ---
 

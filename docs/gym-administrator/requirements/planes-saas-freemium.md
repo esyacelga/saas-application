@@ -128,10 +128,12 @@ Reestructurar los planes de suscripción de la plataforma SaaS para ofrecer un m
 
 ### RN-07: Notificaciones de vencimiento
 
-- Cadencia: **15, 7, 3, 1 días antes del vencimiento + día del vencimiento**.
-- Canales: **email al owner + banner in-app** al hacer login.
+- Cadencia (buckets): **{previo, 0}** — un aviso previo N días antes del vencimiento + un aviso el día del vencimiento (día 0).
+- El bucket **previo** es configurable globalmente por super_admin en `saas.notif_buckets_globales` (destinatario `dueno`); default `3`. Si la fila está `activo=false`, el previo colapsa a `0` (solo día del vencimiento).
+- Canales: **email al owner + banner in-app + WhatsApp** (opt-in por `tenant.companias.acepta_whatsapp`).
+- **Excepción WhatsApp día 0** (decisión 2026-07-15): en el bucket `0` se **omite** el canal `whatsapp`; el aviso previo es suficiente y evita costo/molestia. `banner` y `email` sí salen el día 0.
 - Misma cadencia y canales para Trial y Premium (simplicidad operativa).
-- La cadencia y días de anticipación son configurables por compañía en `tenant.config_notif_suscripcion` — el owner puede reducir avisos si le resultan intrusivos.
+- **Histórico:** el enunciado original planteaba 5 buckets `{15, 7, 3, 1, 0}` configurables por compañía en `tenant.config_notif_suscripcion`. Se simplificó a `{previo, 0}` global en Fase 3 (2026-07-15) para reducir ruido al dueño; la configurabilidad por compañía se descartó a favor de un default global editable por super_admin (Fase 6). La tabla `tenant.config_notif_suscripcion` sigue existiendo pero ya no gobierna la cadencia del job de vencimiento.
 
 **Idempotencia y resiliencia:**
 - El predicado del job NO puede ser `diasRestantes == config.diasAntes` (si el job no corre un día por falla o deploy, se pierde el aviso).

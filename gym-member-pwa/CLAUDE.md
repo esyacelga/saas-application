@@ -13,8 +13,11 @@ Antes de confiar en un doc como referencia, verifica su estado en [../docs/STATU
 | Área | Documento | Estado |
 |------|-----------|--------|
 | Contrato API auth-service (login app, registro, refresh) | [../docs/auth-service/api/app-usuarios.md](../docs/auth-service/api/app-usuarios.md) · [auth.md](../docs/auth-service/api/auth.md) | ✅ Verificado contra código backend |
+| Contrato API auth-service (consentimiento WhatsApp) | [../docs/auth-service/api/personas.md#patch-personasidconsentimiento-wa](../docs/auth-service/api/personas.md#patch-personasidconsentimiento-wa) | ✅ Verificado 2026-07-21 contra `PersonaApplicationService` |
 | Contrato API core-service (perfil cliente) | [../docs/core-service/api/clientes.md](../docs/core-service/api/clientes.md) | ✅ Verificado contra código backend |
+| Contrato API core-service (captura de opt-in en recepción) | [../docs/core-service/api/clientes.md#post-api-v1-clientes-opt-in-de-whatsapp-del-socio-2026-07-21](../docs/core-service/api/clientes.md#post-api-v1-clientes-opt-in-de-whatsapp-del-socio-2026-07-21) | ✅ Verificado 2026-07-21 contra `ClienteController` |
 | Contrato API attendance-service (check-in QR, historial) | [README de attendance-service](../attendance-service/README.md) | ✅ Corregido 2026-07-08 — el QR **requiere JWT de cliente** |
+| Feature: opt-in/opt-out WhatsApp del socio | [../docs/gym-member-pwa/consentimiento-whatsapp.md](../docs/gym-member-pwa/consentimiento-whatsapp.md) | ✅ Implementado 2026-07-21 — **único lugar de opt-out** |
 | Backlog + pendientes de esta PWA | [pendientes-backlog.md](../docs/gym-member-pwa/pendientes-backlog.md) · [pendientes-checkin-qr.md](../docs/gym-member-pwa/pendientes-checkin-qr.md) | 📜 Backlog — tareas pendientes, no estado actual |
 
 > ⚠️ El check-in por QR **no es un endpoint público** — este PWA debe enviar el Bearer token del cliente. Si ves docs viejos que digan lo contrario, están desactualizados.
@@ -177,3 +180,103 @@ The Vite PWA plugin is configured with `registerType: 'autoUpdate'` and network-
 - **Custom hooks**: feature-specific logic (e.g., `useQrScanner`) is extracted into hooks alongside the page that uses them. `useQrScanner` uses `html5-qrcode` and manages scanner lifecycle and scan deduplication via `useRef`.
 - **Error handling**: use `src/lib/api-error.ts` (`getApiErrorMessage`, `getApiErrorCode`) to extract human-readable message and business error code from Axios responses. Show `sonner` toasts only for unexpected errors; let the page UI handle known business error states.
 - **Date formatting**: use `toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })` inline per page — there is no shared date utility.
+
+---
+
+## Consentimiento de WhatsApp del socio (opt-in / opt-out)
+
+### Conceptos clave
+
+**Aclaración de tablas:** existen dos consentimientos distintos de WhatsApp en el monorepo que usan el mismo nombre de columna pero en tablas diferentes. No confundir:
+
+1. **Dueño del gym** — `tenant.companias.acepta_whatsapp` — autoriza avisos de vencimiento de LA SUSCRIPCIÓN del gimnasio. No concierne a esta PWA.
+2. **Socio/cliente** — `identidad.personas.acepta_whatsapp` + `fecha_consentimiento_wa` — autoriza avisos de vencimiento de SU MEMBRESÍA. **Este es el que opera la PWA.**
+
+El job de WhatsApp que envía reminders de membresía expirada consulta `identidad.personas.acepta_whatsapp = true` antes de enviar; si es `false`, el socio simplemente no recibe el aviso, sin error visible (falla silenciosa).
+
+### Puntos de captura declarados
+
+El DDL de `identidad.personas` (línea 22 del comentario de `acepta_whatsapp`) declara tres puntos donde se captura consentimiento:
+
+| Punto | Estado | Responsable | Notas |
+|-------|--------|------------|-------|
+| **Recepción** | ✅ Implementado | `core-service` — `POST /api/v1/clientes` con body `acepta_whatsapp` | Ver [../docs/core-service/api/clientes.md](../docs/core-service/api/clientes.md). Casilla desmarcada, se deshabilita si no hay teléfono. Recepción puede OTORGAR pero NUNCA REVOCA un consentimiento anterior. |
+| **Perfil PWA** | ✅ Implementado | Esta PWA — componente `WhatsAppConsentBlock` + `PATCH /personas/{id}/consentimiento-wa` | Ver abajo. **ÚNICO lugar donde el socio revoca (opt-out).** |
+| **Registro público** | ❌ Pendiente | Flujo de auto-registro en la PWA (backlog pendiente) | No existe aún. Sin este punto, un socio que se registra en línea sin pasar por recepción nunca tendrá oportunidad de consentir — queda en `false` fijo. |
+
+### Regla de negocio: opt-in afirmativo
+
+Meta exige consentimiento explícito y afirmativo. Una casilla pre-marcada **no tiene valor probatorio** ante Meta y arriesga el bloqueo del número de WhatsApp compartido de la plataforma. Por eso en todos los puntos de captura el control nace **desmarcado**.
+
+### Implementación en la PWA: componente `WhatsAppConsentBlock`
+
+Ubicación: `src/ui/pages/profile/ProfilePage.tsx` (línea ~357).
+
+**Props:**
+- `idPersona` — ID de la persona en `identidad.personas` (extraído del JWT)
+- `consent` — objeto `ConsentimientoWaPersonaResponse` con `{ idPersona, aceptaWhatsapp, fechaConsentimientoWa }`
+- `saving` — boolean indicador de petición en vuelo
+- `onToggle` — callback `(acepta: boolean) => Promise<void>` que llama al endpoint
+
+**Comportamiento:**
+1. Muestra un switch toggle que lee `consent.aceptaWhatsapp`.
+2. Cuando el usuario mueve el switch, llama `onToggle(!current)`.
+3. El handler en `ProfilePage` invoca `authRepository.patchConsentimientoWaPersona(idPersona, nuevovalor)` (ver abajo) y guarda la respuesta en el estado local.
+4. Muestra la fecha de consentimiento bajo la etiqueta, formateada con `toLocaleDateString('es', …)`. Si es `null`, no renderiza esa línea.
+
+**Styling:** el toggle es un `<button role="switch" aria-checked>` propio (no un `<input>`), con `bg-accent-600` cuando está activo. Se deshabilita durante el PATCH en vuelo y muestra el texto `profile.whatsapp.saving`.
+
+### HTTP: `AuthHttpRepository.patchConsentimientoWaPersona()`
+
+Ubicación: `src/infrastructure/http/AuthHttpRepository.ts` (línea 79).
+
+```typescript
+async patchConsentimientoWaPersona(id: number, acepta: boolean): Promise<ConsentimientoWaPersonaResponse> {
+  const { data } = await api.patch<Record<string, unknown>>(`/personas/${id}/consentimiento-wa`, { acepta })
+  return {
+    idPersona: (data.id_persona ?? data.idPersona) as number,
+    aceptaWhatsapp: (data.acepta_whatsapp ?? data.aceptaWhatsapp) as boolean,
+    fechaConsentimientoWa: (data.fecha_consentimiento_wa ?? data.fechaConsentimientoWa ?? null) as string | null,
+  }
+}
+```
+
+Mapea automáticamente snake_case del backend a camelCase del frontend (fallback doble para compatibilidad).
+
+**Endpoint backend:** `PATCH /api/v1/personas/{id}/consentimiento-wa` en auth-service (documentado en [../docs/auth-service/api/personas.md#patch-personasidconsentimiento-wa](../docs/auth-service/api/personas.md#patch-personasidconsentimiento-wa)).
+
+- Requiere JWT autenticado (cualquier tipo: staff, cliente, plataforma).
+- Body: `{ "acepta": boolean }`
+- Response: `{ "idPersona": number, "aceptaWhatsapp": boolean, "fechaConsentimientoWa": string | null }`
+
+**Comportamiento en backend:**
+- Si `acepta=true`: sella `fecha_consentimiento_wa = NOW()` como prueba del opt-in ante Meta. Ojo: **esta ruta siempre reescribe la fecha**, no la preserva — el socio está declarando su consentimiento aquí y ahora, así que el sello nuevo es el correcto.
+- Si `acepta=false`: limpia la fecha a `NULL`. El socio ha revocado su consentimiento (opt-out).
+
+> No confundir con la ruta de **recepción** (`core-service`), que sí preserva la fecha original: allí un tercero afilia al socio a otro gym y no puede reescribir —ni revocar— una declaración que el socio hizo antes. La diferencia es quién declara.
+
+**Manejo de errores en frontend:**
+- `404` — persona no existe (no debería pasar si el JWT es válido).
+- `400` — `acepta` inválido o ausente en body (error interno del handler).
+- Cualquier otro 4xx/5xx — mostrar toast con error genérico.
+
+### DTO: `ConsentimientoWaPersonaResponse`
+
+Ubicación: `src/application/usecase/auth.types.ts` (línea 96).
+
+```typescript
+export interface ConsentimientoWaPersonaResponse {
+  idPersona: number
+  aceptaWhatsapp: boolean
+  fechaConsentimientoWa: string | null
+}
+```
+
+### Estado actual (2026-07-21)
+
+✅ Componente en ProfilePage: funcional
+✅ Endpoint PATCH en auth-service: documentado y verificado
+✅ Repositorio HTTP: mapeo snake/camelCase
+✅ Flujo de opt-out vía ProfilePage: operativo
+
+❌ Auto-registro PWA: pendiente (backlog) — sin él, no hay captura de consentimiento para socios que crean cuenta online (quedan en `false` fijo).
