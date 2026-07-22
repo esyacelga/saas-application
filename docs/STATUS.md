@@ -2,7 +2,7 @@
 
 > **Propósito:** Fuente única de verdad sobre **qué está construido hoy** vs. **qué es solo diseño**. Antes de implementar o de confiar en un documento como referencia, consulta aquí su estado.
 >
-> Última verificación contra el código: **2026-07-10** (general) · **2026-07-14** (billing-service, tras cierre de Fase 3 SRI 2026) · **2026-07-19** (reestructuración de docs + contrato de errores) · **2026-07-21** (bootstrap de métodos de pago en wizard de compañía · asistencias manuales desde heatmap · estado inicial de cliente `vencido` · zona horaria Ecuador uniforme en los 6 microservicios · **GYM-003: estado de pago en membresías end-to-end** backend + PWA).
+> Última verificación contra el código: **2026-07-10** (general) · **2026-07-14** (billing-service, tras cierre de Fase 3 SRI 2026) · **2026-07-19** (reestructuración de docs + contrato de errores) · **2026-07-21** (bootstrap de métodos de pago en wizard de compañía · asistencias manuales desde heatmap · estado inicial de cliente `vencido` · zona horaria Ecuador uniforme en los 6 microservicios · **GYM-003: estado de pago en membresías end-to-end** backend + PWA · **frontend admin: PhoneInputE164 Fase 1** — uniformación inputs WhatsApp en 4 formularios de compañía).
 
 ---
 
@@ -62,6 +62,56 @@
 
 - **"Cuentas App" oculta del menú**: en el panel admin se retiró temporalmente el ítem de navegación "Cuentas App" (`nav.appAccounts` → `/admin/clientes/app`). Solo se comentó el NavItem en `AdminLayout.tsx`; la ruta, la página `ClientesAppPage.tsx` y las traducciones `appAccounts.*` siguen intactas — el módulo es accesible por URL directa y la reversión es de una línea.
 - **Documento creado**: [auth-service-frond-end/features-ocultas.md](auth-service-frond-end/features-ocultas.md) — registro de opciones ocultas a propósito y cómo restaurarlas.
+
+---
+
+## ✅ Actualización 2026-07-21 (frontend admin: componente PhoneInputE164 — Fase 1/2 uniformación de inputs WhatsApp)
+
+**Nuevo componente compartido** para inputs de teléfono internacional (E.164) en el frontend admin (`auth-service-frond-end`):
+
+- **Componente `PhoneInputE164`** (`src/ui/components/PhoneInputE164.tsx`) — input controlado que usa `react-phone-number-input` (motor `libphonenumber-js`, mismo que WhatsApp Web). Exporta:
+  - `PhoneInputE164` — primitivo con props controladas (uso raro)
+  - `PhoneInputE164Controller` — wrapper react-hook-form (recomendado)
+  - `parsePhoneToE164(raw)` — helper para hidratar valores legacy de la BD con Opción A logic (intenta parsear, si falla devuelve `{ value: undefined, parsedOk: false }` para mostrar warning)
+
+- **Salida:** Siempre E.164 (ej. `+593999123456`)
+- **País default:** Ecuador (`EC`); selector permite cambiar a cualquier país
+- **Validación Zod:** Regex `/^\+[1-9]\d{6,14}$/` para E.164 válido
+
+**Fase 1 — Formularios de compañía uniformados (4 sitios):**
+  1. `EditarCompaniaModal` (pestaña de sucursales)
+  2. `Step1Empresa` (wizard de registro de gym)
+  3. `RegistrarGymModal` (modal rápido de compañías)
+  4. `ConfiguracionPage` (Mi Empresa en panel admin)
+
+  En los 4:
+  - Campo `telefono` **ocultado del UI** (comentado en JSX); sigue en schema Zod/DTO como opcional → se envía `undefined` al backend
+  - Campo `whatsapp` reemplazado por `<PhoneInputE164Controller name="whatsapp" ... />`
+  - Al abrir con datos existentes, `parsePhoneToE164` intenta hidratar. Si falla → input vacío + warning "Formato antiguo detectado. Re-ingresa el número."
+
+**Caveat backend — EC-only:** El `PhoneNumberE164Normalizer` en `platform-service` solo procesa números ecuatorianos (`+593...`). Si un usuario selecciona otro país en el selector y guarda un número no-EC:
+  - ✅ Se valida en frontend como E.164
+  - ✅ Se guarda en BD sin error
+  - ❌ Pero **no se envía WhatsApp** (el normalizer rechaza silenciosamente)
+  - ❌ **Sin error visible** — la omisión es silenciosa
+
+  Localización del validador backend: `platform-service/src/main/java/.../PhoneNumberE164Normalizer.java` (solo `593` + 9 dígitos del celular).
+
+  Hallazgo documentado para QA/soporte: si el formulario es rellenado con un país diferente, WhatsApp falla silenciosamente. Contexto actual: todas las compañías son EC, así que el caveat es teórico.
+
+**Fase 2 pendiente (no implementada):** 6 formularios de persona aún usan inputs `telefono` planos:
+  1. `EditarClienteModal`
+  2. `RegistrarClienteModal`
+  3. `CrearPersonaStep`
+  4. `PersonaDetallePage/DatosPersonalesTab`
+  5. `PersonasPage/CrearPersonaModal`
+  6. `CrearOperadorModal`
+
+  Migrarán al mismo `PhoneInputE164Controller` en próxima iteración, siguiendo el patrón de Fase 1.
+
+**Documentación creada:**
+- `docs/auth-service-frond-end/components/phone-input-e164.md` — API completa, ejemplos, caveat backend, plan de Fase 2
+- `docs/auth-service-frond-end/INDEX.md` — actualizado con enlace al nuevo componente
 
 ---
 

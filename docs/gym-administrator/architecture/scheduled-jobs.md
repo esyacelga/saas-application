@@ -113,6 +113,16 @@ Disparan cada N segundos indefinidamente. Spring las inicia inmediatamente al ar
 - **Decisión 2026-07-15:** WhatsApp solo en aviso previo, no día 0. Banner y email día 0 sin cambios.
 - R4: opt-in WhatsApp + teléfono normalizable a E.164; si no → omite canal (sin error)
 
+**Caveat: PhoneNumberE164Normalizer (EC-only, 2026-07-21):**
+El normalizer del backend `platform-service` solo procesa números ecuatorianos (`+593` + 9 dígitos de celular). Si el teléfono del dueño se ingresó con un país diferente (ej. `+14155552671` USA):
+- ✅ Se valida y guarda en BD correctamente
+- ❌ **No se envía WhatsApp** — el normalizer retorna `Optional.empty()` (rechaza silenciosamente)
+- ❌ No hay error registrado — la omisión es silenciosa; el dueño simplemente no recibe el aviso
+
+Localización del validador: `platform-service/src/main/java/.../PhoneNumberE164Normalizer.java`
+
+Todas las compañías hoy son ecuatorianas, así que este es un hallazgo teórico. Pero si en futuro hay multi-país, este es el punto de extensión. Para QA/soporte: si un dueño reporta "no recibí WhatsApp" y su número está guardado, validar que sea `+593...` (EC).
+
 **Control de tests:** `application-test.yml`: `notificacion.vencimiento.cron: "-"` + `jobs.run-on-startup: false`.
 
 ---
@@ -137,6 +147,9 @@ Disparan cada N segundos indefinidamente. Spring las inicia inmediatamente al ar
 - Mapeo `modoControl` → plantilla HSM:
   - Calendario: `recordatorio_vencimiento_membresia`
   - Accesos: `recordatorio_vencimiento_accesos`
+
+**Caveat: PhoneNumberE164Normalizer (EC-only, 2026-07-21):**
+El normalizer del backend `platform-service` solo procesa números ecuatorianos. Si el teléfono del socio se guardó con un país diferente, el job **no enviará WhatsApp** (silenciosamente). Ver detalles en Job #3 arriba.
 
 **Control de tests:** `application-test.yml`: `scheduling.messaging-job-cron: "-"` + `jobs.run-on-startup: false`.
 

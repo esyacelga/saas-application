@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2, Copy, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
@@ -14,16 +15,18 @@ import { platformRepository } from '@/infrastructure/http/platform/PlatformHttpR
 import { GestionarCompaniaUseCase } from '@/application/platform/GestionarCompania.usecase'
 import { PlanSelector } from '../../components/PlanSelector'
 import type { RegistrarGymResponse } from '@/infrastructure/http/platform/platform.dto'
+import { PhoneInputE164Controller } from '@/ui/components/PhoneInputE164'
 
 const usecase = new GestionarCompaniaUseCase(platformRepository)
 
 interface Props { open: boolean; onClose: () => void; onCreated: () => void }
 
 export function RegistrarGymModal({ open, onClose, onCreated }: Props) {
+  const { t } = useTranslation()
   const [result, setResult] = useState<RegistrarGymResponse | null>(null)
   const [copied, setCopied] = useState(false)
 
-  const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } = useForm<RegistrarGymForm, unknown, RegistrarGymForm>({
+  const { register, handleSubmit, reset, control, setValue, watch, formState: { errors, isSubmitting } } = useForm<RegistrarGymForm, unknown, RegistrarGymForm>({
     resolver: zodResolver(registrarGymSchema) as never,
   })
   const idPlanValue = watch('idPlan')
@@ -110,20 +113,23 @@ export function RegistrarGymModal({ open, onClose, onCreated }: Props) {
                 <Input {...register('ruc')} placeholder="1234567890001" className="mt-1" />
                 {errors.ruc && <p className="text-xs text-red-500 mt-1">{errors.ruc.message}</p>}
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Correo</Label>
-                  <Input {...register('correo')} type="email" placeholder="gym@email.com" className="mt-1" />
-                  {errors.correo && <p className="text-xs text-red-500 mt-1">{errors.correo.message}</p>}
-                </div>
-                <div>
-                  <Label>Teléfono</Label>
-                  <Input {...register('telefono')} placeholder="+593..." className="mt-1" />
-                </div>
+              <div>
+                <Label>Correo</Label>
+                <Input {...register('correo')} type="email" placeholder="gym@email.com" className="mt-1" />
+                {errors.correo && <p className="text-xs text-red-500 mt-1">{errors.correo.message}</p>}
               </div>
+              {/* Campo telefono oculto — se conserva en el schema y DTO por compatibilidad */}
               <div>
                 <Label>WhatsApp</Label>
-                <Input {...register('whatsapp')} placeholder="+593..." className="mt-1" />
+                <div className="mt-1">
+                  <PhoneInputE164Controller
+                    name="whatsapp"
+                    control={control}
+                    defaultCountry="EC"
+                    placeholder={t('phoneInput.placeholder')}
+                  />
+                </div>
+                {errors.whatsapp && <p className="text-xs text-red-500 mt-1">{t('phoneInput.invalid')}</p>}
               </div>
             </div>
           </div>

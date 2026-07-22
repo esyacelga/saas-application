@@ -6,8 +6,11 @@ export const wizardStep1Schema = z.object({
   nombre: z.string().min(2, 'Nombre del gimnasio requerido').max(150),
   ruc: z.string().min(10, 'Mínimo 10 caracteres').max(20, 'Máximo 20 caracteres'),
   correo: z.string().email('Correo no válido').optional().or(z.literal('')),
+  /* Campo telefono oculto — se conserva en el schema y DTO por compatibilidad */
   telefono: z.string().optional().or(z.literal('')),
-  whatsapp: z.string().optional().or(z.literal('')),
+  whatsapp: z.string()
+    .optional()
+    .refine((v) => !v || /^\+[1-9]\d{6,14}$/.test(v), 'Número de WhatsApp inválido'),
   // Opt-in de WhatsApp. El default (false) va en defaultValues del form, no aquí: con
   // .default() Zod produce tipos de entrada/salida distintos y el resolver deja de encajar.
   // Desmarcado a propósito: Meta exige consentimiento afirmativo, y una casilla premarcada

@@ -1021,6 +1021,11 @@
       "saveError": "No se pudo actualizar la preferencia"
     }
   },
+  "phoneInput": {
+    "placeholder": "Número de WhatsApp",
+    "legacyFormat": "Formato antiguo detectado. Re-ingresa el número.",
+    "invalid": "Número inválido"
+  },
   "autoRegistro": {
     "title": "Crear cuenta",
     "subtitle": "Registra tu gimnasio gratis en minutos.",

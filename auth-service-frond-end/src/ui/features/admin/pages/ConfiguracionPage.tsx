@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { useTranslation } from 'react-i18next'
+import { PhoneInputE164Controller, parsePhoneToE164 } from '@/ui/components/PhoneInputE164'
 import { QRCodeSVG } from 'qrcode.react'
 import { PageHeader } from '@/ui/components/PageHeader'
 import { ConfirmDialog } from '@/ui/components/ConfirmDialog'
@@ -21,8 +22,11 @@ import { cn } from '@/lib/utils'
 
 const empresaSchema = z.object({
   nombre:   z.string().min(1, 'required'),
+  /* Campo telefono oculto — se conserva en el schema y DTO por compatibilidad */
   telefono: z.string().optional(),
-  whatsapp: z.string().optional(),
+  whatsapp: z.string()
+    .optional()
+    .refine((v) => !v || /^\+[1-9]\d{6,14}$/.test(v), 'phoneInput.invalid'),
   correo:   z.string().email('emailInvalid').optional().or(z.literal('')),
 })
 
@@ -145,12 +149,15 @@ function EmpresaTab({ empresa, onUpdate }: { empresa: Compania; onUpdate: (c: Co
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [logoPreview, setLogoPreview] = useState<string | null>(empresa.logoUrl)
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<EmpresaForm>({
+  const whatsappParsed = parsePhoneToE164(empresa.whatsapp)
+  const [whatsappLegacy] = useState(!whatsappParsed.parsedOk)
+
+  const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<EmpresaForm>({
     resolver: zodResolver(empresaSchema),
     defaultValues: {
       nombre:   empresa.nombre,
       telefono: empresa.telefono,
-      whatsapp: empresa.whatsapp,
+      whatsapp: whatsappParsed.value,
       correo:   empresa.correo,
     },
   })
@@ -251,14 +258,22 @@ function EmpresaTab({ empresa, onUpdate }: { empresa: Compania; onUpdate: (c: Co
             <TextInput value={empresa.ruc} readOnly />
           </div>
 
-          <div>
-            <FieldLabel label={t('configuracion.fieldTelefono')} />
-            <TextInput {...register('telefono')} type="tel" />
-          </div>
+          {/* Campo telefono oculto — se conserva en el schema y DTO por compatibilidad */}
 
           <div>
             <FieldLabel label={t('configuracion.fieldWhatsapp')} />
-            <TextInput {...register('whatsapp')} type="tel" placeholder="+593..." />
+            <PhoneInputE164Controller
+              name="whatsapp"
+              control={control}
+              defaultCountry="EC"
+              placeholder={t('phoneInput.placeholder')}
+            />
+            {whatsappLegacy && (
+              <p className="text-xs text-amber-500 mt-1">{t('phoneInput.legacyFormat')}</p>
+            )}
+            {errors.whatsapp && (
+              <p className="text-xs text-red-400 mt-1">{t('phoneInput.invalid')}</p>
+            )}
           </div>
 
           <div>

@@ -1,9 +1,11 @@
 import { Controller, type UseFormReturn } from 'react-hook-form'
-import { Building2, Mail, Phone, MessageCircle } from 'lucide-react'
+import { Building2, Mail, MessageCircle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { WizardStep1Form } from '../../../schemas/registrar-gym-wizard.schema'
+import { PhoneInputE164Controller } from '@/ui/components/PhoneInputE164'
 
 interface Props {
   form: UseFormReturn<WizardStep1Form>
@@ -15,6 +17,7 @@ function FieldError({ msg }: { msg?: string }) {
 }
 
 export function Step1Empresa({ form }: Props) {
+  const { t } = useTranslation()
   const { register, formState: { errors } } = form
 
   return (
@@ -72,30 +75,23 @@ export function Step1Empresa({ form }: Props) {
           <FieldError msg={errors.correo?.message} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="text-xs font-medium" style={{ color: 'var(--page-text)' }}>
-              <Phone size={12} className="inline mr-1 opacity-60" />
-              Teléfono
-            </Label>
-            <Input
-              {...register('telefono')}
-              placeholder="+593 99 000 0000"
-              className="mt-1.5"
-              style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-text)' }}
+        {/* Campo telefono oculto — se conserva en el schema y DTO por compatibilidad */}
+        <div>
+          <Label className="text-xs font-medium" style={{ color: 'var(--page-text)' }}>
+            <MessageCircle size={12} className="inline mr-1 opacity-60" />
+            WhatsApp
+          </Label>
+          <div className="mt-1.5">
+            <PhoneInputE164Controller
+              name="whatsapp"
+              control={form.control}
+              defaultCountry="EC"
+              placeholder={t('phoneInput.placeholder')}
             />
           </div>
-          <div>
-            <Label className="text-xs font-medium" style={{ color: 'var(--page-text)' }}>
-              WhatsApp
-            </Label>
-            <Input
-              {...register('whatsapp')}
-              placeholder="+593 99 000 0000"
-              className="mt-1.5"
-              style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-text)' }}
-            />
-          </div>
+          {errors.whatsapp && (
+            <FieldError msg={t('phoneInput.invalid')} />
+          )}
         </div>
 
         {/* Opt-in WhatsApp — desmarcado por defecto (consentimiento afirmativo, ver schema) */}

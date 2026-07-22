@@ -1021,6 +1021,11 @@
       "saveError": "Could not update the preference"
     }
   },
+  "phoneInput": {
+    "placeholder": "WhatsApp number",
+    "legacyFormat": "Legacy format detected. Please re-enter the number.",
+    "invalid": "Invalid number"
+  },
   "autoRegistro": {
     "title": "Create account",
     "subtitle": "Register your gym for free in minutes.",

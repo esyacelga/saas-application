@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2, Building2, Upload, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
@@ -13,13 +14,17 @@ import { Label } from '@/components/ui/label'
 import { platformRepository } from '@/infrastructure/http/platform/PlatformHttpRepository'
 import { GestionarCompaniaUseCase } from '@/application/platform/GestionarCompania.usecase'
 import type { Compania } from '@/domain/platform/entities/Plan.entity'
+import { PhoneInputE164Controller, parsePhoneToE164 } from '@/ui/components/PhoneInputE164'
 
 const usecase = new GestionarCompaniaUseCase(platformRepository)
 
 const schema = z.object({
   nombre: z.string().min(2, 'Nombre requerido'),
+  /* Campo telefono oculto — se conserva en el schema y DTO por compatibilidad */
   telefono: z.string().optional(),
-  whatsapp: z.string().optional(),
+  whatsapp: z.string()
+    .optional()
+    .refine((v) => !v || /^\+[1-9]\d{6,14}$/.test(v), 'Número de WhatsApp inválido'),
   correo: z.string().email('Correo no válido').optional().or(z.literal('')),
 })
 type Form = z.infer<typeof schema>
@@ -32,20 +37,24 @@ interface Props {
 }
 
 export function EditarCompaniaModal({ open, compania, onClose, onUpdated }: Props) {
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<Form>({
+  const { t } = useTranslation()
+  const { register, handleSubmit, reset, control, formState: { errors, isSubmitting } } = useForm<Form>({
     resolver: zodResolver(schema),
   })
 
   const fileRef = useRef<HTMLInputElement>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [whatsappLegacy, setWhatsappLegacy] = useState(false)
 
   useEffect(() => {
     if (compania) {
+      const whatsappParsed = parsePhoneToE164(compania.whatsapp)
+      setWhatsappLegacy(!whatsappParsed.parsedOk)
       reset({
         nombre: compania.nombre,
         telefono: compania.telefono,
-        whatsapp: compania.whatsapp,
+        whatsapp: whatsappParsed.value,
         correo: compania.correo,
       })
       setLogoPreview(compania.logoUrl)
@@ -141,15 +150,21 @@ export function EditarCompaniaModal({ open, compania, onClose, onUpdated }: Prop
             <Input {...register('nombre')} className="mt-1" />
             {errors.nombre && <p className="text-xs text-red-500 mt-1">{errors.nombre.message}</p>}
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Teléfono</Label>
-              <Input {...register('telefono')} className="mt-1" />
-            </div>
-            <div>
-              <Label>WhatsApp</Label>
-              <Input {...register('whatsapp')} className="mt-1" />
-            </div>
+          {/* Campo telefono oculto — se conserva en el schema y DTO por compatibilidad */}
+          <div>
+            <Label>WhatsApp</Label>
+            <PhoneInputE164Controller
+              name="whatsapp"
+              control={control}
+              defaultCountry="EC"
+              placeholder={t('phoneInput.placeholder')}
+            />
+            {whatsappLegacy && (
+              <p className="text-xs text-amber-500 mt-1">{t('phoneInput.legacyFormat')}</p>
+            )}
+            {errors.whatsapp && (
+              <p className="text-xs text-red-500 mt-1">{t('phoneInput.invalid')}</p>
+            )}
           </div>
           <div>
             <Label>Correo</Label>
