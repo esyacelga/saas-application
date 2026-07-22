@@ -2,7 +2,7 @@
 
 > **Propósito:** Fuente única de verdad sobre **qué está construido hoy** vs. **qué es solo diseño**. Antes de implementar o de confiar en un documento como referencia, consulta aquí su estado.
 >
-> Última verificación contra el código: **2026-07-10** (general) · **2026-07-14** (billing-service, tras cierre de Fase 3 SRI 2026) · **2026-07-19** (reestructuración de docs + contrato de errores) · **2026-07-21** (bootstrap de métodos de pago en wizard de compañía · asistencias manuales desde heatmap · estado inicial de cliente `vencido` · zona horaria Ecuador uniforme en los 6 microservicios · **GYM-003: estado de pago en membresías end-to-end** backend + PWA · **frontend admin: PhoneInputE164 Fase 1** — uniformación inputs WhatsApp en 4 formularios de compañía).
+> Última verificación contra el código: **2026-07-10** (general) · **2026-07-14** (billing-service, tras cierre de Fase 3 SRI 2026) · **2026-07-19** (reestructuración de docs + contrato de errores) · **2026-07-21** (bootstrap de métodos de pago en wizard de compañía · asistencias manuales desde heatmap · estado inicial de cliente `vencido` · zona horaria Ecuador uniforme en los 6 microservicios · **GYM-003: estado de pago en membresías end-to-end** backend + PWA · **frontend admin: PhoneInputE164 Fase 1 + Fase 2** — uniformación inputs WhatsApp en 4 formularios de compañía + 6 formularios de persona).
 
 ---
 
@@ -99,19 +99,40 @@
 
   Hallazgo documentado para QA/soporte: si el formulario es rellenado con un país diferente, WhatsApp falla silenciosamente. Contexto actual: todas las compañías son EC, así que el caveat es teórico.
 
-**Fase 2 pendiente (no implementada):** 6 formularios de persona aún usan inputs `telefono` planos:
-  1. `EditarClienteModal`
-  2. `RegistrarClienteModal`
-  3. `CrearPersonaStep`
-  4. `PersonaDetallePage/DatosPersonalesTab`
-  5. `PersonasPage/CrearPersonaModal`
-  6. `CrearOperadorModal`
-
-  Migrarán al mismo `PhoneInputE164Controller` en próxima iteración, siguiendo el patrón de Fase 1.
-
 **Documentación creada:**
 - `docs/auth-service-frond-end/components/phone-input-e164.md` — API completa, ejemplos, caveat backend, plan de Fase 2
 - `docs/auth-service-frond-end/INDEX.md` — actualizado con enlace al nuevo componente
+
+---
+
+## ✅ Actualización 2026-07-21 (frontend admin: PhoneInputE164 Fase 2 — formularios de persona)
+
+**Fase 2 completada:** Uniformación de 6 formularios de persona + 1 schema Zod compartido (commit `2332c14`).
+
+**Diferencia semántica vs. Fase 1:** En persona, hay UN solo campo `telefono` (no dos como en compañía). Este campo ES el canal WhatsApp del cliente/operador. La Fase 2 **mantuvo el nombre `telefono`** en el DTO para compatibilidad backend, pero ahora guarda E.164 e incluye validación. **No se ocultó nada** — solo cambió el input y se agregó la validación E.164 al schema Zod.
+
+**6 formularios de persona migrados:**
+  1. `src/ui/features/core/components/EditarClienteModal.tsx` — edita cliente
+  2. `src/ui/features/core/components/RegistrarClienteModal.tsx` — registra cliente
+  3. `src/ui/features/platform/pages/PersonaDetallePage/DatosPersonalesTab.tsx` — pestaña de datos personales (admin)
+  4. `src/ui/features/platform/pages/PersonasPage/CrearPersonaModal.tsx` — modal rápido de creación (admin)
+  5. `src/ui/features/auth/components/CrearOperadorModal.tsx` — crea operador
+
+  En los 5:
+  - Campo `telefono` reemplazó su input plano por `<PhoneInputE164Controller name="telefono" ... />`
+  - Al abrir con datos existentes, `parsePhoneToE164` intenta hidratar legacy. Si falla → input vacío + warning.
+
+**Schema Zod compartido:**
+  6. `src/ui/features/auth/schemas/persona.schema.ts` — esquema reutilizado por:
+     - `src/ui/features/auth/components/CrearPersonaStep.tsx` (wizard de registro de compañía)
+     - (potencialmente otros formularios de persona)
+
+  El schema agregó validación E.164 en el campo `telefono`: `.refine((v) => !v || /^\+[1-9]\d{6,14}$/.test(v), ...)`
+
+**Backend compatibility:** `identidad.personas.telefono` es `VARCHAR` sin normalización — acepta E.164 sin cambios de schema. Ambos `auth-service` y `core-service` leen/escriben el campo sin problemas. El caveat EC-only del `PhoneNumberE164Normalizer` aplica igual.
+
+**Documentación actualizada:**
+- `docs/auth-service-frond-end/components/phone-input-e164.md` — marcada como Fase 1/2 ✅ implementadas
 
 ---
 

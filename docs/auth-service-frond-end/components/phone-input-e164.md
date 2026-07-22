@@ -2,7 +2,7 @@
 
 > **ESTADO:** ✅ Implementado  
 > **Ubicación:** `src/ui/components/PhoneInputE164.tsx`  
-> **Alcance:** Fase 1/2 — Formularios de compañía uniformados; Fase 2 pendiente (formularios de persona)
+> **Alcance:** Fase 1/2 — ✅ Ambas completadas (4 formularios de compañía + 6 formularios de persona)
 
 ---
 
@@ -289,18 +289,35 @@ export function EditarCompaniaModal({ compania, onUpdated }) {
 
 ---
 
-## Fase 2 (pendiente)
+## Fase 2 — Formularios de persona (✅ Implementada 2026-07-21)
 
-Aún hay **6 formularios de persona** que usan inputs de `telefono` planos y necesitan migrar al mismo componente:
+**Cambio semántico vs. Fase 1:**
 
-1. `src/ui/features/core/components/EditarClienteModal.tsx`
-2. `src/ui/features/core/components/RegistrarClienteModal.tsx`
-3. `src/ui/features/admin/pages/PersonasPage/CrearPersonaStep.tsx`
-4. `src/ui/features/admin/pages/PersonaDetallePage/DatosPersonalesTab.tsx`
-5. `src/ui/features/admin/pages/PersonasPage/CrearPersonaModal.tsx`
-6. `src/ui/features/admin/pages/OperadoresPage/CrearOperadorModal.tsx`
+En persona, hay UN solo campo `telefono` (no dos como en compañía). Este campo ES el canal WhatsApp del cliente/operador. La Fase 2 **mantuvo el nombre `telefono`** en el DTO para compatibilidad con backend, pero ahora guarda E.164 e incluye validación. **No se ocultó nada** — solo cambió el input y se agregó la validación E.164 al schema Zod.
 
-El plan es uniformar estos 6 formularios en una segunda iteración, replicando el patrón de Fase 1 (ocultar `telefono`, usar `PhoneInputE164Controller` para el número interactivo).
+**7 archivos modificados (6 formularios + 1 schema compartido):**
+
+Formularios con schema inline:
+1. `src/ui/features/core/components/EditarClienteModal.tsx` — edita cliente existente
+2. `src/ui/features/core/components/RegistrarClienteModal.tsx` — registra cliente nuevo
+3. `src/ui/features/platform/pages/PersonaDetallePage/DatosPersonalesTab.tsx` — pestaña de datos personales (admin)
+4. `src/ui/features/platform/pages/PersonasPage/CrearPersonaModal.tsx` — modal rápido de creación (admin)
+5. `src/ui/features/auth/components/CrearOperadorModal.tsx` — crea operador nuevo
+
+Schema compartido:
+6. `src/ui/features/auth/schemas/persona.schema.ts` — esquema Zod reutilizado por:
+   - `src/ui/features/auth/components/CrearPersonaStep.tsx` (wizard de registro de compañía)
+   - (y potencialmente otros formularios de persona)
+
+**Cambios en cada archivo:**
+- El campo `telefono` reemplazó su input plano por `<PhoneInputE164Controller name="telefono" ... />`
+- El schema Zod agregó la validación E.164 regex: `/^\+[1-9]\d{6,14}$/`
+- Al abrir un formulario con datos existentes, `parsePhoneToE164` intenta hidratar. Si falla → input vacío + warning "Formato antiguo detectado. Re-ingresa el número."
+
+**Caveat backend — EC-only (igual que Fase 1):**
+El `PhoneNumberE164Normalizer` en `platform-service` solo procesa números ecuatorianos (`+593...`). El backend `identidad.personas.telefono` es `VARCHAR` sin normalización — acepta E.164 sin cambios, pero el WhatsApp no se envía si el número no es `+593` válido.
+
+**Commit:** `2332c14` (2026-07-21)
 
 ---
 
@@ -314,7 +331,7 @@ El plan es uniformar estos 6 formularios en una segunda iteración, replicando e
 | **Salida** | E.164 (ej. `+593999123456`) |
 | **Validación** | Regex `/^\+[1-9]\d{6,14}$/` en Zod |
 | **Caveat backend** | `PhoneNumberE164Normalizer` solo procesa `+593` (EC-only) |
-| **Fase 1 ✅** | 4 formularios de compañía |
-| **Fase 2 📋** | 6 formularios de persona (pendiente) |
+| **Fase 1 ✅** | 4 formularios de compañía (campo `whatsapp`, oculto `telefono`) |
+| **Fase 2 ✅** | 6 formularios de persona (campo `telefono`, no oculto) + 1 schema Zod compartido |
 | **CSS** | Temas mediante variables CSS (`--input-bg`, etc.) |
 | **i18n** | Claves `phoneInput.*` en `es.json` / `en.json` |
