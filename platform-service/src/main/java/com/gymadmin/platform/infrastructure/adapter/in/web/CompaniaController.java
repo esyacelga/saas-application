@@ -142,7 +142,10 @@ public class CompaniaController {
                                 request.usuarioPrincipal().correo(),
                                 request.usuarioPrincipal().password()
                         ),
-                        List.of()
+                        List.of(),
+                        // El auto-registro público no pide teléfono ni opt-in (disclosure progresivo):
+                        // el dueño lo activa después desde Configuración, donde ya tiene el campo WhatsApp.
+                        false
                 ))
                 .map(result -> ResponseEntity.status(HttpStatus.CREATED).body(
                         new RegistrarGymWizardResponse(
@@ -203,7 +206,8 @@ public class CompaniaController {
                                         request.usuariosAdicionales().stream()
                                                 .map(u -> new CompaniaUseCase.UsuarioWizardCommand(
                                                         u.idPersona(), u.ci(), u.nombre(), u.telefono(), u.correo(), u.password()))
-                                                .toList()
+                                                .toList(),
+                                Boolean.TRUE.equals(request.aceptaWhatsapp())
                         )))
                         .flatMap(result -> actividadUseCase.registrar(new ActividadPlataformaUseCase.RegistrarCommand(
                                 "COMPANIA_CREADA", "companias", result.idCompania(), request.nombre(), null, principal.getName()
