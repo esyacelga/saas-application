@@ -189,7 +189,12 @@ export function RegistrarGymWizard({ open, onClose, onCreated }: Props) {
   const [usuariosAdicionales, setUsuariosAdicionales] = useState<(UsuarioAdicionalResuelto | null)[]>([])
   const [errorCards, setErrorCards] = useState(false)
 
-  const form1 = useForm<WizardStep1Form>({ resolver: zodResolver(wizardStep1Schema), defaultValues: allData })
+  // aceptaWhatsapp arranca en false explícitamente: el opt-in debe ser una acción del dueño,
+  // nunca un default heredado (ver registrar-gym-wizard.schema.ts).
+  const form1 = useForm<WizardStep1Form>({
+    resolver: zodResolver(wizardStep1Schema),
+    defaultValues: { aceptaWhatsapp: false, ...allData },
+  })
   const form2 = useForm<WizardStep2Form>({ resolver: zodResolver(wizardStep2Schema), defaultValues: allData })
   const form3 = useForm<WizardStep3Form>({ resolver: zodResolver(wizardStep3Schema) as never, defaultValues: allData })
   const form4 = useForm<WizardStep4Form>({ resolver: zodResolver(wizardStep4Schema) })
@@ -300,6 +305,7 @@ export function RegistrarGymWizard({ open, onClose, onCreated }: Props) {
         correo: data.correo || undefined,
         telefono: data.telefono || undefined,
         whatsapp: data.whatsapp || undefined,
+        aceptaWhatsapp: data.aceptaWhatsapp,
         idPlan: data.idPlan,
         nombreSucursal: data.nombreSucursal,
         direccionSucursal: data.direccionSucursal || undefined,

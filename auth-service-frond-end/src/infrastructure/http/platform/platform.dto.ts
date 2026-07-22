@@ -74,6 +74,7 @@ export interface RegistrarGymWizardDto {
   idPlan: number
   nombreSucursal: string
   direccionSucursal?: string
+  aceptaWhatsapp?: boolean
   usuarioPrincipal: {
     id_persona?: number
     ci: string

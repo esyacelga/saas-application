@@ -628,7 +628,10 @@
       "saveSuccess": "WhatsApp preference updated",
       "saveError": "Error updating preference",
       "fechaConsentimiento": "Consent recorded on {{fecha}}",
-      "sinFecha": "No consent date"
+      "sinFecha": "No consent date",
+      "notaPlataforma": "Consent is given by the owner from their own panel. Enable it here only if they authorised it through another channel; turning it off is always safe.",
+      "confirmTitle": "Did the owner authorise WhatsApp alerts?",
+      "confirmDesc": "Enabling this records a consent date in the owner's name. Confirm only if they authorised it through a verifiable channel (call, email or contract). Enabling without authorisation may cause Meta to block the platform's WhatsApp number."
     },
     "caracteristicas": {
       "title": "System features",
@@ -1007,7 +1010,16 @@
     "qrRenovarConfirmDesc": "The previous QR code will become invalid. Members will need to use the new code to register.",
     "loadError": "Failed to load configuration data",
     "required": "This field is required",
-    "emailInvalid": "Invalid email address"
+    "emailInvalid": "Invalid email address",
+    "whatsappOptIn": {
+      "title": "WhatsApp alerts",
+      "label": "I want to receive expiry alerts via WhatsApp",
+      "beneficio": "We'll notify you 3 days before and on the day your subscription expires, so you don't lose access. You can turn this off at any time.",
+      "fechaConsentimiento": "Enabled on {{fecha}}",
+      "sinNumero": "Add your WhatsApp number above to be able to receive alerts.",
+      "saveSuccess": "Preference updated",
+      "saveError": "Could not update the preference"
+    }
   },
   "autoRegistro": {
     "title": "Create account",

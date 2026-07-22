@@ -8,6 +8,11 @@ export const wizardStep1Schema = z.object({
   correo: z.string().email('Correo no válido').optional().or(z.literal('')),
   telefono: z.string().optional().or(z.literal('')),
   whatsapp: z.string().optional().or(z.literal('')),
+  // Opt-in de WhatsApp. El default (false) va en defaultValues del form, no aquí: con
+  // .default() Zod produce tipos de entrada/salida distintos y el resolver deja de encajar.
+  // Desmarcado a propósito: Meta exige consentimiento afirmativo, y una casilla premarcada
+  // no prueba que el dueño decidiera nada.
+  aceptaWhatsapp: z.boolean(),
 })
 
 export const wizardStep2Schema = z.object({

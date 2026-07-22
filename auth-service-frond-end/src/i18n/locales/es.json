@@ -628,7 +628,10 @@
       "saveSuccess": "Preferencia de WhatsApp actualizada",
       "saveError": "Error al actualizar la preferencia",
       "fechaConsentimiento": "Consentimiento registrado el {{fecha}}",
-      "sinFecha": "Sin fecha de consentimiento"
+      "sinFecha": "Sin fecha de consentimiento",
+      "notaPlataforma": "El consentimiento lo da el dueño desde su panel. Actívalo aquí solo si lo autorizó por otro medio; desactivarlo siempre es seguro.",
+      "confirmTitle": "¿El dueño autorizó los avisos por WhatsApp?",
+      "confirmDesc": "Al activarlo se registra una fecha de consentimiento a nombre del dueño. Confirma solo si él lo autorizó por un canal verificable (llamada, correo o contrato). Activar sin autorización puede provocar que Meta bloquee el número de WhatsApp de la plataforma."
     },
     "caracteristicas": {
       "title": "Características del sistema",
@@ -1007,7 +1010,16 @@
     "qrRenovarConfirmDesc": "El código QR anterior quedará inválido. Los miembros deberán usar el nuevo código para registrarse.",
     "loadError": "Error al cargar los datos de configuración",
     "required": "Este campo es requerido",
-    "emailInvalid": "Correo electrónico inválido"
+    "emailInvalid": "Correo electrónico inválido",
+    "whatsappOptIn": {
+      "title": "Avisos por WhatsApp",
+      "label": "Quiero recibir avisos de vencimiento por WhatsApp",
+      "beneficio": "Te avisamos 3 días antes y el día del vencimiento de tu suscripción, para que no pierdas el acceso. Puedes desactivarlo cuando quieras.",
+      "fechaConsentimiento": "Activado el {{fecha}}",
+      "sinNumero": "Agrega tu número de WhatsApp arriba para poder recibir los avisos.",
+      "saveSuccess": "Preferencia actualizada",
+      "saveError": "No se pudo actualizar la preferencia"
+    }
   },
   "autoRegistro": {
     "title": "Crear cuenta",

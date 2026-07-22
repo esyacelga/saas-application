@@ -243,6 +243,7 @@ class PlatformHttpRepositoryImpl implements PlatformRepository {
       idPlan: body.idPlan,
       nombreSucursal: body.nombreSucursal,
       direccionSucursal: body.direccionSucursal,
+      aceptaWhatsapp: body.aceptaWhatsapp ?? false,
       usuarioPrincipal: {
         id_persona:  body.usuarioPrincipal.id_persona,
         ci:          body.usuarioPrincipal.ci,

@@ -1,7 +1,8 @@
-import type { UseFormReturn } from 'react-hook-form'
-import { Building2, Mail, Phone } from 'lucide-react'
+import { Controller, type UseFormReturn } from 'react-hook-form'
+import { Building2, Mail, Phone, MessageCircle } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import type { WizardStep1Form } from '../../../schemas/registrar-gym-wizard.schema'
 
 interface Props {
@@ -96,6 +97,34 @@ export function Step1Empresa({ form }: Props) {
             />
           </div>
         </div>
+
+        {/* Opt-in WhatsApp — desmarcado por defecto (consentimiento afirmativo, ver schema) */}
+        <label
+          className="flex items-start gap-3 rounded-lg p-3 cursor-pointer"
+          style={{ border: '1px solid var(--page-border)', background: 'var(--page-surface)' }}
+        >
+          <Controller
+            control={form.control}
+            name="aceptaWhatsapp"
+            render={({ field }) => (
+              <Checkbox
+                checked={field.value}
+                onCheckedChange={v => field.onChange(v === true)}
+                className="mt-0.5"
+              />
+            )}
+          />
+          <span>
+            <span className="text-xs font-medium block" style={{ color: 'var(--page-text)' }}>
+              <MessageCircle size={12} className="inline mr-1 opacity-60" />
+              El dueño acepta recibir avisos de vencimiento por WhatsApp
+            </span>
+            <span className="text-xs block mt-0.5" style={{ color: 'var(--page-muted)' }}>
+              Se le avisa 3 días antes y el día del vencimiento, para que no pierda el acceso.
+              Márcalo solo si el dueño lo autorizó; podrá cambiarlo desde su panel.
+            </span>
+          </span>
+        </label>
       </div>
     </div>
   )
