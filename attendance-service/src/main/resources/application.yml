@@ -50,6 +50,13 @@ whatsapp:
     phone-number-id: ${META_PHONE_NUMBER_ID:}
     access-token: ${META_ACCESS_TOKEN:}
 
+# Meta WhatsApp Cloud API. `template-language` debe coincidir EXACTO con el idioma con el que las
+# plantillas HSM están aprobadas en Business Manager: Meta las indexa por el par (nombre, idioma) y
+# devuelve 404 code=132001 si el par no existe (p. ej. pedir `es` cuando está aprobada en `es_EC`).
+whatsapp:
+  meta:
+    template-language: ${WHATSAPP_TEMPLATE_LANG:es_EC}
+
 app:
   cors:
     allow-all: ${CORS_ALLOW_ALL:false}

@@ -102,7 +102,7 @@ public class SubscriptionJobService {
     }
 
     /** Expuesto para tests con Clock.fixed(...). Ejecuta el orden RN-03 completo. */
-    Mono<Void> procesarSuscripciones(LocalDate today) {
+    public Mono<Void> procesarSuscripciones(LocalDate today) {
         return activarProgramados(today)
                 .then(degradarVencidas(today));
     }

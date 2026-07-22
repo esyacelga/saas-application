@@ -34,6 +34,7 @@ public class SecurityConfig {
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers("/api/v1/asistencias/check").permitAll()
                         .pathMatchers("/actuator/health").permitAll()
+                        .pathMatchers("/internal/**").permitAll()
                         .anyExchange().authenticated()
                 )
                 .exceptionHandling(ex -> ex

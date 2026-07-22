@@ -100,7 +100,7 @@ class MensajeriaJobTest {
         ArgumentCaptor<List<String>> params = ArgumentCaptor.forClass(List.class);
         verify(mensajeLogService).enviarWhatsAppJob(eq(COMPANIA), eq(1), eq(10),
                 eq("vencimiento_3d"), eq("whatsapp"), eq("+593987654321"),
-                eq("recordatorio_vencimiento_membresia"), eq("es"), params.capture(), anyString());
+                eq("recordatorio_vencimiento_membresia"), eq(MensajeriaJob.IDIOMA_DEFAULT),params.capture(), anyString());
         assertThat(params.getValue()).containsExactly("María", GYM, "18/07/2026", "3");
     }
 
@@ -124,7 +124,7 @@ class MensajeriaJobTest {
 
         verify(mensajeLogService).enviarWhatsAppJob(eq(COMPANIA), eq(1), eq(10),
                 eq("vencimiento_3d"), eq("whatsapp"), eq("+593987654321"),
-                eq("recordatorio_vencimiento_accesos"), eq("es"), eq(List.of("María", "3", GYM)), anyString());
+                eq("recordatorio_vencimiento_accesos"), eq(MensajeriaJob.IDIOMA_DEFAULT),eq(List.of("María", "3", GYM)), anyString());
     }
 
     @Test
@@ -206,7 +206,7 @@ class MensajeriaJobTest {
         ArgumentCaptor<List<String>> params = ArgumentCaptor.forClass(List.class);
         verify(mensajeLogService).enviarWhatsAppJob(eq(COMPANIA), eq(1), eq(10),
                 eq("vencimiento_3d"), eq("whatsapp"), eq("+593987654321"),
-                eq("recordatorio_vencimiento_membresia"), eq("es"), params.capture(), anyString());
+                eq("recordatorio_vencimiento_membresia"), eq(MensajeriaJob.IDIOMA_DEFAULT),params.capture(), anyString());
         assertThat(params.getValue()).containsExactly("María", GYM, "18/07/2026", "5");
     }
 

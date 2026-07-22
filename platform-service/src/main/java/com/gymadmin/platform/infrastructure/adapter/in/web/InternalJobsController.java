@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -51,6 +53,7 @@ public class InternalJobsController {
     private final NotificacionVencimientoJob notificacionVencimientoJob;
     private final ProcesarColaEmailsUseCase procesarColaEmailsUseCase;
     private final ProcesarColaWhatsAppUseCase procesarColaWhatsAppUseCase;
+    private final Clock clock;
     private final int emailBatchSize;
     private final int whatsappBatchSize;
     private final String internalSecret;
@@ -60,6 +63,7 @@ public class InternalJobsController {
             NotificacionVencimientoJob notificacionVencimientoJob,
             ProcesarColaEmailsUseCase procesarColaEmailsUseCase,
             ProcesarColaWhatsAppUseCase procesarColaWhatsAppUseCase,
+            Clock clock,
             @Value("${notificacion.email.queue.batch-size:50}") int emailBatchSize,
             @Value("${notificacion.whatsapp.queue.batch-size:50}") int whatsappBatchSize,
             @Value("${services.internal.secret:platform-secret-dev}") String internalSecret) {
@@ -67,6 +71,7 @@ public class InternalJobsController {
         this.notificacionVencimientoJob = notificacionVencimientoJob;
         this.procesarColaEmailsUseCase = procesarColaEmailsUseCase;
         this.procesarColaWhatsAppUseCase = procesarColaWhatsAppUseCase;
+        this.clock = clock;
         this.emailBatchSize = emailBatchSize;
         this.whatsappBatchSize = whatsappBatchSize;
         this.internalSecret = internalSecret;
@@ -74,7 +79,13 @@ public class InternalJobsController {
 
     // ── DTOs ──────────────────────────────────────────────────────────────
 
-    /** Resumen del subscription job. Sin contadores por ahora (retorna void y hace subscribe interno). */
+    /**
+     * Resumen de un generator. Sigue reportando {@code status: "ok"} porque
+     * {@code procesarSuscripciones()} y {@code procesar()} devuelven {@code Mono<Void>}
+     * — no publican contadores. La diferencia respecto de la versión previa es que
+     * ahora el 200 se emite <b>después</b> de que el {@code Mono} termine (no es
+     * fire-and-forget). Añade contadores aquí el día que los services los publiquen.
+     */
     public record GeneratorStatus(String status) {}
 
     /** Resumen del processor: {@code procesados} = filas devueltas por procesarLote(batchSize). */
@@ -125,19 +136,19 @@ public class InternalJobsController {
     }
 
     /**
-     * Dispara los 2 generators.
+     * Dispara los 2 generators y espera a que terminen (ya no es fire-and-forget).
      *
-     * <p>TODO: exponer contadores reales cuando los services publiquen métricas
-     * (hoy {@code runSubscriptionJob()} y {@code ejecutar()} son {@code void}
-     * y hacen {@code .subscribe(...)} internamente — fire-and-forget).
+     * <p>Los métodos {@code procesarSuscripciones()} y {@code procesar()} devuelven
+     * {@code Mono<Void>}, así que la respuesta sigue siendo {@code {status: "ok"}}
+     * por generator — pero el 200 se emite <b>después</b> de que ambos chains
+     * completen. Cuando los services publiquen contadores, enriquecer los records.
      */
     private Mono<GeneratorsResponse> disparaGenerators() {
-        return Mono.fromRunnable(() -> {
-                    log.info("[InternalJobs] Disparando SubscriptionJob manualmente");
-                    subscriptionJobService.runSubscriptionJob();
-                    log.info("[InternalJobs] Disparando NotificacionVencimientoJob manualmente");
-                    notificacionVencimientoJob.ejecutar();
-                })
+        LocalDate hoy = LocalDate.now(clock);
+        return Mono.fromRunnable(() -> log.info("[InternalJobs] Disparando SubscriptionJob manualmente"))
+                .then(subscriptionJobService.procesarSuscripciones(hoy))
+                .then(Mono.fromRunnable(() -> log.info("[InternalJobs] Disparando NotificacionVencimientoJob manualmente")))
+                .then(notificacionVencimientoJob.procesar(hoy))
                 .thenReturn(new GeneratorsResponse(
                         new GeneratorStatus("ok"),
                         new GeneratorStatus("ok")

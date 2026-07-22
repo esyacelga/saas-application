@@ -67,10 +67,21 @@ public class MensajeriaJob {
     private static final int BUCKET_DIA_0 = 0;
 
     private static final String CANAL_WHATSAPP = "whatsapp";
-    private static final String IDIOMA = "es";
     private static final DateTimeFormatter FECHA_ES = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    // Plantillas HSM del socio (categoría UTILITY, idioma es).
+    /**
+     * Código de idioma con el que Meta tiene registradas las traducciones de las plantillas HSM.
+     * Meta indexa las plantillas por el par {@code (nombre, idioma)}: pedir {@code es} cuando la
+     * traducción aprobada es {@code es_EC} devuelve 404 con {@code code=132001} ("Template name does
+     * not exist in the translation"). Debe coincidir EXACTO con el idioma del Business Manager.
+     */
+    public static final String IDIOMA_DEFAULT = "es_EC";
+
+    /** Sobreescribible por entorno para no recompilar si las plantillas se dan de alta en otro idioma. */
+    @Value("${whatsapp.meta.template-language:${WHATSAPP_TEMPLATE_LANG:" + IDIOMA_DEFAULT + "}}")
+    private String idioma = IDIOMA_DEFAULT;
+
+    // Plantillas HSM del socio (categoría UTILITY, idioma es_EC).
     private static final String TPL_MEMBRESIA_PREVIO = "recordatorio_vencimiento_membresia"; // [nombre, gym, fecha, dias]
     private static final String TPL_ACCESOS_PREVIO = "recordatorio_vencimiento_accesos"; // [nombre, accesos, gym]
     // Decisión 2026-07-15: solo aviso previo al socio. Las plantillas del día 0
@@ -154,7 +165,7 @@ public class MensajeriaJob {
                     return mensajeLogService.enviarWhatsAppJob(
                                     idCompania, cliente.getIdSucursal(), cliente.getIdCliente(),
                                     aviso.tipo(), CANAL_WHATSAPP, e164.get(),
-                                    aviso.template(), IDIOMA, aviso.params(), aviso.contenidoLegible())
+                                    aviso.template(), idioma, aviso.params(), aviso.contenidoLegible())
                             .then();
                 });
     }

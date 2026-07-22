@@ -120,8 +120,8 @@ public class NotificacionVencimientoJob {
         ejecutar();
     }
 
-    /** Expuesto package-private para tests con Clock.fixed(...). */
-    Mono<Void> procesar(LocalDate today) {
+    /** Expuesto público para tests con Clock.fixed(...) y para el InternalJobsController. */
+    public Mono<Void> procesar(LocalDate today) {
         return resolverBucketPrevioDueno()
                 .flatMap(bucketPrevio -> companiaPlanRepository.findActivosAndEnGracia()
                         .filter(cp -> cp.getFechaFin() != null)

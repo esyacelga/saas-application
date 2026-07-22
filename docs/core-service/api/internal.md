@@ -1,6 +1,6 @@
 # Internal API — core-service
 
-> **ESTADO:** ✅ Refleja el código actual (verificado contra `InternalCoreController`).
+> **ESTADO:** ✅ Refleja el código actual (verificado contra `InternalCoreController` e `InternalJobsController`).
 
 Endpoints privados consumidos exclusivamente por otros servicios internos (platform-service). **NO son públicos** — protegidos con secreto compartido.
 
@@ -101,6 +101,36 @@ Además: `eliminado = false` (soft-deletes no cuentan)
 
 **Errors:**
 - `400` — `dias` fuera de rango `[0, 30]` o `modo` inválido.
+- `403` — header `X-Internal-Call` ausente o inválido.
+
+---
+
+### POST /internal/v1/jobs/run-generators
+**Auth:** Header `X-Internal-Call: {INTERNAL_SECRET}`
+**Description:** Dispara manualmente el job programado `ClienteStatusJobService.ejecutar()` (recálculo diario de estados de cliente). Pensado para entornos serverless tipo **Cloud Run** donde `@Scheduled` no corre porque el pod puede escalar a 0. En dichos entornos se desactiva el cron nativo con `CLIENT_STATUS_JOB_CRON=-` y se invoca este endpoint desde Cloud Scheduler.
+
+**Header:**
+- `X-Internal-Call` (required) — secreto que coincide con `${INTERNAL_SECRET}` (default `platform-secret-dev`).
+
+**Body:** ninguno.
+
+**Response 200:**
+```json
+{
+  "cliente_status": {
+    "status": "ok"
+  }
+}
+```
+
+**Response fields:**
+- `cliente_status.status` — Siempre `"ok"` cuando el job fue disparado. **Nota:** el service usa `subscribe()` internamente (fire-and-forget); el endpoint retorna en cuanto el pipeline arrancó, no cuando terminó. No se exponen contadores hoy — ver "Trade-offs" abajo.
+
+**Trade-offs conocidos:**
+- El método `ejecutar()` es `void` y hace `subscribe()` sin acumular contadores por cliente procesado. Para no modificar la lógica del job (regla del ticket), el endpoint responde `{status: "ok"}` en vez de `{procesados, activos, vencidos}`. Si en el futuro se refactoriza el job para retornar `Mono<Contadores>`, el DTO `ClienteStatusResponse` es el punto de extensión.
+- Idempotente por diseño (el job recalcula desde el estado actual de las membresías).
+
+**Errors:**
 - `403` — header `X-Internal-Call` ausente o inválido.
 
 ---
