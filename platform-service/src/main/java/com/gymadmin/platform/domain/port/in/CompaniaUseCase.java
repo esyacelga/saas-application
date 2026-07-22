@@ -39,7 +39,10 @@ public interface CompaniaUseCase {
             String nombreSucursal,
             String direccionSucursal,
             UsuarioWizardCommand usuarioPrincipal,
-            List<UsuarioWizardCommand> usuariosAdicionales
+            List<UsuarioWizardCommand> usuariosAdicionales,
+            // Opt-in de WhatsApp declarado por el dueño durante el alta. Debe llegar en TRUE solo
+            // si el dueño lo marcó explícitamente: sella fecha_consentimiento_wa como prueba ante Meta.
+            boolean aceptaWhatsapp
     ) {}
 
     record UsuarioCreadoResult(Long id, Long idPersona, String correo) {}

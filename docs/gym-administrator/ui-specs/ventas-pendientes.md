@@ -1,5 +1,7 @@
 # UI Spec — Ventas pendientes (auth-service-frond-end)
 
+> **ESTADO:** ✅ **Implementado** (2026-07-21) — componente `VentasPendientesPage.tsx` + modales de confirmar/rechazar.
+
 Spec de la nueva vista **"Ventas pendientes"** en el panel admin, correspondiente a §4.8 de la HU GYM-003 (`../requirements/estado-pago-membresias.md`).
 
 Contract backend: `../../core-service/api/membresias.md` — endpoints `GET /companias/{idCompania}/membresias/pendientes`, `POST /membresias/{id}/confirmar-pago`, `POST /membresias/{id}/rechazar`.

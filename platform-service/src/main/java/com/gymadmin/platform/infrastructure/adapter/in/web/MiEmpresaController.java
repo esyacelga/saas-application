@@ -181,7 +181,8 @@ public class MiEmpresaController {
         return new CompaniaResponse(
                 c.getId(), c.getNombre(), c.getRuc(),
                 c.getTelefono(), c.getWhatsapp(), c.getCorreo(),
-                c.getLogoUrl(), c.getActivo(), null
+                c.getLogoUrl(), c.getActivo(), null,
+                c.isAceptaWhatsapp(), c.getFechaConsentimientoWa()
         );
     }
 

@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { ConfirmDialog } from '@/ui/components/ConfirmDialog'
 import { platformRepository } from '@/infrastructure/http/platform/PlatformHttpRepository'
 import { GestionarNotifConfigUseCase } from '@/application/platform/GestionarNotifConfig.usecase'
 import { GestionarNotifBucketsUseCase } from '@/application/platform/GestionarNotifBuckets.usecase'
@@ -29,16 +30,32 @@ function ConsentimientoWaBlock({ idCompania, isSuperAdmin }: { idCompania: numbe
   const [consent, setConsent] = useState<ConsentimientoWaResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [confirmarAlta, setConfirmarAlta] = useState(false)
 
+  // GET /companias/{id} expone acepta_whatsapp + fecha_consentimiento_wa; sin esta hidratación
+  // el switch arrancaba siempre apagado y un click "para activar" era en realidad un opt-out.
   useEffect(() => {
-    // Load initial state from the compania detail — the backend PATCH also returns state.
-    // We initialise with a neutral state and let the first PATCH reflect it.
-    // Since there is no GET for consentimiento alone, we start with null and load
-    // via a dry read from the compania. Use a sentinel: fetch without changing.
-    setLoading(false)
-  }, [])
+    let cancelado = false
+    platformRepository
+      .getCompania(idCompania)
+      .then(c => {
+        if (cancelado) return
+        setConsent({
+          idCompania,
+          aceptaWhatsapp: c.aceptaWhatsapp,
+          fechaConsentimientoWa: c.fechaConsentimientoWa,
+        })
+      })
+      .catch(() => {
+        if (!cancelado) toast.error(t('platform.consentimientoWa.loadError'))
+      })
+      .finally(() => {
+        if (!cancelado) setLoading(false)
+      })
+    return () => { cancelado = true }
+  }, [idCompania, t])
 
-  const handleToggle = async (acepta: boolean) => {
+  const aplicar = async (acepta: boolean) => {
     setSaving(true)
     try {
       const updated = await bucketsUsecase.patchConsentimientoWaCompania(idCompania, acepta)
@@ -51,6 +68,17 @@ function ConsentimientoWaBlock({ idCompania, isSuperAdmin }: { idCompania: numbe
     }
   }
 
+  // Activar desde plataforma sella una fecha que afirma que el DUEÑO consintió. Se exige una
+  // declaración explícita de que hubo autorización por un canal externo (llamada, contrato).
+  // El opt-out no se confirma: dar de baja siempre es seguro y debe ser inmediato.
+  const handleToggle = (acepta: boolean) => {
+    if (acepta) {
+      setConfirmarAlta(true)
+      return
+    }
+    void aplicar(false)
+  }
+
   if (loading) {
     return <Skeleton className="h-14 w-full rounded-lg" />
   }
@@ -60,6 +88,7 @@ function ConsentimientoWaBlock({ idCompania, isSuperAdmin }: { idCompania: numbe
     : null
 
   return (
+    <>
     <div
       className="rounded-lg p-4 space-y-2"
       style={{ border: '1px solid var(--page-border)', background: 'var(--page-surface)' }}
@@ -89,7 +118,23 @@ function ConsentimientoWaBlock({ idCompania, isSuperAdmin }: { idCompania: numbe
           />
         </div>
       </div>
+
+      {isSuperAdmin && (
+        <p className="text-xs pt-1" style={{ color: 'var(--page-muted)' }}>
+          {t('platform.consentimientoWa.notaPlataforma')}
+        </p>
+      )}
     </div>
+
+    <ConfirmDialog
+      open={confirmarAlta}
+      title={t('platform.consentimientoWa.confirmTitle')}
+      description={t('platform.consentimientoWa.confirmDesc')}
+      destructive={false}
+      onConfirm={() => { setConfirmarAlta(false); void aplicar(true) }}
+      onCancel={() => setConfirmarAlta(false)}
+    />
+    </>
   )
 }
 

@@ -2,7 +2,30 @@
 
 > **Propósito:** Fuente única de verdad sobre **qué está construido hoy** vs. **qué es solo diseño**. Antes de implementar o de confiar en un documento como referencia, consulta aquí su estado.
 >
-> Última verificación contra el código: **2026-07-10** (general) · **2026-07-14** (billing-service, tras cierre de Fase 3 SRI 2026) · **2026-07-19** (reestructuración de docs + contrato de errores) · **2026-07-21** (bootstrap de métodos de pago en wizard de compañía · asistencias manuales desde heatmap · estado inicial de cliente `vencido` · zona horaria Ecuador uniforme en los 6 microservicios).
+> Última verificación contra el código: **2026-07-10** (general) · **2026-07-14** (billing-service, tras cierre de Fase 3 SRI 2026) · **2026-07-19** (reestructuración de docs + contrato de errores) · **2026-07-21** (bootstrap de métodos de pago en wizard de compañía · asistencias manuales desde heatmap · estado inicial de cliente `vencido` · zona horaria Ecuador uniforme en los 6 microservicios · **GYM-003: estado de pago en membresías end-to-end** backend + PWA).
+
+---
+
+## ✅ Actualización 2026-07-21 (GYM-003: estado de pago en membresías, parte A implementada)
+
+**Implementación completada del backend y PWA de miembros** para la HU GYM-003 — "Estado de pago en ventas de membresía":
+
+- **core-service**: DTO `MembresiaResponse` extendido con campos `tipoNombre`, `modoControl`, `montoPagado`, `saldoPendiente`, `diasAccesoUsados`/`diasAccesoRestantes`. Nuevo factory method `from(MembresiaHistorialItem)` para endpoints de historial enriquecido.
+- **Nuevo endpoint**: `GET /api/v1/clientes/me/membresias` — PWA de miembros consulta sus membresías sin parámetro de ruta (resuelve `id_cliente` del JWT).
+- **Cambio de comportamiento**: `GET /api/v1/clientes/{id}/membresias` ahora **incluye** membresías con `eliminado = true` (rechazadas), mostrando su `motivo_eliminacion` (`SOCIO_CAMBIO_OPINION`, `ERROR_DE_VENTA`, `DUPLICADA`, `DATOS_INCORRECTOS`, `OTRO`). Bonus: agrega filtro `id_compania` faltante (hardening).
+- **gym-member-pwa**: Nueva página `HistorialPagosMembresiaPage.tsx` en `/membresia/historial` — lista todas las membresías del socio con tarjetas expandibles mostrando monto pagado, saldo pendiente, y si aplica: accesos usados/totales y motivo de eliminación. Llama `coreRepository.misMembresias()` que consume el nuevo endpoint.
+- **Interfaces TypeScript**: `MembresiaHistorialItem` con todos los campos nuevos; `CoreHttpRepository.misMembresias()` retorna `Promise<MembresiaHistorialItem[]>`.
+- **i18n agregado**: namespace `pagoHistorial.*` + claves `estadoPago`, `motivoEliminacion`, `card.labels`, `card.expand`, `card.collapse`, etc. (en `es.json` y `en.json`).
+- **Documento de requerimiento actualizado**: [estado-pago-membresias.md](gym-administrator/requirements/estado-pago-membresias.md) — marcado como ✅ **Implementado** con split de alcance: HU-A (backend + PWA, completada), HU-B (compra autoservicio desde PWA, pendiente), HU-C (integración billing, pendiente).
+
+**Qué NO está implementado en esta iteración** (OUT, para HU-B y HU-C):
+- Compra desde PWA (`POST /clientes/me/membresias/solicitar` existe en backend pero PWA no la llama).
+- Dashboard admin "Ventas pendientes" — backend listo (`GET /companias/{id}/membresias/pendientes`), UI no.
+- Integración facturación (table `core.pagos`, evento `MembresiaPagadaEvent` emitido pero sin consumidor).
+
+**Detalle técnico**: el DTO tiene dos factory methods: `from(Membresia)` para endpoints "crudos" (devuelve campos null para tipo/modo/accesos), `from(MembresiaHistorialItem)` para historial (campos rellenos). Decisión de arquitectura: minimiza la lógica de enriquecimiento en la capa presentation, centraliza en use case.
+
+---
 
 ## ✅ Actualización 2026-07-21 (`ci_validada` en registro de cliente admin + recálculo al editar CI)
 

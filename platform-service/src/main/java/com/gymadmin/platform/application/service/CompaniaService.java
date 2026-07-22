@@ -229,6 +229,12 @@ public class CompaniaService implements CompaniaUseCase {
         compania.setTelefono(command.telefono());
         compania.setWhatsapp(command.whatsapp());
         compania.setCorreo(command.correo());
+        // Solo se sella la fecha si hubo opt-in explícito; sin él la compañía nace no-consentida
+        // (DEFAULT FALSE) y el job nunca le envía WhatsApp.
+        compania.setAceptaWhatsapp(command.aceptaWhatsapp());
+        if (command.aceptaWhatsapp()) {
+            compania.setFechaConsentimientoWa(Instant.now());
+        }
         return compania;
     }
 

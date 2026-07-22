@@ -162,7 +162,7 @@ Key route groups:
 - `PagoOwnerController` → `POST /api/v1/companias/{id}/pagos/reportar` — reporte multipart; desde Sub-fase 1.6 item #4 la parte `comprobante` pasa a ser **opcional** (sin archivo, `comprobanteUrl` queda `null`; no se sube a Cloudinary). Rate limit: 3/hora/tenant. Respuesta incluye `nombreCompania`.
 - `PagoPlataformaController` → `/api/v1/plataforma/pagos-pendientes` (GET bandeja + POST `/{id}/aprobar` + POST `/{id}/rechazar`) — bandeja root/soporte; desde Sub-fase 1.6 item #4 la bandeja enriquece cada pago con `nombreCompania` via batch fetch (`CompaniaRepository.findAllByIds`).
 - `NotifBucketsController` → `/api/v1/plataforma/notif-buckets` (GET lista + PUT /{destinatario} actualiza) — super_admin only, configuración global de días de aviso previo (feature WhatsApp de vencimiento, Fase 6).
-- `ConsentimientoWaController` → `/api/v1/companias/{id}/consentimiento-wa` (PATCH) — opt-in del dueño para WhatsApp (gate `requireAccessToCompania`, Fase 6).
+- `ConsentimientoWaController` → `/api/v1/companias/{id}/consentimiento-wa` (PATCH) — opt-in del dueño para WhatsApp (gate `requireAccessToCompania`, Fase 6). **Lectura:** `CompaniaResponse` expone `acepta_whatsapp` + `fecha_consentimiento_wa` en `GET /companias`, `GET /companias/{id}` y `GET /mi-empresa`, para que el panel hidrate el switch de consentimiento sin un GET dedicado. La escritura sigue siendo exclusiva de este PATCH (`update` del adapter no toca esas columnas).
 - `InternalNotifBucketsController` → `/internal/v1/notif-buckets/{destinatario}` (GET, header `X-Internal-Call`) — endpoint interno (sin JWT) que consume attendance-service para leer el bucket del socio (Fase 6).
 
 ## Monorepo Context

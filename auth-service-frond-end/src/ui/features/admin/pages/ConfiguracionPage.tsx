@@ -6,8 +6,9 @@ import { toast } from 'sonner'
 import { isAxiosError } from 'axios'
 import {
   Building2, MapPin, QrCode, Upload, Copy, Check,
-  RefreshCw, Camera, Settings,
+  RefreshCw, Camera, Settings, MessageCircle,
 } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
 import { useTranslation } from 'react-i18next'
 import { QRCodeSVG } from 'qrcode.react'
 import { PageHeader } from '@/ui/components/PageHeader'
@@ -77,6 +78,66 @@ function SectionCard({ title, icon, children }: { title: string; icon: React.Rea
 }
 
 // ── Tab: Mi Empresa ───────────────────────────────────────────────────────────
+
+// Opt-in de WhatsApp del dueño. Este es el punto de captura donde el consentimiento es
+// genuino: lo marca el propio dueño, no el operador de plataforma. La fecha sellada aquí
+// es la que vale como prueba de opt-in ante Meta.
+function WhatsAppOptInCard({ empresa, onUpdate }: { empresa: Compania; onUpdate: (c: Compania) => void }) {
+  const { t } = useTranslation()
+  const [acepta, setAcepta] = useState(empresa.aceptaWhatsapp)
+  const [saving, setSaving] = useState(false)
+
+  // El backend cae a `telefono` si `whatsapp` está vacío (ver EnviarRecordatorioVencimientoService).
+  const tieneNumero = Boolean(empresa.whatsapp?.trim() || empresa.telefono?.trim())
+
+  const handleToggle = async (valor: boolean) => {
+    setAcepta(valor)
+    setSaving(true)
+    try {
+      const res = await platformRepository.patchConsentimientoWaCompania(empresa.id, valor)
+      onUpdate({ ...empresa, aceptaWhatsapp: res.aceptaWhatsapp, fechaConsentimientoWa: res.fechaConsentimientoWa })
+      toast.success(t('configuracion.whatsappOptIn.saveSuccess'))
+    } catch {
+      setAcepta(!valor)   // revertir: el switch no debe mentir sobre el estado persistido
+      toast.error(t('configuracion.whatsappOptIn.saveError'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const fechaStr = empresa.fechaConsentimientoWa
+    ? new Date(empresa.fechaConsentimientoWa).toLocaleDateString()
+    : null
+
+  return (
+    <SectionCard title={t('configuracion.whatsappOptIn.title')} icon={<MessageCircle size={16} />}>
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <p className="text-sm font-medium" style={{ color: 'var(--page-text)' }}>
+            {t('configuracion.whatsappOptIn.label')}
+          </p>
+          <p className="text-xs" style={{ color: 'var(--page-muted)' }}>
+            {t('configuracion.whatsappOptIn.beneficio')}
+          </p>
+          {acepta && fechaStr && (
+            <p className="text-xs" style={{ color: 'var(--page-muted)' }}>
+              {t('configuracion.whatsappOptIn.fechaConsentimiento', { fecha: fechaStr })}
+            </p>
+          )}
+          {!tieneNumero && (
+            <p className="text-xs" style={{ color: '#f59e0b' }}>
+              {t('configuracion.whatsappOptIn.sinNumero')}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0 pt-0.5">
+          {saving && <RefreshCw size={13} className="animate-spin" style={{ color: 'var(--page-muted)' }} />}
+          <Switch checked={acepta} onCheckedChange={handleToggle} disabled={saving} />
+        </div>
+      </div>
+    </SectionCard>
+  )
+}
 
 function EmpresaTab({ empresa, onUpdate }: { empresa: Compania; onUpdate: (c: Compania) => void }) {
   const { t } = useTranslation()
@@ -221,6 +282,11 @@ function EmpresaTab({ empresa, onUpdate }: { empresa: Compania; onUpdate: (c: Co
           </div>
         </form>
       </SectionCard>
+
+      {/* Opt-in WhatsApp — ancho completo, debajo de logo y datos */}
+      <div className="lg:col-span-2">
+        <WhatsAppOptInCard empresa={empresa} onUpdate={onUpdate} />
+      </div>
     </div>
   )
 }

@@ -33,6 +33,8 @@ export interface Compania {
   logoUrl: string | null
   activo: boolean
   planActivo: PlanActivo | null
+  aceptaWhatsapp: boolean
+  fechaConsentimientoWa: string | null
 }
 
 export interface Sucursal {

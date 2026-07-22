@@ -1,8 +1,8 @@
-# Estado de pago en ventas de membresía
+# Estado de pago en ventas de membresía (HU GYM-003)
 
-> **ESTADO:** 📋 **Planeado — sin implementar.** HU revisada por `architect`, `product-owner` y `code-reviewer` (verificación contra código existente, dos rondas). Lista para pasar a implementación.
-> **Fecha:** 2026-07-17
-> **Historia asociada:** `GYM-XXX` — asignar número al crear la carpeta `db/scripts/YYYYMM_GYM-XXX/`.
+> **ESTADO:** ✅ **Implementado** — End-to-end backend (core-service, attendance-service) + PWA de miembros (gym-member-pwa). Verificado contra código 2026-07-21.
+> **Fecha:** Especificación 2026-07-17 · Implementación completada 2026-07-21.
+> **Historia asociada:** `GYM-003` — implementación split: partes backend+PWA completadas (HU-A), HU-B (compra desde PWA) y HU-C (integración billing) pendientes.
 > **Origen:** el flujo actual asume que toda venta de membresía se cobra al momento. Para habilitar la futura compra desde la PWA del socio (HU-B) y tener trazabilidad de cobros en proceso, se necesita separar el **momento de la venta** del **momento del pago**.
 
 ---

@@ -99,6 +99,8 @@ function mapCompania(r: Record<string, unknown>): Compania {
           diasRestantes: ((pa as Record<string, unknown>).dias_restantes ?? (pa as Record<string, unknown>).diasRestantes) as number,
         }
       : null,
+    aceptaWhatsapp: (r.acepta_whatsapp ?? r.aceptaWhatsapp ?? false) as boolean,
+    fechaConsentimientoWa: (r.fecha_consentimiento_wa ?? r.fechaConsentimientoWa ?? null) as string | null,
   }
 }
 

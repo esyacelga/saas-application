@@ -347,7 +347,9 @@ public class CompaniaController {
                 c.getCorreo(),
                 c.getLogoUrl(),
                 c.getActivo(),
-                planActivo
+                planActivo,
+                c.isAceptaWhatsapp(),
+                c.getFechaConsentimientoWa()
         );
     }
 }

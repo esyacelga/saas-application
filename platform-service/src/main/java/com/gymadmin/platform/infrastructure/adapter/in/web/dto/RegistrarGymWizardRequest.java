@@ -36,5 +36,9 @@ public record RegistrarGymWizardRequest(
         UsuarioWizardDto usuarioPrincipal,
 
         @Valid
-        List<UsuarioWizardDto> usuariosAdicionales
+        List<UsuarioWizardDto> usuariosAdicionales,
+
+        // Opt-in de WhatsApp del dueño (checkbox del wizard, desmarcado por defecto).
+        // Ausente o false → la compañía queda sin consentimiento, que es el default seguro.
+        Boolean aceptaWhatsapp
 ) {}
