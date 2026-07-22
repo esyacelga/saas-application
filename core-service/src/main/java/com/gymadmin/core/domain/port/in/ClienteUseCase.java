@@ -74,7 +74,10 @@ public interface ClienteUseCase {
         String objetivos,
         String lesiones,
         Long idSucursal,
-        String sexo
+        String sexo,
+        // Opt-in de WhatsApp del socio (Fase 6). Sin él, `identidad.personas.acepta_whatsapp`
+        // queda en FALSE y el socio NUNCA recibe el aviso de vencimiento de su membresía.
+        boolean aceptaWhatsapp
     ) {}
 
     record ActualizarClienteCommand(

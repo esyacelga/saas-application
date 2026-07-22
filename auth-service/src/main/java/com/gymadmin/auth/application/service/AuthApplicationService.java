@@ -372,9 +372,12 @@ public class AuthApplicationService implements AuthUseCase {
         return appPort.findByLoginAndIdCompania(req.correo(), req.idCompania())
                 .flatMap(u -> Mono.<LoginAppResponse>error(
                         new ConflictException("Ya existe una cuenta con ese correo en este gimnasio")))
-                .switchIfEmpty(
+                .switchIfEmpty(Mono.defer(() ->
                         personaPort.findByCorreo(req.correo())
-                                .switchIfEmpty(personaPort.save(Persona.builder()
+                                // Mono.defer es obligatorio: sin él, `personaPort.save(...)` se evalúa al
+                                // construir la cadena y se INSERTA una persona nueva (con CI temporal
+                                // aleatorio) aunque el correo ya exista y el flujo tome la otra rama.
+                                .switchIfEmpty(Mono.defer(() -> personaPort.save(Persona.builder()
                                         .ci(generarCiTemporal())
                                         .nombre(req.nombre())
                                         .correo(req.correo())
@@ -390,7 +393,7 @@ public class AuthApplicationService implements AuthUseCase {
                                             }
                                             return new ConflictException(
                                                     "No se pudo crear la persona: " + msg);
-                                        }))
+                                        })))
                                 .flatMap(persona ->
                                         appPort.existsByIdPersonaAndIdCompania(persona.getId(), req.idCompania())
                                                 .flatMap(exists -> {
@@ -410,7 +413,7 @@ public class AuthApplicationService implements AuthUseCase {
                                                 })
                                 )
                                 .flatMap(this::buildAppLoginResponse)
-                );
+                ));
     }
 
     private String generarCiTemporal() {

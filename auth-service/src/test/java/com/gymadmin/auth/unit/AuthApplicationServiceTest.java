@@ -11,6 +11,7 @@ import com.gymadmin.auth.domain.port.out.*;
 import com.gymadmin.auth.dto.request.CompletarRegistroOauthRequest;
 import com.gymadmin.auth.dto.request.OAuthFacebookRequest;
 import com.gymadmin.auth.dto.request.OAuthGoogleRequest;
+import com.gymadmin.auth.dto.request.RegistroAppRequest;
 import com.gymadmin.auth.dto.response.GimnasioPublicoResponse;
 import com.gymadmin.auth.dto.response.OAuthLoginResponse;
 import com.gymadmin.auth.infrastructure.config.AppProperties;
@@ -32,6 +33,8 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -305,6 +308,65 @@ class AuthApplicationServiceTest {
             StepVerifier.create(service.completarRegistroOauth(req))
                     .expectError(AuthException.class)
                     .verify();
+        }
+    }
+
+    @Nested
+    @DisplayName("registrar (auto-registro con correo/contraseña)")
+    class Registrar {
+
+        private RegistroAppRequest req() {
+            return new RegistroAppRequest("Maria Lopez", EMAIL, "secreto123", ID_COMPANIA, "0999999999");
+        }
+
+        @Test
+        @DisplayName("reutiliza la persona existente y NO inserta una nueva")
+        void personaExistenteNoSeDuplica() {
+            Persona existente = Persona.builder().id(10).correo(EMAIL).nombre("Maria Lopez").build();
+
+            when(appPort.findByLoginAndIdCompania(EMAIL, ID_COMPANIA)).thenReturn(Mono.empty());
+            when(personaPort.findByCorreo(EMAIL)).thenReturn(Mono.just(existente));
+            when(appPort.existsByIdPersonaAndIdCompania(10, ID_COMPANIA)).thenReturn(Mono.just(false));
+            when(encoder.encode(anyString())).thenReturn("hashed");
+            when(appPort.save(any(UsuarioApp.class))).thenReturn(Mono.just(existingActiveUser()));
+
+            StepVerifier.create(service.registrar(req())).expectNextCount(1).verifyComplete();
+
+            // Sin Mono.defer, personaPort.save(...) se evalúa eagerly como argumento de
+            // switchIfEmpty y crea una Persona huérfana (con CI temporal aleatorio) en
+            // cada auto-registro cuyo correo ya existía.
+            verify(personaPort, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("crea la persona cuando el correo no existe todavía")
+        void personaNuevaSeCrea() {
+            Persona creada = Persona.builder().id(11).correo(EMAIL).nombre("Maria Lopez").build();
+
+            when(appPort.findByLoginAndIdCompania(EMAIL, ID_COMPANIA)).thenReturn(Mono.empty());
+            when(personaPort.findByCorreo(EMAIL)).thenReturn(Mono.empty());
+            when(personaPort.save(any(Persona.class))).thenReturn(Mono.just(creada));
+            when(appPort.existsByIdPersonaAndIdCompania(11, ID_COMPANIA)).thenReturn(Mono.just(false));
+            when(encoder.encode(anyString())).thenReturn("hashed");
+            when(appPort.save(any(UsuarioApp.class))).thenReturn(Mono.just(existingActiveUser()));
+
+            StepVerifier.create(service.registrar(req())).expectNextCount(1).verifyComplete();
+
+            verify(personaPort).save(any());
+        }
+
+        @Test
+        @DisplayName("falla con ConflictException si ya hay cuenta con ese correo en el gimnasio")
+        void cuentaDuplicadaEnCompania() {
+            when(appPort.findByLoginAndIdCompania(EMAIL, ID_COMPANIA))
+                    .thenReturn(Mono.just(existingActiveUser()));
+
+            StepVerifier.create(service.registrar(req()))
+                    .expectError(ConflictException.class)
+                    .verify();
+
+            // El cortocircuito debe ocurrir ANTES de tocar identidad.personas.
+            verify(personaPort, never()).save(any());
         }
     }
 }

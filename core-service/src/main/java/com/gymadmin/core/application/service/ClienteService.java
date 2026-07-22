@@ -105,13 +105,21 @@ public class ClienteService implements ClienteUseCase {
                 .flatMap(persona -> clienteRepository.findByIdPersonaAndIdCompania(persona.id(), idCompania)
                         .flatMap(existing -> Mono.<PersonaRepository.PersonaResult>error(
                                 new ConflictException("La persona ya es cliente de este gym")))
-                        .switchIfEmpty(Mono.just(persona))
+                        // La persona ya existía (se afilia a otro gym): el opt-in va por UPDATE,
+                        // no por INSERT. `otorgarConsentimientoWa` preserva la fecha si ya había
+                        // consentido y nunca revoca — la recepción no puede dar de baja un opt-in.
+                        .switchIfEmpty(command.aceptaWhatsapp()
+                                ? personaRepository.otorgarConsentimientoWa(persona.id()).thenReturn(persona)
+                                : Mono.just(persona))
                 )
-                .switchIfEmpty(personaRepository.create(new PersonaRepository.CreatePersonaCommand(
+                // Mono.defer: sin él, `create(...)` se evalúa al construir la cadena y se
+                // invoca aunque la persona ya exista (el Mono nunca se suscribe, pero la
+                // llamada al repositorio ya ocurrió).
+                .switchIfEmpty(Mono.defer(() -> personaRepository.create(new PersonaRepository.CreatePersonaCommand(
                         command.ci(), command.nombre(), command.telefono(),
                         command.correo(), command.fechaNacimiento(),
-                        resolverAvatar(command.sexo())
-                )))
+                        resolverAvatar(command.sexo()), command.aceptaWhatsapp()
+                ))))
                 .flatMap(persona -> {
                     Cliente cliente = new Cliente();
                     cliente.setIdPersona(persona.id());

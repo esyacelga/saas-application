@@ -75,7 +75,9 @@ public class RolApplicationService implements RolUseCase {
     public Mono<Void> actualizarPermisos(Integer id, Integer idCompania, UpdateRolPermisosRequest req, String updatedBy) {
         return rolPort.findByIdAndIdCompania(id, idCompania)
                 .switchIfEmpty(Mono.error(new ResourceNotFoundException("Rol no encontrado: " + id)))
-                .then(permisoPort.findByIdInAndIdCompania(req.idPermisos(), idCompania).collectList())
+                // Mono.defer: sin él la consulta de permisos se lanza aunque el rol no exista
+                // y el flujo vaya a terminar en ResourceNotFoundException.
+                .then(Mono.defer(() -> permisoPort.findByIdInAndIdCompania(req.idPermisos(), idCompania).collectList()))
                 .flatMap(permisos -> {
                     if (permisos.size() != req.idPermisos().size())
                         return Mono.error(new IllegalArgumentException(
@@ -90,7 +92,7 @@ public class RolApplicationService implements RolUseCase {
     public Mono<Void> eliminar(Integer id, Integer idCompania) {
         return rolPort.findByIdAndIdCompania(id, idCompania)
                 .switchIfEmpty(Mono.error(new ResourceNotFoundException("Rol no encontrado: " + id)))
-                .then(staffPort.existsByIdRolInCompania(id, idCompania))
+                .then(Mono.defer(() -> staffPort.existsByIdRolInCompania(id, idCompania)))
                 .flatMap(hasUsers -> {
                     if (Boolean.TRUE.equals(hasUsers))
                         return Mono.error(new ConflictException("No se puede eliminar el rol: tiene usuarios asignados"));

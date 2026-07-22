@@ -49,15 +49,20 @@ public class PersonaPersistenceAdapter implements PersonaRepository {
         boolean ciValidada = CedulaEcuatoriana.esValida(command.ci());
 
         var spec = databaseClient.sql("""
-                INSERT INTO identidad.personas (ci, nombre, telefono, correo, fecha_nacimiento, foto_url, ci_validada)
-                VALUES (:ci, :nombre, :telefono, :correo, :fechaNacimiento, :fotoUrl, :ciValidada)
+                INSERT INTO identidad.personas (ci, nombre, telefono, correo, fecha_nacimiento, foto_url, ci_validada,
+                                                acepta_whatsapp, fecha_consentimiento_wa)
+                VALUES (:ci, :nombre, :telefono, :correo, :fechaNacimiento, :fotoUrl, :ciValidada,
+                        :aceptaWhatsapp, CASE WHEN :aceptaWhatsapp THEN now() ELSE NULL END)
                 RETURNING id, ci, nombre, telefono, correo, foto_url
                 """)
                 .bind("ci", command.ci())
                 .bind("nombre", command.nombre())
                 .bind("telefono", command.telefono() != null ? command.telefono() : "")
                 .bind("correo", command.correo() != null ? command.correo() : "")
-                .bind("ciValidada", ciValidada);
+                .bind("ciValidada", ciValidada)
+                // La fecha se sella en el mismo INSERT solo si hubo opt-in: sin ella el flag no
+                // tiene valor probatorio ante Meta. Si no acepta, queda NULL (default de la tabla).
+                .bind("aceptaWhatsapp", command.aceptaWhatsapp());
 
         spec = command.fechaNacimiento() != null
                 ? spec.bind("fechaNacimiento", command.fechaNacimiento())
@@ -76,5 +81,20 @@ public class PersonaPersistenceAdapter implements PersonaRepository {
                         row.get("foto_url", String.class)
                 ))
                 .one();
+    }
+
+    @Override
+    public Mono<Void> otorgarConsentimientoWa(Long idPersona) {
+        // `AND acepta_whatsapp = false` hace el UPDATE idempotente y preserva la fecha
+        // original: reafiliar a un socio que ya consintió no reescribe su prueba de opt-in.
+        return databaseClient.sql("""
+                UPDATE identidad.personas
+                   SET acepta_whatsapp = true, fecha_consentimiento_wa = now()
+                 WHERE id = :id AND eliminado = false AND acepta_whatsapp = false
+                """)
+                .bind("id", idPersona)
+                .fetch()
+                .rowsUpdated()
+                .then();
     }
 }

@@ -100,6 +100,12 @@ export interface RegistrarClienteDto {
   id_compania?: number
   id_sucursal: number
   sexo?: string
+  /**
+   * Opt-in de WhatsApp del socio. Sin él NUNCA se le envía el aviso de vencimiento
+   * de su membresía. Si la persona ya existía y ya había consentido, el backend
+   * conserva su fecha original y nunca revoca desde aquí.
+   */
+  acepta_whatsapp?: boolean
 }
 
 export interface RegistrarClientePlataformaDto {

@@ -18,6 +18,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
@@ -167,10 +168,14 @@ class ClienteServiceTest {
     class Registrar {
 
         private RegistrarClienteCommand buildCmd() {
+            return buildCmd(false);
+        }
+
+        private RegistrarClienteCommand buildCmd(boolean aceptaWhatsapp) {
             return new RegistrarClienteCommand(
                     "0987654321", "Ana García", "0999999999",
                     "ana@mail.com", LocalDate.of(1990, 1, 1),
-                    null, null, null, null, 1L, "F"
+                    null, null, null, null, 1L, "F", aceptaWhatsapp
             );
         }
 
@@ -207,15 +212,95 @@ class ClienteServiceTest {
             when(platformServiceClient.requireLimite(eq(1L), eq("clientes_activos"))).thenReturn(Mono.empty());
             when(personaRepository.findByCi("0987654321")).thenReturn(Mono.just(persona));
             when(clienteRepository.findByIdPersonaAndIdCompania(100L, 1L)).thenReturn(Mono.just(existente));
-            // personaRepository.create(...) se evalúa eagerly como argumento a switchIfEmpty aunque
-            // el flujo termine en error antes; sin este stub retornaría null → NPE.
-            when(personaRepository.create(any())).thenReturn(Mono.empty());
 
             StepVerifier.create(service.registrar(1L, buildCmd()))
                     .expectErrorSatisfies(e -> assertThat(e).isInstanceOf(ConflictException.class))
                     .verify();
 
             verify(clienteRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("persona nueva: propaga el opt-in de WhatsApp al crear la persona")
+        void personaNuevaConOptIn() {
+            when(platformServiceClient.requireLimite(eq(1L), eq("clientes_activos"))).thenReturn(Mono.empty());
+            when(personaRepository.findByCi("0987654321")).thenReturn(Mono.empty());
+            when(personaRepository.create(any())).thenReturn(Mono.just(buildPersona(200L, "0987654321", "Ana García")));
+            when(clienteRepository.save(any())).thenAnswer(inv -> {
+                Cliente c = inv.getArgument(0);
+                c.setId(5L);
+                return Mono.just(c);
+            });
+
+            StepVerifier.create(service.registrar(1L, buildCmd(true))).expectNextCount(1).verifyComplete();
+
+            ArgumentCaptor<PersonaRepository.CreatePersonaCommand> captor =
+                    ArgumentCaptor.forClass(PersonaRepository.CreatePersonaCommand.class);
+            verify(personaRepository).create(captor.capture());
+            assertThat(captor.getValue().aceptaWhatsapp()).isTrue();
+            // Persona nueva ⇒ el opt-in va en el INSERT, no por UPDATE.
+            verify(personaRepository, never()).otorgarConsentimientoWa(any());
+        }
+
+        @Test
+        @DisplayName("persona nueva sin opt-in: acepta_whatsapp queda en false")
+        void personaNuevaSinOptIn() {
+            when(platformServiceClient.requireLimite(eq(1L), eq("clientes_activos"))).thenReturn(Mono.empty());
+            when(personaRepository.findByCi("0987654321")).thenReturn(Mono.empty());
+            when(personaRepository.create(any())).thenReturn(Mono.just(buildPersona(200L, "0987654321", "Ana García")));
+            when(clienteRepository.save(any())).thenAnswer(inv -> {
+                Cliente c = inv.getArgument(0);
+                c.setId(5L);
+                return Mono.just(c);
+            });
+
+            StepVerifier.create(service.registrar(1L, buildCmd(false))).expectNextCount(1).verifyComplete();
+
+            ArgumentCaptor<PersonaRepository.CreatePersonaCommand> captor =
+                    ArgumentCaptor.forClass(PersonaRepository.CreatePersonaCommand.class);
+            verify(personaRepository).create(captor.capture());
+            assertThat(captor.getValue().aceptaWhatsapp()).isFalse();
+        }
+
+        @Test
+        @DisplayName("persona existente con opt-in: otorga el consentimiento por UPDATE")
+        void personaExistenteConOptIn() {
+            PersonaRepository.PersonaResult persona = buildPersona(100L, "0987654321", "Ana García");
+
+            when(platformServiceClient.requireLimite(eq(1L), eq("clientes_activos"))).thenReturn(Mono.empty());
+            when(personaRepository.findByCi("0987654321")).thenReturn(Mono.just(persona));
+            when(clienteRepository.findByIdPersonaAndIdCompania(100L, 1L)).thenReturn(Mono.empty());
+            when(personaRepository.otorgarConsentimientoWa(100L)).thenReturn(Mono.empty());
+            when(clienteRepository.save(any())).thenAnswer(inv -> {
+                Cliente c = inv.getArgument(0);
+                c.setId(9L);
+                return Mono.just(c);
+            });
+
+            StepVerifier.create(service.registrar(1L, buildCmd(true))).expectNextCount(1).verifyComplete();
+
+            verify(personaRepository).otorgarConsentimientoWa(100L);
+            verify(personaRepository, never()).create(any());
+        }
+
+        @Test
+        @DisplayName("persona existente sin opt-in: NO toca su consentimiento previo")
+        void personaExistenteSinOptInNoRevoca() {
+            PersonaRepository.PersonaResult persona = buildPersona(100L, "0987654321", "Ana García");
+
+            when(platformServiceClient.requireLimite(eq(1L), eq("clientes_activos"))).thenReturn(Mono.empty());
+            when(personaRepository.findByCi("0987654321")).thenReturn(Mono.just(persona));
+            when(clienteRepository.findByIdPersonaAndIdCompania(100L, 1L)).thenReturn(Mono.empty());
+            when(clienteRepository.save(any())).thenAnswer(inv -> {
+                Cliente c = inv.getArgument(0);
+                c.setId(9L);
+                return Mono.just(c);
+            });
+
+            StepVerifier.create(service.registrar(1L, buildCmd(false))).expectNextCount(1).verifyComplete();
+
+            // Sin check el socio perdería un opt-in que ya había dado en otro gym.
+            verify(personaRepository, never()).otorgarConsentimientoWa(any());
         }
     }
 

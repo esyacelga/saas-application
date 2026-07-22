@@ -17,5 +17,8 @@ public record RegistrarClienteRequest(
         String objetivos,
         String lesiones,
         @NotNull Long idSucursal,
-        String sexo
+        String sexo,
+        // Nullable a propósito: los clientes viejos del API no lo envían y deben seguir
+        // funcionando. Ausente ⇒ false (sin opt-in NUNCA se envía WhatsApp).
+        Boolean aceptaWhatsapp
 ) {}

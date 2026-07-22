@@ -16,6 +16,24 @@ Las respuestas usan **snake_case** (Jackson `SNAKE_CASE` global configurado en `
 | GET    | `/api/v1/clientes/{id}` | Detalle de cliente con membresía activa          |
 | PUT    | `/api/v1/clientes/{id}` | Actualiza peso, altura, objetivos, lesiones      |
 
+### POST /api/v1/clientes — opt-in de WhatsApp del socio (2026-07-21)
+
+El body acepta `acepta_whatsapp` (booleano, **opcional** — ausente ⇒ `false`). Es el punto de captura de **recepción**, uno de los tres que declara el DDL de `identidad.personas` (registro público, recepción, perfil PWA); antes solo existía el del perfil PWA, así que todo socio dado de alta presencialmente quedaba en `false` y **nunca recibía el aviso de vencimiento de su membresía** — falla silenciosa, porque el job simplemente no lo incluye.
+
+Comportamiento según si la persona ya existe:
+
+| Caso | Efecto |
+|---|---|
+| Persona nueva | El `INSERT` graba `acepta_whatsapp` y sella `fecha_consentimiento_wa = now()` **solo** si es `true` |
+| Persona existente (se afilia a otro gym) y `true` | `UPDATE ... WHERE acepta_whatsapp = false` — si ya había consentido se **conserva su fecha original** (es la prueba del opt-in ante Meta) |
+| Persona existente y `false` | **No se toca nada.** Recepción nunca revoca un consentimiento que el socio dio en otro gym |
+
+El opt-out es exclusivo del socio desde su perfil PWA (`PATCH /api/v1/personas/{id}/consentimiento-wa` en auth-service).
+
+`POST /api/v1/clientes/plataforma` **no** expone el campo: va fijo en `false` porque el operador de plataforma no puede consentir por el socio.
+
+En el panel, la casilla nace **desmarcada** y se deshabilita si no hay teléfono (un consentimiento sin número al que enviar no significa nada). Meta exige opt-in afirmativo: una casilla pre-marcada no tiene valor probatorio y arriesga el bloqueo del número compartido de la plataforma.
+
 ### GET /api/v1/clientes — campos de foto y sexo (2026-07-16)
 
 Cada item del listado incluye ahora `foto_url` y `sexo` (JOIN con `identidad.personas` para la foto; `sexo` viene de `core.clientes`):

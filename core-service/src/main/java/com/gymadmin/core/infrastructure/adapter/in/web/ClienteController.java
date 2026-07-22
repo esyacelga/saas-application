@@ -73,7 +73,7 @@ public class ClienteController {
                                         request.ci(), request.nombre(), request.telefono(), request.correo(),
                                         request.fechaNacimiento(), request.pesoKg(), request.alturaCm(),
                                         request.objetivos(), request.lesiones(), request.idSucursal(),
-                                        request.sexo()
+                                        request.sexo(), Boolean.TRUE.equals(request.aceptaWhatsapp())
                                 )))
                 )
                 .map(cliente -> ResponseEntity.status(HttpStatus.CREATED).<Map<String, Object>>body(Map.of(
@@ -196,7 +196,10 @@ public class ClienteController {
                         new ClienteUseCase.RegistrarClienteCommand(
                                 request.ci(), request.nombre(), request.telefono(), request.correo(),
                                 request.fechaNacimiento(), request.pesoKg(), request.alturaCm(),
-                                request.objetivos(), request.lesiones(), request.idSucursal(), request.sexo()
+                                request.objetivos(), request.lesiones(), request.idSucursal(), request.sexo(),
+                                // Fijo en false: el operador de plataforma no puede consentir por el
+                                // socio. El opt-in lo da el socio (perfil PWA) o recepción presencialmente.
+                                false
                         )))
                 .map(cliente -> ResponseEntity.status(HttpStatus.CREATED).<Map<String, Object>>body(Map.of(
                         "id_cliente", cliente.getId(),

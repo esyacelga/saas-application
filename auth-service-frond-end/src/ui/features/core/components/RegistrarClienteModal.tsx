@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
@@ -55,14 +55,23 @@ export function RegistrarClienteModal({ open, idSucursal, onClose, onRegistrado 
 
   const { register, handleSubmit, control, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<z.input<typeof schema>, unknown, FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { id_sucursal: idSucursal },
+    // Desmarcado a propósito: Meta exige opt-in afirmativo, y una casilla pre-marcada
+    // no tiene valor probatorio. Debe marcarla quien atiende, tras preguntarle al socio.
+    defaultValues: { id_sucursal: idSucursal, acepta_whatsapp: false },
   })
 
   const selectedSexo = watch('sexo')
+  const telefonoActual = watch('telefono')
 
   useEffect(() => {
     if (!open) { setCiSearch(''); setCiResult(null); setStep('search'); reset() }
   }, [open, reset])
+
+  // Si borran el teléfono después de marcar el opt-in, se limpia: un consentimiento
+  // sin número al que enviar no significa nada y no debe guardarse.
+  useEffect(() => {
+    if (!telefonoActual) setValue('acepta_whatsapp', false)
+  }, [telefonoActual, setValue])
 
   const handleBuscarCi = async () => {
     if (!ciSearch.trim()) return
@@ -103,6 +112,7 @@ export function RegistrarClienteModal({ open, idSucursal, onClose, onRegistrado 
         lesiones: values.lesiones || undefined,
         id_sucursal: values.id_sucursal,
         sexo: values.sexo || undefined,
+        acepta_whatsapp: values.acepta_whatsapp,
       })
       toast.success(t('clientes.registerSuccess'))
       onRegistrado(res.id_cliente)
@@ -230,6 +240,41 @@ export function RegistrarClienteModal({ open, idSucursal, onClose, onRegistrado 
                 <input {...register('correo')} type="email" className={inputCls} style={inputStyle} placeholder="cliente@mail.com" />
               </div>
             </div>
+
+            {/* Opt-in de WhatsApp: destacado y desmarcado. Sin teléfono el consentimiento
+                no sirve (no hay a dónde enviar), así que el checkbox se deshabilita. */}
+            <Controller
+              name="acepta_whatsapp"
+              control={control}
+              render={({ field }) => (
+                <label
+                  className="flex items-start gap-2.5 p-3 rounded-lg cursor-pointer"
+                  style={{
+                    background: 'var(--page-surface)',
+                    border: `1px solid ${field.value ? '#22c55e' : 'var(--page-border)'}`,
+                    opacity: telefonoActual ? 1 : 0.55,
+                    cursor: telefonoActual ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={!!field.value}
+                    disabled={!telefonoActual}
+                    onChange={e => field.onChange(e.target.checked)}
+                    className="mt-0.5 accent-green-600"
+                  />
+                  <span>
+                    <span className="block text-xs font-medium" style={{ color: 'var(--page-text)' }}>
+                      {t('clientes.optInWa')}
+                    </span>
+                    <span className="block text-xs mt-0.5" style={{ color: 'var(--page-muted)' }}>
+                      {telefonoActual ? t('clientes.optInWaHint') : t('clientes.optInWaSinTelefono')}
+                    </span>
+                  </span>
+                </label>
+              )}
+            />
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelCls} style={labelStyle}>{t('clientes.fieldPeso')}</label>
